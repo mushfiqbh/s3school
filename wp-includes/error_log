@@ -1,0 +1,306 @@
+[20-Aug-2022 13:20:56 UTC] PHP Warning:  Use of undefined constant ABSPATH - assumed 'ABSPATH' (this will throw an Error in a future version of PHP) in /home3/starlightacademy/public_html/wp-includes/functions.php on line 8
+[20-Aug-2022 13:20:56 UTC] PHP Warning:  Use of undefined constant WPINC - assumed 'WPINC' (this will throw an Error in a future version of PHP) in /home3/starlightacademy/public_html/wp-includes/functions.php on line 8
+[20-Aug-2022 13:20:56 UTC] PHP Warning:  require(ABSPATHWPINC/option.php): failed to open stream: No such file or directory in /home3/starlightacademy/public_html/wp-includes/functions.php on line 8
+[20-Aug-2022 13:20:56 UTC] PHP Warning:  require(ABSPATHWPINC/option.php): failed to open stream: No such file or directory in /home3/starlightacademy/public_html/wp-includes/functions.php on line 8
+[20-Aug-2022 13:20:56 UTC] PHP Fatal error:  require(): Failed opening required 'ABSPATHWPINC/option.php' (include_path='.:/opt/cpanel/ea-php74/root/usr/share/pear') in /home3/starlightacademy/public_html/wp-includes/functions.php on line 8
+[07-Nov-2022 20:37:50 UTC] PHP Warning:  Use of undefined constant ABSPATH - assumed 'ABSPATH' (this will throw an Error in a future version of PHP) in /home3/starlightacademy/public_html/wp-includes/functions.php on line 8
+[07-Nov-2022 20:37:50 UTC] PHP Warning:  Use of undefined constant WPINC - assumed 'WPINC' (this will throw an Error in a future version of PHP) in /home3/starlightacademy/public_html/wp-includes/functions.php on line 8
+[07-Nov-2022 20:37:50 UTC] PHP Warning:  require(ABSPATHWPINC/option.php): failed to open stream: No such file or directory in /home3/starlightacademy/public_html/wp-includes/functions.php on line 8
+[07-Nov-2022 20:37:50 UTC] PHP Warning:  require(ABSPATHWPINC/option.php): failed to open stream: No such file or directory in /home3/starlightacademy/public_html/wp-includes/functions.php on line 8
+[07-Nov-2022 20:37:50 UTC] PHP Fatal error:  require(): Failed opening required 'ABSPATHWPINC/option.php' (include_path='.:/opt/cpanel/ea-php74/root/usr/share/pear') in /home3/starlightacademy/public_html/wp-includes/functions.php on line 8
+[08-May-2023 18:43:42 UTC] PHP Warning:  Use of undefined constant ABSPATH - assumed 'ABSPATH' (this will throw an Error in a future version of PHP) in /home1/sicbedu/public_html/wp-includes/functions.php on line 8
+[08-May-2023 18:43:42 UTC] PHP Warning:  Use of undefined constant WPINC - assumed 'WPINC' (this will throw an Error in a future version of PHP) in /home1/sicbedu/public_html/wp-includes/functions.php on line 8
+[08-May-2023 18:43:42 UTC] PHP Warning:  require(ABSPATHWPINC/option.php): failed to open stream: No such file or directory in /home1/sicbedu/public_html/wp-includes/functions.php on line 8
+[08-May-2023 18:43:42 UTC] PHP Warning:  require(ABSPATHWPINC/option.php): failed to open stream: No such file or directory in /home1/sicbedu/public_html/wp-includes/functions.php on line 8
+[08-May-2023 18:43:42 UTC] PHP Fatal error:  require(): Failed opening required 'ABSPATHWPINC/option.php' (include_path='.:/opt/cpanel/ea-php73/root/usr/share/pear') in /home1/sicbedu/public_html/wp-includes/functions.php on line 8
+[02-Sep-2023 06:53:45 UTC] PHP Warning:  Use of undefined constant ABSPATH - assumed 'ABSPATH' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/functions.php on line 8
+[02-Sep-2023 06:53:45 UTC] PHP Warning:  Use of undefined constant WPINC - assumed 'WPINC' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/functions.php on line 8
+[02-Sep-2023 06:53:45 UTC] PHP Warning:  require(ABSPATHWPINC/option.php): failed to open stream: No such file or directory in /home3/shscedu/public_html/wp-includes/functions.php on line 8
+[02-Sep-2023 06:53:45 UTC] PHP Warning:  require(ABSPATHWPINC/option.php): failed to open stream: No such file or directory in /home3/shscedu/public_html/wp-includes/functions.php on line 8
+[02-Sep-2023 06:53:45 UTC] PHP Fatal error:  require(): Failed opening required 'ABSPATHWPINC/option.php' (include_path='.:/opt/cpanel/ea-php74/root/usr/share/pear') in /home3/shscedu/public_html/wp-includes/functions.php on line 8
+[20-May-2024 08:59:23 UTC] PHP Warning:  Use of undefined constant ABSPATH - assumed 'ABSPATH' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/class-IXR.php on line 42
+[20-May-2024 08:59:23 UTC] PHP Warning:  Use of undefined constant WPINC - assumed 'WPINC' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/class-IXR.php on line 42
+[20-May-2024 08:59:23 UTC] PHP Warning:  require_once(ABSPATHWPINC/IXR/class-IXR-server.php): failed to open stream: No such file or directory in /home3/shscedu/public_html/wp-includes/class-IXR.php on line 42
+[20-May-2024 08:59:23 UTC] PHP Fatal error:  require_once(): Failed opening required 'ABSPATHWPINC/IXR/class-IXR-server.php' (include_path='.:/opt/cpanel/ea-php74/root/usr/share/pear') in /home3/shscedu/public_html/wp-includes/class-IXR.php on line 42
+[31-May-2024 01:26:39 UTC] PHP Warning:  Use of undefined constant ABSPATH - assumed 'ABSPATH' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/class-IXR.php on line 42
+[31-May-2024 01:26:39 UTC] PHP Warning:  Use of undefined constant WPINC - assumed 'WPINC' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/class-IXR.php on line 42
+[31-May-2024 01:26:39 UTC] PHP Warning:  require_once(ABSPATHWPINC/IXR/class-IXR-server.php): failed to open stream: No such file or directory in /home3/shscedu/public_html/wp-includes/class-IXR.php on line 42
+[31-May-2024 01:26:39 UTC] PHP Fatal error:  require_once(): Failed opening required 'ABSPATHWPINC/IXR/class-IXR-server.php' (include_path='.:/opt/cpanel/ea-php74/root/usr/share/pear') in /home3/shscedu/public_html/wp-includes/class-IXR.php on line 42
+[30-Sep-2024 04:49:44 UTC] PHP Warning:  Use of undefined constant ABSPATH - assumed 'ABSPATH' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/compat.php on line 335
+[30-Sep-2024 04:49:44 UTC] PHP Warning:  Use of undefined constant WPINC - assumed 'WPINC' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/compat.php on line 335
+[30-Sep-2024 04:49:44 UTC] PHP Warning:  require(ABSPATHWPINC/sodium_compat/autoload.php): failed to open stream: No such file or directory in /home3/shscedu/public_html/wp-includes/compat.php on line 335
+[30-Sep-2024 04:49:44 UTC] PHP Warning:  require(ABSPATHWPINC/sodium_compat/autoload.php): failed to open stream: No such file or directory in /home3/shscedu/public_html/wp-includes/compat.php on line 335
+[30-Sep-2024 04:49:44 UTC] PHP Fatal error:  require(): Failed opening required 'ABSPATHWPINC/sodium_compat/autoload.php' (include_path='.:/opt/cpanel/ea-php74/root/usr/share/pear') in /home3/shscedu/public_html/wp-includes/compat.php on line 335
+[30-Sep-2024 04:49:46 UTC] PHP Fatal error:  Uncaught Error: Class 'WP_HTTP_Response' not found in /home3/shscedu/public_html/wp-includes/class-wp-http-requests-response.php:17
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/class-wp-http-requests-response.php on line 17
+[30-Sep-2024 04:49:46 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function feed_content_type() in /home3/shscedu/public_html/wp-includes/feed-rss.php:8
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/feed-rss.php on line 8
+[30-Sep-2024 04:49:47 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function add_action() in /home3/shscedu/public_html/wp-includes/ms-default-filters.php:16
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/ms-default-filters.php on line 16
+[30-Sep-2024 04:49:48 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function feed_content_type() in /home3/shscedu/public_html/wp-includes/feed-rss2-comments.php:8
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/feed-rss2-comments.php on line 8
+[30-Sep-2024 04:49:48 UTC] PHP Warning:  Use of undefined constant ABSPATH - assumed 'ABSPATH' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/wp-diff.php on line 13
+[30-Sep-2024 04:49:48 UTC] PHP Warning:  Use of undefined constant WPINC - assumed 'WPINC' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/wp-diff.php on line 13
+[30-Sep-2024 04:49:48 UTC] PHP Warning:  require(ABSPATHWPINC/Text/Diff.php): failed to open stream: No such file or directory in /home3/shscedu/public_html/wp-includes/wp-diff.php on line 13
+[30-Sep-2024 04:49:48 UTC] PHP Warning:  require(ABSPATHWPINC/Text/Diff.php): failed to open stream: No such file or directory in /home3/shscedu/public_html/wp-includes/wp-diff.php on line 13
+[30-Sep-2024 04:49:48 UTC] PHP Fatal error:  require(): Failed opening required 'ABSPATHWPINC/Text/Diff.php' (include_path='.:/opt/cpanel/ea-php74/root/usr/share/pear') in /home3/shscedu/public_html/wp-includes/wp-diff.php on line 13
+[30-Sep-2024 04:49:49 UTC] PHP Fatal error:  Uncaught Error: Class 'Walker' not found in /home3/shscedu/public_html/wp-includes/class-walker-nav-menu.php:17
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/class-walker-nav-menu.php on line 17
+[30-Sep-2024 04:49:51 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function feed_content_type() in /home3/shscedu/public_html/wp-includes/feed-rdf.php:8
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/feed-rdf.php on line 8
+[30-Sep-2024 04:49:52 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function is_admin() in /home3/shscedu/public_html/wp-includes/vars.php:23
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/vars.php on line 23
+[30-Sep-2024 04:49:53 UTC] PHP Warning:  Use of undefined constant ABSPATH - assumed 'ABSPATH' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/functions.php on line 8
+[30-Sep-2024 04:49:53 UTC] PHP Warning:  Use of undefined constant WPINC - assumed 'WPINC' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/functions.php on line 8
+[30-Sep-2024 04:49:53 UTC] PHP Warning:  require(ABSPATHWPINC/option.php): failed to open stream: No such file or directory in /home3/shscedu/public_html/wp-includes/functions.php on line 8
+[30-Sep-2024 04:49:53 UTC] PHP Warning:  require(ABSPATHWPINC/option.php): failed to open stream: No such file or directory in /home3/shscedu/public_html/wp-includes/functions.php on line 8
+[30-Sep-2024 04:49:53 UTC] PHP Fatal error:  require(): Failed opening required 'ABSPATHWPINC/option.php' (include_path='.:/opt/cpanel/ea-php74/root/usr/share/pear') in /home3/shscedu/public_html/wp-includes/functions.php on line 8
+[30-Sep-2024 04:49:53 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function _deprecated_file() in /home3/shscedu/public_html/wp-includes/class-snoopy.php:6
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/class-snoopy.php on line 6
+[30-Sep-2024 04:49:54 UTC] PHP Fatal error:  Uncaught Error: Class 'Walker' not found in /home3/shscedu/public_html/wp-includes/class-walker-page.php:17
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/class-walker-page.php on line 17
+[30-Sep-2024 04:49:55 UTC] PHP Fatal error:  Uncaught Error: Class 'IXR_Server' not found in /home3/shscedu/public_html/wp-includes/class-wp-xmlrpc-server.php:23
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/class-wp-xmlrpc-server.php on line 23
+[30-Sep-2024 04:49:55 UTC] PHP Fatal error:  Uncaught Error: Class 'IXR_Client' not found in /home3/shscedu/public_html/wp-includes/class-wp-http-ixr-client.php:8
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/class-wp-http-ixr-client.php on line 8
+[30-Sep-2024 04:49:57 UTC] PHP Fatal error:  Uncaught Error: Class 'WP_Session_Tokens' not found in /home3/shscedu/public_html/wp-includes/class-wp-user-meta-session-tokens.php:17
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/class-wp-user-meta-session-tokens.php on line 17
+[30-Sep-2024 04:50:00 UTC] PHP Fatal error:  Uncaught Error: Class 'SimplePie_Sanitize' not found in /home3/shscedu/public_html/wp-includes/class-wp-simplepie-sanitize-kses.php:20
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/class-wp-simplepie-sanitize-kses.php on line 20
+[30-Sep-2024 04:50:02 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function _deprecated_file() in /home3/shscedu/public_html/wp-includes/rss-functions.php:9
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/rss-functions.php on line 9
+[30-Sep-2024 04:50:04 UTC] PHP Warning:  Use of undefined constant ABSPATH - assumed 'ABSPATH' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/class-wp-customize-panel.php on line 382
+[30-Sep-2024 04:50:04 UTC] PHP Warning:  Use of undefined constant WPINC - assumed 'WPINC' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/class-wp-customize-panel.php on line 382
+[30-Sep-2024 04:50:04 UTC] PHP Warning:  require_once(ABSPATHWPINC/customize/class-wp-customize-nav-menus-panel.php): failed to open stream: No such file or directory in /home3/shscedu/public_html/wp-includes/class-wp-customize-panel.php on line 382
+[30-Sep-2024 04:50:04 UTC] PHP Fatal error:  require_once(): Failed opening required 'ABSPATHWPINC/customize/class-wp-customize-nav-menus-panel.php' (include_path='.:/opt/cpanel/ea-php74/root/usr/share/pear') in /home3/shscedu/public_html/wp-includes/class-wp-customize-panel.php on line 382
+[30-Sep-2024 04:50:07 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function feed_content_type() in /home3/shscedu/public_html/wp-includes/feed-atom-comments.php:8
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/feed-atom-comments.php on line 8
+[30-Sep-2024 04:50:07 UTC] PHP Warning:  Use of undefined constant ABSPATH - assumed 'ABSPATH' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/class-IXR.php on line 42
+[30-Sep-2024 04:50:07 UTC] PHP Warning:  Use of undefined constant WPINC - assumed 'WPINC' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/class-IXR.php on line 42
+[30-Sep-2024 04:50:07 UTC] PHP Warning:  require_once(ABSPATHWPINC/IXR/class-IXR-server.php): failed to open stream: No such file or directory in /home3/shscedu/public_html/wp-includes/class-IXR.php on line 42
+[30-Sep-2024 04:50:07 UTC] PHP Fatal error:  require_once(): Failed opening required 'ABSPATHWPINC/IXR/class-IXR-server.php' (include_path='.:/opt/cpanel/ea-php74/root/usr/share/pear') in /home3/shscedu/public_html/wp-includes/class-IXR.php on line 42
+[30-Sep-2024 04:50:08 UTC] PHP Fatal error:  Uncaught Error: Class 'Walker' not found in /home3/shscedu/public_html/wp-includes/class-walker-category.php:17
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/class-walker-category.php on line 17
+[30-Sep-2024 04:50:10 UTC] PHP Fatal error:  Uncaught Error: Class 'WP_Dependencies' not found in /home3/shscedu/public_html/wp-includes/class.wp-scripts.php:18
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/class.wp-scripts.php on line 18
+[30-Sep-2024 04:50:11 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function _deprecated_file() in /home3/shscedu/public_html/wp-includes/locale.php:11
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/locale.php on line 11
+[30-Sep-2024 04:50:13 UTC] PHP Warning:  Use of undefined constant ABSPATH - assumed 'ABSPATH' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/default-widgets.php on line 11
+[30-Sep-2024 04:50:13 UTC] PHP Warning:  Use of undefined constant WPINC - assumed 'WPINC' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/default-widgets.php on line 11
+[30-Sep-2024 04:50:13 UTC] PHP Warning:  require_once(ABSPATHWPINC/widgets/class-wp-widget-pages.php): failed to open stream: No such file or directory in /home3/shscedu/public_html/wp-includes/default-widgets.php on line 11
+[30-Sep-2024 04:50:13 UTC] PHP Fatal error:  require_once(): Failed opening required 'ABSPATHWPINC/widgets/class-wp-widget-pages.php' (include_path='.:/opt/cpanel/ea-php74/root/usr/share/pear') in /home3/shscedu/public_html/wp-includes/default-widgets.php on line 11
+[30-Sep-2024 04:50:13 UTC] PHP Fatal error:  Uncaught Error: Class 'SimplePie_File' not found in /home3/shscedu/public_html/wp-includes/class-wp-simplepie-file.php:17
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/class-wp-simplepie-file.php on line 17
+[30-Sep-2024 04:50:14 UTC] PHP Fatal error:  Uncaught Error: Class 'WP_Image_Editor' not found in /home3/shscedu/public_html/wp-includes/class-wp-image-editor-gd.php:16
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/class-wp-image-editor-gd.php on line 16
+[30-Sep-2024 04:50:14 UTC] PHP Warning:  Use of undefined constant ABSPATH - assumed 'ABSPATH' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/nav-menu-template.php on line 11
+[30-Sep-2024 04:50:14 UTC] PHP Warning:  Use of undefined constant WPINC - assumed 'WPINC' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/nav-menu-template.php on line 11
+[30-Sep-2024 04:50:14 UTC] PHP Warning:  require_once(ABSPATHWPINC/class-walker-nav-menu.php): failed to open stream: No such file or directory in /home3/shscedu/public_html/wp-includes/nav-menu-template.php on line 11
+[30-Sep-2024 04:50:14 UTC] PHP Fatal error:  require_once(): Failed opening required 'ABSPATHWPINC/class-walker-nav-menu.php' (include_path='.:/opt/cpanel/ea-php74/root/usr/share/pear') in /home3/shscedu/public_html/wp-includes/nav-menu-template.php on line 11
+[30-Sep-2024 04:50:15 UTC] PHP Fatal error:  Uncaught Error: Class 'Walker' not found in /home3/shscedu/public_html/wp-includes/class-walker-comment.php:17
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/class-walker-comment.php on line 17
+[30-Sep-2024 04:50:16 UTC] PHP Warning:  Use of undefined constant ABSPATH - assumed 'ABSPATH' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/class-wp-customize-control.php on line 696
+[30-Sep-2024 04:50:16 UTC] PHP Warning:  Use of undefined constant WPINC - assumed 'WPINC' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/class-wp-customize-control.php on line 696
+[30-Sep-2024 04:50:16 UTC] PHP Warning:  require_once(ABSPATHWPINC/customize/class-wp-customize-color-control.php): failed to open stream: No such file or directory in /home3/shscedu/public_html/wp-includes/class-wp-customize-control.php on line 696
+[30-Sep-2024 04:50:16 UTC] PHP Fatal error:  require_once(): Failed opening required 'ABSPATHWPINC/customize/class-wp-customize-color-control.php' (include_path='.:/opt/cpanel/ea-php74/root/usr/share/pear') in /home3/shscedu/public_html/wp-includes/class-wp-customize-control.php on line 696
+[30-Sep-2024 04:50:16 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function add_shortcode() in /home3/shscedu/public_html/wp-includes/media.php:1604
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/media.php on line 1604
+[30-Sep-2024 04:50:18 UTC] PHP Warning:  Use of undefined constant ABSPATH - assumed 'ABSPATH' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/ms-blogs.php on line 11
+[30-Sep-2024 04:50:18 UTC] PHP Warning:  Use of undefined constant WPINC - assumed 'WPINC' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/ms-blogs.php on line 11
+[30-Sep-2024 04:50:18 UTC] PHP Warning:  require_once(ABSPATHWPINC/ms-site.php): failed to open stream: No such file or directory in /home3/shscedu/public_html/wp-includes/ms-blogs.php on line 11
+[30-Sep-2024 04:50:18 UTC] PHP Fatal error:  require_once(): Failed opening required 'ABSPATHWPINC/ms-site.php' (include_path='.:/opt/cpanel/ea-php74/root/usr/share/pear') in /home3/shscedu/public_html/wp-includes/ms-blogs.php on line 11
+[30-Sep-2024 04:50:19 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function is_main_site() in /home3/shscedu/public_html/wp-includes/update.php:812
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/update.php on line 812
+[30-Sep-2024 04:50:19 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function _deprecated_file() in /home3/shscedu/public_html/wp-includes/class-json.php:2
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/class-json.php on line 2
+[30-Sep-2024 04:50:19 UTC] PHP Warning:  Use of undefined constant ABSPATH - assumed 'ABSPATH' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/class-simplepie.php on line 5
+[30-Sep-2024 04:50:19 UTC] PHP Warning:  Use of undefined constant WPINC - assumed 'WPINC' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/class-simplepie.php on line 5
+[30-Sep-2024 04:50:19 UTC] PHP Warning:  require(ABSPATHWPINC/SimplePie/Misc.php): failed to open stream: No such file or directory in /home3/shscedu/public_html/wp-includes/class-simplepie.php on line 5
+[30-Sep-2024 04:50:19 UTC] PHP Warning:  require(ABSPATHWPINC/SimplePie/Misc.php): failed to open stream: No such file or directory in /home3/shscedu/public_html/wp-includes/class-simplepie.php on line 5
+[30-Sep-2024 04:50:19 UTC] PHP Fatal error:  require(): Failed opening required 'ABSPATHWPINC/SimplePie/Misc.php' (include_path='.:/opt/cpanel/ea-php74/root/usr/share/pear') in /home3/shscedu/public_html/wp-includes/class-simplepie.php on line 5
+[30-Sep-2024 04:50:20 UTC] PHP Fatal error:  Uncaught Error: Class 'Text_Diff_Renderer' not found in /home3/shscedu/public_html/wp-includes/class-wp-text-diff-renderer-table.php:16
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/class-wp-text-diff-renderer-table.php on line 16
+[30-Sep-2024 04:50:21 UTC] PHP Fatal error:  Uncaught Error: Class 'WP_Dependencies' not found in /home3/shscedu/public_html/wp-includes/class.wp-styles.php:18
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/class.wp-styles.php on line 18
+[30-Sep-2024 04:50:21 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function _deprecated_file() in /home3/shscedu/public_html/wp-includes/rss.php:19
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/rss.php on line 19
+[30-Sep-2024 04:50:22 UTC] PHP Warning:  Use of undefined constant ABSPATH - assumed 'ABSPATH' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/class-http.php on line 11
+[30-Sep-2024 04:50:22 UTC] PHP Warning:  Use of undefined constant WPINC - assumed 'WPINC' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/class-http.php on line 11
+[30-Sep-2024 04:50:22 UTC] PHP Warning:  require(ABSPATHWPINC/class-requests.php): failed to open stream: No such file or directory in /home3/shscedu/public_html/wp-includes/class-http.php on line 11
+[30-Sep-2024 04:50:22 UTC] PHP Warning:  require(ABSPATHWPINC/class-requests.php): failed to open stream: No such file or directory in /home3/shscedu/public_html/wp-includes/class-http.php on line 11
+[30-Sep-2024 04:50:22 UTC] PHP Fatal error:  require(): Failed opening required 'ABSPATHWPINC/class-requests.php' (include_path='.:/opt/cpanel/ea-php74/root/usr/share/pear') in /home3/shscedu/public_html/wp-includes/class-http.php on line 11
+[30-Sep-2024 04:50:22 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function _deprecated_file() in /home3/shscedu/public_html/wp-includes/registration.php:9
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/registration.php on line 9
+[30-Sep-2024 04:50:23 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function add_filter() in /home3/shscedu/public_html/wp-includes/default-filters.php:17
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/default-filters.php on line 17
+[30-Sep-2024 04:50:23 UTC] PHP Warning:  Use of undefined constant ABSPATH - assumed 'ABSPATH' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/class-wp-customize-setting.php on line 947
+[30-Sep-2024 04:50:23 UTC] PHP Warning:  Use of undefined constant WPINC - assumed 'WPINC' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/class-wp-customize-setting.php on line 947
+[30-Sep-2024 04:50:23 UTC] PHP Warning:  require_once(ABSPATHWPINC/customize/class-wp-customize-filter-setting.php): failed to open stream: No such file or directory in /home3/shscedu/public_html/wp-includes/class-wp-customize-setting.php on line 947
+[30-Sep-2024 04:50:23 UTC] PHP Fatal error:  require_once(): Failed opening required 'ABSPATHWPINC/customize/class-wp-customize-filter-setting.php' (include_path='.:/opt/cpanel/ea-php74/root/usr/share/pear') in /home3/shscedu/public_html/wp-includes/class-wp-customize-setting.php on line 947
+[30-Sep-2024 04:50:24 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function _deprecated_file() in /home3/shscedu/public_html/wp-includes/class-feed.php:10
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/class-feed.php on line 10
+[30-Sep-2024 04:50:24 UTC] PHP Warning:  Use of undefined constant ABSPATH - assumed 'ABSPATH' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/script-loader.php on line 20
+[30-Sep-2024 04:50:24 UTC] PHP Warning:  Use of undefined constant WPINC - assumed 'WPINC' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/script-loader.php on line 20
+[30-Sep-2024 04:50:24 UTC] PHP Warning:  require(ABSPATHWPINC/class-wp-dependency.php): failed to open stream: No such file or directory in /home3/shscedu/public_html/wp-includes/script-loader.php on line 20
+[30-Sep-2024 04:50:24 UTC] PHP Warning:  require(ABSPATHWPINC/class-wp-dependency.php): failed to open stream: No such file or directory in /home3/shscedu/public_html/wp-includes/script-loader.php on line 20
+[30-Sep-2024 04:50:24 UTC] PHP Fatal error:  require(): Failed opening required 'ABSPATHWPINC/class-wp-dependency.php' (include_path='.:/opt/cpanel/ea-php74/root/usr/share/pear') in /home3/shscedu/public_html/wp-includes/script-loader.php on line 20
+[30-Sep-2024 04:50:26 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function _deprecated_file() in /home3/shscedu/public_html/wp-includes/session.php:9
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/session.php on line 9
+[30-Sep-2024 04:50:26 UTC] PHP Fatal error:  Uncaught Error: Class 'Text_Diff_Renderer_inline' not found in /home3/shscedu/public_html/wp-includes/class-wp-text-diff-renderer-inline.php:16
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/class-wp-text-diff-renderer-inline.php on line 16
+[30-Sep-2024 04:50:29 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function _deprecated_file() in /home3/shscedu/public_html/wp-includes/date.php:11
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/date.php on line 11
+[30-Sep-2024 04:50:29 UTC] PHP Fatal error:  Uncaught Error: Class 'Requests_Hooks' not found in /home3/shscedu/public_html/wp-includes/class-wp-http-requests-hooks.php:17
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/class-wp-http-requests-hooks.php on line 17
+[30-Sep-2024 04:50:30 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function _deprecated_file() in /home3/shscedu/public_html/wp-includes/registration-functions.php:9
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/registration-functions.php on line 9
+[30-Sep-2024 04:50:32 UTC] PHP Fatal error:  Uncaught Error: Class 'Walker' not found in /home3/shscedu/public_html/wp-includes/class-walker-page-dropdown.php:17
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/class-walker-page-dropdown.php on line 17
+[30-Sep-2024 04:50:34 UTC] PHP Fatal error:  Uncaught Error: Class 'Walker' not found in /home3/shscedu/public_html/wp-includes/class-walker-category-dropdown.php:17
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/class-walker-category-dropdown.php on line 17
+[30-Sep-2024 04:50:34 UTC] PHP Warning:  Use of undefined constant ABSPATH - assumed 'ABSPATH' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/class-wp-customize-section.php on line 379
+[30-Sep-2024 04:50:34 UTC] PHP Warning:  Use of undefined constant WPINC - assumed 'WPINC' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/class-wp-customize-section.php on line 379
+[30-Sep-2024 04:50:34 UTC] PHP Warning:  require_once(ABSPATHWPINC/customize/class-wp-customize-themes-section.php): failed to open stream: No such file or directory in /home3/shscedu/public_html/wp-includes/class-wp-customize-section.php on line 379
+[30-Sep-2024 04:50:34 UTC] PHP Fatal error:  require_once(): Failed opening required 'ABSPATHWPINC/customize/class-wp-customize-themes-section.php' (include_path='.:/opt/cpanel/ea-php74/root/usr/share/pear') in /home3/shscedu/public_html/wp-includes/class-wp-customize-section.php on line 379
+[30-Sep-2024 04:50:34 UTC] PHP Warning:  Use of undefined constant ABSPATH - assumed 'ABSPATH' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/ms-settings.php on line 35
+[30-Sep-2024 04:50:34 UTC] PHP Warning:  Use of undefined constant WPINC - assumed 'WPINC' (this will throw an Error in a future version of PHP) in /home3/shscedu/public_html/wp-includes/ms-settings.php on line 35
+[30-Sep-2024 04:50:34 UTC] PHP Warning:  require_once(ABSPATHWPINC/class-wp-network.php): failed to open stream: No such file or directory in /home3/shscedu/public_html/wp-includes/ms-settings.php on line 35
+[30-Sep-2024 04:50:34 UTC] PHP Fatal error:  require_once(): Failed opening required 'ABSPATHWPINC/class-wp-network.php' (include_path='.:/opt/cpanel/ea-php74/root/usr/share/pear') in /home3/shscedu/public_html/wp-includes/ms-settings.php on line 35
+[30-Sep-2024 04:50:35 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function feed_content_type() in /home3/shscedu/public_html/wp-includes/feed-atom.php:8
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/feed-atom.php on line 8
+[30-Sep-2024 04:50:36 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function _deprecated_file() in /home3/shscedu/public_html/wp-includes/embed-template.php:11
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/embed-template.php on line 11
+[30-Sep-2024 04:50:37 UTC] PHP Fatal error:  Uncaught Error: Class 'WP_Image_Editor' not found in /home3/shscedu/public_html/wp-includes/class-wp-image-editor-imagick.php:16
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/class-wp-image-editor-imagick.php on line 16
+[30-Sep-2024 04:50:38 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function feed_content_type() in /home3/shscedu/public_html/wp-includes/feed-rss2.php:8
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/feed-rss2.php on line 8
+[30-Sep-2024 04:50:39 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function _deprecated_file() in /home3/shscedu/public_html/wp-includes/class-oembed.php:12
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/class-oembed.php on line 12
+[30-Sep-2024 04:50:39 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function wp_using_themes() in /home3/shscedu/public_html/wp-includes/template-loader.php:7
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/template-loader.php on line 7
+[30-Sep-2024 04:50:41 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function _deprecated_file() in /home3/shscedu/public_html/wp-includes/spl-autoload-compat.php:14
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/spl-autoload-compat.php on line 14
+[30-Sep-2024 04:50:42 UTC] PHP Fatal error:  Uncaught Error: Class 'SimplePie_Cache' not found in /home3/shscedu/public_html/wp-includes/class-wp-feed-cache.php:17
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/class-wp-feed-cache.php on line 17
+[23-Dec-2024 04:30:20 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function is_main_site() in /home3/shscedu/public_html/wp-includes/update.php:812
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/update.php on line 812
+[24-Dec-2024 10:26:38 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function is_main_site() in /home3/shscedu/public_html/wp-includes/update.php:812
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/update.php on line 812
+[27-Dec-2024 12:25:20 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function is_main_site() in /home3/shscedu/public_html/wp-includes/update.php:812
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/update.php on line 812
+[01-Jan-2025 09:52:58 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function is_main_site() in /home3/shscedu/public_html/wp-includes/update.php:812
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/update.php on line 812
+[03-Jan-2025 19:04:48 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function is_main_site() in /home3/shscedu/public_html/wp-includes/update.php:812
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/update.php on line 812
+[27-Jan-2025 15:24:56 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function is_main_site() in /home3/shscedu/public_html/wp-includes/update.php:812
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/update.php on line 812
+[03-Feb-2025 03:41:03 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function is_main_site() in /home3/shscedu/public_html/wp-includes/update.php:812
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/update.php on line 812
+[03-Feb-2025 08:12:37 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function is_main_site() in /home3/shscedu/public_html/wp-includes/update.php:812
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/update.php on line 812

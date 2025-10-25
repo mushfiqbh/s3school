@@ -1,0 +1,547 @@
+[14-Jul-2025 06:20:41 UTC] WordPress database error You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'AND ct_studentinfo.infoClass = 66 AND ct_studentinfo.infoSection = 4 LIMIT 1' at line 4 for query SELECT ct_studentinfo.infoStdid, ct_student.stdName, ct_student_wise_fee.transport_fee_id, ct_student_wise_fee.transport_type,ct_student_wise_fee.transport_required, ct_student.admission_type, ct_student.facilities FROM ct_studentinfo
+	LEFT JOIN ct_student ON ct_student.studentid = ct_studentinfo.infoStdid
+	LEFT JOIN ct_student_wise_fee ON ct_student.studentid = ct_student_wise_fee.student_id AND 66 = ct_student_wise_fee.class_id AND '2025' = ct_student_wise_fee.year  AND 3 = ct_student_wise_fee.fee_type
+	WHERE  ct_studentinfo.infoYear = '2025' AND ct_studentinfo.infoRoll =  AND ct_studentinfo.infoClass = 66 AND ct_studentinfo.infoSection = 4 LIMIT 1
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 521
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "admission_type" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 521
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 543
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "facilities" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 543
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 460
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "transport_required" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 460
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 460
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "transport_required" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 460
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 460
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "transport_required" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 460
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 460
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "transport_required" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 460
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 460
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "transport_required" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 460
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 460
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "transport_required" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 460
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 443
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "facilities" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 443
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 443
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "facilities" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 443
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 445
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "facilities" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 445
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 453
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "monthly_fee" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 453
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 443
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "facilities" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 443
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 443
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "facilities" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 443
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 445
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "facilities" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 445
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 453
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "monthly_fee" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 453
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 443
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "facilities" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 443
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 443
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "facilities" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 443
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 445
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "facilities" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 445
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 453
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "monthly_fee" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 453
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 443
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "facilities" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 443
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 443
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "facilities" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 443
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 445
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "facilities" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 445
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 453
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "monthly_fee" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 453
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 443
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "facilities" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 443
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 443
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "facilities" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 443
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 445
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "facilities" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 445
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 453
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "monthly_fee" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 453
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 443
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "facilities" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 443
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 443
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "facilities" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 443
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 445
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "facilities" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 445
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 453
+[14-Jul-2025 06:20:41 UTC] PHP Warning:  Attempt to read property "monthly_fee" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 453
+[14-Jul-2025 06:23:54 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 521
+[14-Jul-2025 06:23:54 UTC] PHP Warning:  Attempt to read property "admission_type" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 521
+[14-Jul-2025 06:23:54 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 543
+[14-Jul-2025 06:23:54 UTC] PHP Warning:  Attempt to read property "facilities" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 543
+[14-Jul-2025 06:23:54 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 460
+[14-Jul-2025 06:23:54 UTC] PHP Warning:  Attempt to read property "transport_required" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 460
+[14-Jul-2025 06:23:54 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 443
+[14-Jul-2025 06:23:54 UTC] PHP Warning:  Attempt to read property "facilities" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 443
+[14-Jul-2025 06:23:54 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 443
+[14-Jul-2025 06:23:54 UTC] PHP Warning:  Attempt to read property "facilities" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 443
+[14-Jul-2025 06:23:54 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 445
+[14-Jul-2025 06:23:54 UTC] PHP Warning:  Attempt to read property "facilities" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 445
+[14-Jul-2025 06:23:54 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 453
+[14-Jul-2025 06:23:54 UTC] PHP Warning:  Attempt to read property "monthly_fee" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 453
+[14-Jul-2025 06:26:28 UTC] PHP Fatal error:  Uncaught TypeError: implode(): Argument #1 ($array) must be of type array, string given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:243
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(243): implode(',', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 243
+[14-Jul-2025 06:28:26 UTC] PHP Fatal error:  Uncaught TypeError: implode(): Argument #1 ($array) must be of type array, string given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:243
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(243): implode(',', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 243
+[14-Jul-2025 06:31:18 UTC] PHP Fatal error:  Uncaught TypeError: implode(): Argument #1 ($array) must be of type array, string given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:243
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(243): implode(',', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 243
+[14-Jul-2025 06:32:14 UTC] PHP Fatal error:  Uncaught TypeError: implode(): Argument #1 ($array) must be of type array, string given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:243
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(243): implode(',', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 243
+[15-Jul-2025 04:21:45 UTC] WordPress database error You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'GROUP BY infoYear ORDER BY infoYear ASC' at line 1 for query SELECT infoYear FROM ct_studentinfo WHERE infoClass =  GROUP BY infoYear ORDER BY infoYear ASC
+[17-Jul-2025 04:05:42 UTC] WordPress database error You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'GROUP BY infoYear ORDER BY infoYear ASC' at line 1 for query SELECT infoYear FROM ct_studentinfo WHERE infoClass =  GROUP BY infoYear ORDER BY infoYear ASC
+[20-Jul-2025 05:23:23 UTC] WordPress database error You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'GROUP BY infoYear ORDER BY infoYear ASC' at line 1 for query SELECT infoYear FROM ct_studentinfo WHERE infoClass =  GROUP BY infoYear ORDER BY infoYear ASC
+[21-Jul-2025 08:50:45 UTC] WordPress database error You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '\ AND `infoSection` = 10' at line 2 for query SELECT `infoStdid` FROM `ct_studentinfo`
+				WHERE `infoYear` = '2025' AND `infoClass` = 67 AND `infoRoll` = 29\ AND `infoSection` = 10
+[28-Jul-2025 09:13:56 UTC] PHP Fatal error:  Uncaught TypeError: implode(): Argument #1 ($array) must be of type array, string given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:243
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(243): implode(',', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 243
+[31-Jul-2025 09:03:01 UTC] PHP Fatal error:  Uncaught TypeError: implode(): Argument #1 ($array) must be of type array, string given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:243
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(243): implode(',', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 243
+[01-Aug-2025 22:23:12 UTC] WordPress database error Unknown column 'tecAssignSub3' in 'field list' for query SELECT subjectid,subjectName FROM ct_subject WHERE subjectid IN (3,7,15,20,25,30,35,41,44,49,54,59,74,92) AND subjectid IN (select tecAssignSub3 from ct_teacher where tecUserId = 14)
+[01-Aug-2025 22:23:23 UTC] WordPress database error Unknown column 'tecAssignSub3' in 'field list' for query SELECT subjectid,subjectName FROM ct_subject WHERE subjectid IN (2,6,14,19,24,29,34,40,43,48,53,58,73,90) AND subjectid IN (select tecAssignSub3 from ct_teacher where tecUserId = 14)
+[01-Aug-2025 22:23:57 UTC] PHP Fatal error:  Uncaught TypeError: implode(): Argument #1 ($array) must be of type array, string given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:251
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(251): implode(',', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 251
+[01-Aug-2025 22:26:53 UTC] PHP Fatal error:  Uncaught TypeError: implode(): Argument #1 ($array) must be of type array, string given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:251
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(251): implode(',', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 251
+[01-Aug-2025 22:33:12 UTC] PHP Parse error:  Unclosed '{' on line 236 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 707
+[01-Aug-2025 22:33:20 UTC] PHP Parse error:  Unclosed '{' on line 236 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 707
+[01-Aug-2025 22:38:20 UTC] PHP Fatal error:  Uncaught TypeError: implode(): Argument #1 ($array) must be of type array, string given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:270
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(270): implode(',', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 270
+[01-Aug-2025 22:38:57 UTC] PHP Fatal error:  Uncaught TypeError: implode(): Argument #1 ($array) must be of type array, string given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:270
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(270): implode(',', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 270
+[01-Aug-2025 22:41:11 UTC] PHP Fatal error:  Uncaught TypeError: implode(): Argument #1 ($array) must be of type array, string given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:266
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(266): implode(',', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 266
+[01-Aug-2025 22:41:33 UTC] PHP Fatal error:  Uncaught TypeError: implode(): Argument #1 ($array) must be of type array, string given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:266
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(266): implode(',', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 266
+[01-Aug-2025 22:42:30 UTC] PHP Fatal error:  Uncaught TypeError: implode(): Argument #1 ($array) must be of type array, string given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:266
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(266): implode(',', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 266
+[01-Aug-2025 22:49:09 UTC] PHP Fatal error:  Uncaught TypeError: implode(): Argument #1 ($array) must be of type array, string given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:262
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(262): implode(',', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 262
+[01-Aug-2025 22:51:22 UTC] PHP Fatal error:  Uncaught Error: Object of class stdClass could not be converted to string in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:262
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(262): implode(',', Array)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 262
+[01-Aug-2025 22:54:35 UTC] PHP Fatal error:  Uncaught TypeError: array_map(): Argument #2 ($array) must be of type array, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:265
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(265): array_map('intval', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 265
+[02-Aug-2025 08:35:53 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[02-Aug-2025 08:35:53 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[02-Aug-2025 08:36:30 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[02-Aug-2025 08:36:30 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[02-Aug-2025 08:36:49 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[02-Aug-2025 08:36:49 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[02-Aug-2025 14:32:55 UTC] PHP Fatal error:  Uncaught TypeError: implode(): Argument #1 ($array) must be of type array, string given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:261
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(261): implode(',', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 261
+[02-Aug-2025 14:41:48 UTC] PHP Fatal error:  Uncaught TypeError: implode(): Argument #1 ($array) must be of type array, string given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:261
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(261): implode(',', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 261
+[02-Aug-2025 14:42:05 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[02-Aug-2025 14:42:05 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[02-Aug-2025 14:47:49 UTC] PHP Fatal error:  Uncaught TypeError: implode(): Argument #1 ($array) must be of type array, string given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:261
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(261): implode(',', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 261
+[02-Aug-2025 14:48:29 UTC] PHP Fatal error:  Uncaught TypeError: implode(): Argument #1 ($array) must be of type array, string given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:261
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(261): implode(',', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 261
+[03-Aug-2025 05:06:11 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 05:06:11 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 05:19:50 UTC] PHP Fatal error:  Uncaught TypeError: implode(): Argument #1 ($array) must be of type array, string given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:261
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(261): implode(',', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 261
+[03-Aug-2025 07:50:18 UTC] PHP Fatal error:  Uncaught TypeError: implode(): Argument #1 ($array) must be of type array, string given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:261
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(261): implode(',', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 261
+[03-Aug-2025 07:51:38 UTC] PHP Fatal error:  Uncaught TypeError: implode(): Argument #1 ($array) must be of type array, string given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:261
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(261): implode(',', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 261
+[03-Aug-2025 08:04:31 UTC] PHP Fatal error:  Uncaught TypeError: implode(): Argument #1 ($array) must be of type array, string given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:261
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(261): implode(',', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 261
+[03-Aug-2025 08:49:27 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 08:49:27 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 09:03:30 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 09:03:30 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 09:05:23 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 09:05:23 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 09:07:08 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 09:07:08 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 09:17:46 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 09:17:46 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 09:17:55 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 09:17:55 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 09:19:35 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 09:19:35 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 09:20:03 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 09:20:03 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 09:20:17 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 09:20:17 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 09:20:21 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 09:20:21 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 09:20:30 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 09:20:30 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 09:39:53 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 09:39:53 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 09:46:03 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 09:46:03 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 09:47:09 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 09:47:09 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 09:47:29 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 09:47:29 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 09:49:46 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 09:49:46 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 10:42:19 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 10:42:19 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 12:37:12 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 12:37:12 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 12:38:29 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 12:38:29 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 12:38:31 UTC] WordPress database error You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '' at line 1 for query SELECT examSubjects FROM ct_exam WHERE examid = 
+[03-Aug-2025 12:38:31 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 240
+[03-Aug-2025 12:38:31 UTC] PHP Warning:  Attempt to read property "examSubjects" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 240
+[03-Aug-2025 12:38:31 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 12:38:31 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 12:38:34 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 12:38:34 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 12:39:10 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 12:39:10 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 14:05:11 UTC] PHP Fatal error:  Uncaught TypeError: implode(): Argument #1 ($array) must be of type array, string given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:261
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(261): implode(',', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 261
+[03-Aug-2025 15:34:00 UTC] PHP Fatal error:  Uncaught TypeError: implode(): Argument #1 ($array) must be of type array, string given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:261
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(261): implode(',', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 261
+[03-Aug-2025 15:45:31 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 15:45:31 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 15:50:23 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 15:50:23 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 17:32:01 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 17:32:01 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 17:41:32 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 17:41:32 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 20:51:36 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 20:51:36 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 20:54:28 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 20:54:28 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 20:54:34 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 20:54:34 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 20:55:00 UTC] PHP Fatal error:  Uncaught Error: Object of class WP_User could not be converted to string in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:244
+Stack trace:
+#0 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 244
+[03-Aug-2025 21:09:53 UTC] PHP Warning:  Array to string conversion in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 255
+[03-Aug-2025 21:15:10 UTC] PHP Fatal error:  Uncaught TypeError: implode(): Argument #1 ($array) must be of type array, string given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:264
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(264): implode(',', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 264
+[03-Aug-2025 21:15:57 UTC] PHP Fatal error:  Uncaught TypeError: implode(): Argument #1 ($array) must be of type array, string given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:264
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(264): implode(',', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 264
+[03-Aug-2025 21:17:01 UTC] PHP Fatal error:  Uncaught TypeError: implode(): Argument #1 ($array) must be of type array, string given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:264
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(264): implode(',', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 264
+[03-Aug-2025 21:17:23 UTC] PHP Fatal error:  Uncaught TypeError: implode(): Argument #1 ($array) must be of type array, string given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:264
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(264): implode(',', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 264
+[03-Aug-2025 21:17:50 UTC] PHP Fatal error:  Uncaught TypeError: implode(): Argument #1 ($array) must be of type array, string given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:264
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(264): implode(',', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 264
+[03-Aug-2025 21:23:04 UTC] PHP Fatal error:  Uncaught TypeError: array_map(): Argument #2 ($array) must be of type array, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:268
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(268): array_map('intval', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 268
+[03-Aug-2025 21:23:56 UTC] PHP Fatal error:  Uncaught TypeError: array_map(): Argument #2 ($array) must be of type array, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:268
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(268): array_map('intval', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 268
+[03-Aug-2025 21:29:34 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[03-Aug-2025 21:29:34 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[04-Aug-2025 04:09:05 UTC] PHP Fatal error:  Uncaught TypeError: implode(): Argument #1 ($array) must be of type array, string given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php:261
+Stack trace:
+#0 /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php(261): implode(',', NULL)
+#1 {main}
+  thrown in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 261
+[04-Aug-2025 05:45:20 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[04-Aug-2025 05:45:20 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[04-Aug-2025 05:57:12 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[04-Aug-2025 05:57:12 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[04-Aug-2025 06:05:22 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[04-Aug-2025 06:05:22 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[04-Aug-2025 06:05:43 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[04-Aug-2025 06:05:43 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[04-Aug-2025 06:17:15 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[04-Aug-2025 06:17:15 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[04-Aug-2025 06:17:42 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[04-Aug-2025 06:17:42 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[04-Aug-2025 07:32:51 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[04-Aug-2025 07:32:51 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[04-Aug-2025 18:41:44 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[04-Aug-2025 18:41:44 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 04:24:01 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 04:24:01 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 07:10:50 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 07:10:50 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 07:15:59 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 07:15:59 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 07:18:46 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 07:18:46 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 10:31:41 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 10:31:41 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 10:52:59 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 10:52:59 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 12:23:42 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 12:23:42 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 12:32:14 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 12:32:14 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 14:18:24 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 14:18:24 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 16:19:25 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 16:19:25 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 16:20:40 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 16:20:40 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 16:31:56 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 16:31:56 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 16:44:55 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 16:44:55 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 16:48:26 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 16:48:26 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 16:48:44 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 16:48:44 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 16:52:02 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 16:52:02 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 17:11:11 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[05-Aug-2025 17:11:11 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 03:12:42 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 03:12:42 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 03:46:48 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 03:46:48 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 06:01:13 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 06:01:13 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 06:02:15 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 06:02:15 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 06:02:52 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 06:02:52 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 06:07:24 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 06:07:24 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 07:01:40 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 07:01:40 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 07:17:33 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 07:17:33 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 07:19:34 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 07:19:34 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 07:19:38 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 07:19:38 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 07:40:05 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 07:40:05 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 07:43:50 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 07:43:50 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 08:07:57 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 08:07:57 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 08:12:23 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 08:12:23 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 08:49:00 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 08:49:00 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 14:06:17 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 14:06:17 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 14:42:50 UTC] WordPress database error You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'GROUP BY infoYear ORDER BY infoYear ASC' at line 1 for query SELECT infoYear FROM ct_studentinfo WHERE infoClass =  GROUP BY infoYear ORDER BY infoYear ASC
+[06-Aug-2025 15:16:56 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 15:16:56 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 17:05:25 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 17:05:25 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 17:06:10 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 17:06:10 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 17:18:37 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 17:18:37 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 17:18:42 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 17:18:42 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 17:18:45 UTC] WordPress database error You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '' at line 1 for query SELECT examSubjects FROM ct_exam WHERE examid = 
+[06-Aug-2025 17:18:45 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 240
+[06-Aug-2025 17:18:45 UTC] PHP Warning:  Attempt to read property "examSubjects" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 240
+[06-Aug-2025 17:18:45 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 17:18:45 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 17:21:43 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 17:21:43 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 17:21:50 UTC] WordPress database error You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '' at line 1 for query SELECT examSubjects FROM ct_exam WHERE examid = 
+[06-Aug-2025 17:21:50 UTC] PHP Warning:  Undefined array key 0 in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 240
+[06-Aug-2025 17:21:50 UTC] PHP Warning:  Attempt to read property "examSubjects" on null in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 240
+[06-Aug-2025 17:21:50 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 17:21:50 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 18:19:17 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[06-Aug-2025 18:19:17 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[07-Aug-2025 03:33:10 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[07-Aug-2025 03:33:10 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[07-Aug-2025 03:33:18 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[07-Aug-2025 03:33:18 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[07-Aug-2025 06:14:32 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[07-Aug-2025 06:14:32 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[07-Aug-2025 06:15:07 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[07-Aug-2025 06:15:07 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[07-Aug-2025 06:18:03 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[07-Aug-2025 06:18:03 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[07-Aug-2025 13:49:39 UTC] PHP Warning:  Undefined array key "type" in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 10
+[07-Aug-2025 13:49:39 UTC] PHP Warning:  Undefined array key "type" in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 42
+[07-Aug-2025 13:49:39 UTC] PHP Warning:  Undefined array key "type" in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 42
+[07-Aug-2025 13:49:39 UTC] PHP Warning:  Undefined array key "type" in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 112
+[07-Aug-2025 13:49:39 UTC] PHP Warning:  Undefined array key "type" in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 134
+[07-Aug-2025 13:49:39 UTC] PHP Warning:  Undefined array key "type" in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 152
+[07-Aug-2025 13:49:39 UTC] PHP Warning:  Undefined array key "type" in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 166
+[07-Aug-2025 13:49:39 UTC] PHP Warning:  Undefined array key "type" in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 186
+[07-Aug-2025 13:49:39 UTC] PHP Warning:  Undefined array key "type" in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 206
+[07-Aug-2025 13:49:39 UTC] PHP Warning:  Undefined array key "type" in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 236
+[07-Aug-2025 13:49:39 UTC] PHP Warning:  Undefined array key "type" in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 286
+[07-Aug-2025 13:49:39 UTC] PHP Warning:  Undefined array key "type" in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 355
+[07-Aug-2025 13:49:39 UTC] PHP Warning:  Undefined array key "type" in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 386
+[07-Aug-2025 13:49:39 UTC] PHP Warning:  Undefined array key "type" in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 639
+[07-Aug-2025 13:49:39 UTC] PHP Warning:  Undefined array key "type" in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 690
+[07-Aug-2025 18:09:41 UTC] WordPress database error You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'GROUP BY infoYear ORDER BY infoYear ASC' at line 1 for query SELECT infoYear FROM ct_studentinfo WHERE infoClass =  GROUP BY infoYear ORDER BY infoYear ASC
+[09-Aug-2025 15:15:24 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[09-Aug-2025 15:15:24 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[09-Aug-2025 15:15:38 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[09-Aug-2025 15:15:38 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[09-Aug-2025 15:15:58 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[09-Aug-2025 15:15:58 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[10-Aug-2025 03:50:42 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[10-Aug-2025 03:50:42 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[10-Aug-2025 03:51:06 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[10-Aug-2025 03:51:06 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[10-Aug-2025 04:54:31 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[10-Aug-2025 04:54:31 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[10-Aug-2025 05:13:46 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[10-Aug-2025 05:13:46 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[10-Aug-2025 05:14:20 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[10-Aug-2025 05:14:20 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[10-Aug-2025 08:34:35 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[10-Aug-2025 08:34:35 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[10-Aug-2025 08:35:27 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[10-Aug-2025 08:35:27 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[10-Aug-2025 08:41:38 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[10-Aug-2025 08:41:38 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[10-Aug-2025 08:41:48 UTC] PHP Warning:  Undefined variable $subjects in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[10-Aug-2025 08:41:48 UTC] PHP Warning:  foreach() argument must be of type array|object, null given in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 275
+[10-Aug-2025 11:03:15 UTC] PHP Warning:  Undefined array key "type" in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 10
+[10-Aug-2025 11:03:15 UTC] PHP Warning:  Undefined array key "type" in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 42
+[10-Aug-2025 11:03:15 UTC] PHP Warning:  Undefined array key "type" in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 42
+[10-Aug-2025 11:03:15 UTC] PHP Warning:  Undefined array key "type" in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 112
+[10-Aug-2025 11:03:15 UTC] PHP Warning:  Undefined array key "type" in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 134
+[10-Aug-2025 11:03:15 UTC] PHP Warning:  Undefined array key "type" in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 152
+[10-Aug-2025 11:03:15 UTC] PHP Warning:  Undefined array key "type" in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 166
+[10-Aug-2025 11:03:15 UTC] PHP Warning:  Undefined array key "type" in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 186
+[10-Aug-2025 11:03:15 UTC] PHP Warning:  Undefined array key "type" in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 206
+[10-Aug-2025 11:03:15 UTC] PHP Warning:  Undefined array key "type" in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 236
+[10-Aug-2025 11:03:15 UTC] PHP Warning:  Undefined array key "type" in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 292
+[10-Aug-2025 11:03:15 UTC] PHP Warning:  Undefined array key "type" in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 361
+[10-Aug-2025 11:03:15 UTC] PHP Warning:  Undefined array key "type" in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 392
+[10-Aug-2025 11:03:15 UTC] PHP Warning:  Undefined array key "type" in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 645
+[10-Aug-2025 11:03:15 UTC] PHP Warning:  Undefined array key "type" in /home2/kashinathahsc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 696
+[13-Aug-2025 16:11:40 UTC] WordPress database error You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'GROUP BY infoYear ORDER BY infoYear ASC' at line 1 for query SELECT infoYear FROM ct_studentinfo WHERE infoClass =  GROUP BY infoYear ORDER BY infoYear ASC
+[18-Aug-2025 12:53:07 UTC] WordPress database error You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'GROUP BY infoYear ORDER BY infoYear ASC' at line 1 for query SELECT infoYear FROM ct_studentinfo WHERE infoClass =  GROUP BY infoYear ORDER BY infoYear ASC
+[19-Aug-2025 10:38:08 UTC] WordPress database error You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'GROUP BY infoYear ORDER BY infoYear ASC' at line 1 for query SELECT infoYear FROM ct_studentinfo WHERE infoClass =  GROUP BY infoYear ORDER BY infoYear ASC
+[19-Aug-2025 15:29:46 UTC] WordPress database error You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'GROUP BY infoYear ORDER BY infoYear ASC' at line 1 for query SELECT infoYear FROM ct_studentinfo WHERE infoClass =  GROUP BY infoYear ORDER BY infoYear ASC
+[19-Aug-2025 15:32:16 UTC] WordPress database error You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'GROUP BY infoYear ORDER BY infoYear ASC' at line 1 for query SELECT infoYear FROM ct_studentinfo WHERE infoClass =  GROUP BY infoYear ORDER BY infoYear ASC
+[19-Aug-2025 15:33:19 UTC] WordPress database error You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'GROUP BY infoYear ORDER BY infoYear ASC' at line 1 for query SELECT infoYear FROM ct_studentinfo WHERE infoClass =  GROUP BY infoYear ORDER BY infoYear ASC
+[19-Aug-2025 15:34:03 UTC] WordPress database error You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'GROUP BY infoYear ORDER BY infoYear ASC' at line 1 for query SELECT infoYear FROM ct_studentinfo WHERE infoClass =  GROUP BY infoYear ORDER BY infoYear ASC
+[19-Aug-2025 15:34:37 UTC] WordPress database error You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'GROUP BY infoYear ORDER BY infoYear ASC' at line 1 for query SELECT infoYear FROM ct_studentinfo WHERE infoClass =  GROUP BY infoYear ORDER BY infoYear ASC
+[19-Aug-2025 16:25:17 UTC] WordPress database error You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'GROUP BY infoYear ORDER BY infoYear ASC' at line 1 for query SELECT infoYear FROM ct_studentinfo WHERE infoClass =  GROUP BY infoYear ORDER BY infoYear ASC
+[19-Aug-2025 16:25:58 UTC] WordPress database error You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'GROUP BY infoYear ORDER BY infoYear ASC' at line 1 for query SELECT infoYear FROM ct_studentinfo WHERE infoClass =  GROUP BY infoYear ORDER BY infoYear ASC
+[19-Aug-2025 16:26:23 UTC] WordPress database error You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'GROUP BY infoYear ORDER BY infoYear ASC' at line 1 for query SELECT infoYear FROM ct_studentinfo WHERE infoClass =  GROUP BY infoYear ORDER BY infoYear ASC
+[19-Aug-2025 16:26:56 UTC] WordPress database error You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'GROUP BY infoYear ORDER BY infoYear ASC' at line 1 for query SELECT infoYear FROM ct_studentinfo WHERE infoClass =  GROUP BY infoYear ORDER BY infoYear ASC
+[19-Aug-2025 16:27:22 UTC] WordPress database error You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'GROUP BY infoYear ORDER BY infoYear ASC' at line 1 for query SELECT infoYear FROM ct_studentinfo WHERE infoClass =  GROUP BY infoYear ORDER BY infoYear ASC
+[19-Aug-2025 16:27:50 UTC] WordPress database error You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'GROUP BY infoYear ORDER BY infoYear ASC' at line 1 for query SELECT infoYear FROM ct_studentinfo WHERE infoClass =  GROUP BY infoYear ORDER BY infoYear ASC
+[19-Aug-2025 16:28:29 UTC] WordPress database error You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'GROUP BY infoYear ORDER BY infoYear ASC' at line 1 for query SELECT infoYear FROM ct_studentinfo WHERE infoClass =  GROUP BY infoYear ORDER BY infoYear ASC
+[20-Aug-2025 05:41:06 UTC] WordPress database error You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'GROUP BY infoYear ORDER BY infoYear ASC' at line 1 for query SELECT infoYear FROM ct_studentinfo WHERE infoClass =  GROUP BY infoYear ORDER BY infoYear ASC
+[20-Aug-2025 06:15:44 UTC] WordPress database error You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'GROUP BY infoYear ORDER BY infoYear ASC' at line 1 for query SELECT infoYear FROM ct_studentinfo WHERE infoClass =  GROUP BY infoYear ORDER BY infoYear ASC
+[20-Aug-2025 06:16:06 UTC] WordPress database error You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'GROUP BY infoYear ORDER BY infoYear ASC' at line 1 for query SELECT infoYear FROM ct_studentinfo WHERE infoClass =  GROUP BY infoYear ORDER BY infoYear ASC
+[30-Aug-2025 09:59:13 UTC] WordPress database error You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'GROUP BY infoYear ORDER BY infoYear ASC' at line 1 for query SELECT infoYear FROM ct_studentinfo WHERE infoClass =  GROUP BY infoYear ORDER BY infoYear ASC
+[15-Sep-2025 09:50:33 UTC] PHP Warning:  Undefined array key "type" in /home2/ziisc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 10
+[15-Sep-2025 09:50:33 UTC] PHP Warning:  Undefined array key "type" in /home2/ziisc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 42
+[15-Sep-2025 09:50:33 UTC] PHP Warning:  Undefined array key "type" in /home2/ziisc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 42
+[15-Sep-2025 09:50:33 UTC] PHP Warning:  Undefined array key "type" in /home2/ziisc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 112
+[15-Sep-2025 09:50:33 UTC] PHP Warning:  Undefined array key "type" in /home2/ziisc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 134
+[15-Sep-2025 09:50:33 UTC] PHP Warning:  Undefined array key "type" in /home2/ziisc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 152
+[15-Sep-2025 09:50:33 UTC] PHP Warning:  Undefined array key "type" in /home2/ziisc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 166
+[15-Sep-2025 09:50:33 UTC] PHP Warning:  Undefined array key "type" in /home2/ziisc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 186
+[15-Sep-2025 09:50:33 UTC] PHP Warning:  Undefined array key "type" in /home2/ziisc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 206
+[15-Sep-2025 09:50:33 UTC] PHP Warning:  Undefined array key "type" in /home2/ziisc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 236
+[15-Sep-2025 09:50:33 UTC] PHP Warning:  Undefined array key "type" in /home2/ziisc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 292
+[15-Sep-2025 09:50:33 UTC] PHP Warning:  Undefined array key "type" in /home2/ziisc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 361
+[15-Sep-2025 09:50:33 UTC] PHP Warning:  Undefined array key "type" in /home2/ziisc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 392
+[15-Sep-2025 09:50:33 UTC] PHP Warning:  Undefined array key "type" in /home2/ziisc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 645
+[15-Sep-2025 09:50:33 UTC] PHP Warning:  Undefined array key "type" in /home2/ziisc/public_html/wp-content/themes/s3schoolManagment/inc/ajaxAction.php on line 696
+[02-Oct-2025 12:01:31 UTC] WordPress database error You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'GROUP BY infoYear ORDER BY infoYear ASC' at line 1 for query SELECT infoYear FROM ct_studentinfo WHERE infoClass =  GROUP BY infoYear ORDER BY infoYear ASC
+[02-Oct-2025 16:50:25 UTC] WordPress database error You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'GROUP BY infoYear ORDER BY infoYear ASC' at line 1 for query SELECT infoYear FROM ct_studentinfo WHERE infoClass =  GROUP BY infoYear ORDER BY infoYear ASC

@@ -1,0 +1,56 @@
+[13-Jun-2023 13:22:43 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function load_textdomain() in /home3/shscedu/public_html/wp-admin/includes/admin.php:16
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-admin/includes/admin.php on line 16
+[28-Dec-2023 12:29:36 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function __() in /home3/shscedu/public_html/wp-admin/includes/file.php:16
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-admin/includes/file.php on line 16
+[28-Feb-2024 01:30:02 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function __() in /home3/shscedu/public_html/wp-admin/includes/file.php:16
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-admin/includes/file.php on line 16
+[11-Mar-2024 03:35:07 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function __() in /home3/shscedu/public_html/wp-admin/includes/file.php:16
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-admin/includes/file.php on line 16
+[24-Mar-2024 05:38:45 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function __() in /home3/shscedu/public_html/wp-admin/includes/file.php:16
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-admin/includes/file.php on line 16
+[29-Mar-2024 16:15:57 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function __() in /home3/shscedu/public_html/wp-admin/includes/file.php:16
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-admin/includes/file.php on line 16
+[20-May-2024 08:59:21 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function load_textdomain() in /home3/shscedu/public_html/wp-admin/includes/admin.php:16
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-admin/includes/admin.php on line 16
+[31-May-2024 01:26:34 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function load_textdomain() in /home3/shscedu/public_html/wp-admin/includes/admin.php:16
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-admin/includes/admin.php on line 16
+[01-Jun-2024 00:35:32 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function __() in /home3/shscedu/public_html/wp-admin/includes/file.php:16
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-admin/includes/file.php on line 16
+[11-Jun-2024 13:32:34 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function __() in /home3/shscedu/public_html/wp-admin/includes/file.php:16
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-admin/includes/file.php on line 16
+[19-Jun-2024 15:00:33 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function load_textdomain() in /home3/shscedu/public_html/wp-admin/includes/admin.php:16
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-admin/includes/admin.php on line 16
+[06-Sep-2024 22:39:36 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function load_textdomain() in /home3/shscedu/public_html/wp-admin/includes/admin.php:16
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-admin/includes/admin.php on line 16
+[09-Apr-2025 03:03:50 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function load_textdomain() in /home3/shscedu/public_html/wp-admin/includes/admin.php:16
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-admin/includes/admin.php on line 16
+[14-Apr-2025 11:18:06 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function load_textdomain() in /home3/shscedu/public_html/wp-admin/includes/admin.php:16
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-admin/includes/admin.php on line 16

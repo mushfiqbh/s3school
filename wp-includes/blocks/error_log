@@ -1,0 +1,8 @@
+[20-May-2024 08:59:22 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function add_action() in /home3/shscedu/public_html/wp-includes/blocks/archives.php:143
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/blocks/archives.php on line 143
+[31-May-2024 01:26:36 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function add_action() in /home3/shscedu/public_html/wp-includes/blocks/archives.php:143
+Stack trace:
+#0 {main}
+  thrown in /home3/shscedu/public_html/wp-includes/blocks/archives.php on line 143

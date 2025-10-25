@@ -1,0 +1,4 @@
+[06-Oct-2025 07:40:28 UTC] PHP Fatal error:  Uncaught Error: Call to undefined function is_admin() in /home2/ziisc/public_html/wp-content/themes/s3schoolManagment/adminPages/testimonail.php:9
+Stack trace:
+#0 {main}
+  thrown in /home2/ziisc/public_html/wp-content/themes/s3schoolManagment/adminPages/testimonail.php on line 9
