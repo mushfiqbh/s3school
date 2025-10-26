@@ -126,6 +126,27 @@ $subjects = $wpdb->get_results("
 		}
 	}
 
+	/*
+		Get Groups by Class
+	*/
+	elseif($_POST['type'] == 'getGroupsByClass'){
+		$class = $_POST['class'];
+		
+		// Get groups that have students in this class
+		$groups = $wpdb->get_results( "SELECT DISTINCT ct_group.groupId, ct_group.groupName 
+			FROM ct_group 
+			INNER JOIN ct_studentinfo ON ct_studentinfo.infoGroup = ct_group.groupId 
+			WHERE ct_studentinfo.infoClass = '$class' 
+			ORDER BY ct_group.groupName ASC" );
+		
+		echo "<option value=''>All Groups</option>";
+		foreach ($groups as $group) {
+			?>
+			<option value="<?= $group->groupId ?>"><?= $group->groupName ?></option>
+			<?php
+		}
+	}
+
 
 
 	/*
@@ -235,6 +256,7 @@ $subjects = $wpdb->get_results("
 	*/
 	elseif ($_POST['type'] == 'getExamSubject') {
     $exam = intval($_POST['exam']); // Always sanitize
+    $group = isset($_POST['group']) ? $_POST['group'] : ''; // Get selected group
     $subjects = []; // ✅ Initialize so foreach doesn't break later
 
     $subs = $wpdb->get_results("SELECT examSubjects FROM ct_exam WHERE examid = $exam");
@@ -267,10 +289,17 @@ $subjects = $wpdb->get_results("
     // } else {
         if (!empty($subs)) {
             $subs_escaped = array_map('intval', $subs);
-            $subjects = $wpdb->get_results(
-                "SELECT subjectid,subjectName FROM ct_subject 
-                 WHERE subjectid IN (" . implode(',', $subs_escaped) . ")"
-            );
+            $subjectQuery = "SELECT subjectid,subjectName FROM ct_subject 
+                 WHERE subjectid IN (" . implode(',', $subs_escaped) . ")";
+            
+            // Filter by group if selected
+            if (!empty($group)) {
+                $subjectQuery .= " AND (forGroup = 'all' OR forGroup = '$group' OR forGroup LIKE '%\"$group\"%')";
+            }
+            
+            $subjectQuery .= " ORDER BY subjectName ASC";
+            
+            $subjects = $wpdb->get_results($subjectQuery);
         }
     // }
 

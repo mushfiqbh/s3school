@@ -27,21 +27,26 @@
 				</select>
 			</div>
 
-			<div class="form-group ">
-				<label>Section</label>
-				<select id="resultSection" class="form-control" name="sec" disabled>
-					<option disabled selected>Select Class First</option>
-				</select>
-			</div>
+		<div class="form-group ">
+			<label>Section</label>
+			<select id="resultSection" class="form-control" name="sec" disabled>
+				<option disabled selected>Select Class First</option>
+			</select>
+		</div>
 
-			<div class="form-group">
-				<label>Year/Session</label>
-				<select id='resultYear' class="form-control" name="syear" required disabled>
-					<option disabled selected>Select Class First</option>
-				</select>
-			</div>
+		<div class="form-group ">
+			<label>Group</label>
+			<select id="resultGroup" class="form-control" name="group" disabled>
+				<option value="">Select Class First</option>
+			</select>
+		</div>
 
-
+		<div class="form-group">
+			<label>Year/Session</label>
+			<select id='resultYear' class="form-control" name="syear" required disabled>
+				<option disabled selected>Select Class First</option>
+			</select>
+		</div>
 			<div class="form-group">
 				<label>Subject</label>
 				<select id='resultSubject' class="form-control" name="subject" required disabled>
@@ -64,6 +69,7 @@ if(isset($_GET['exam'])):
 	$class 	= $_GET['class'];
 	$sub 		= $_GET['subject'];
 	$sec 		= isset($_GET['sec']) ? $_GET['sec'] : '';
+	$group 	= isset($_GET['group']) ? $_GET['group'] : ''; // Get selected group
 
 	$info = $wpdb->get_results( "SELECT examName,className,subjectName,combineMark,connecttedPaper,subPaper,subOptinal,sub4th,subMCQ,subCQ,subPect,subCa FROM ct_subject
 		LEFT JOIN ct_exam ON examid = $exam
@@ -125,6 +131,12 @@ if(isset($_GET['exam'])):
 									<b>Class:</b> <?= $info[0]->className ?>,
 									<b>Exam:</b> <?= $info[0]->examName ?>,
 									<b>Subject:</b> <?= $info[0]->subjectName ?>,
+									<?php if (!empty($group)) {
+										$groupInfo = $wpdb->get_var("SELECT groupName FROM ct_group WHERE groupId = $group");
+										if ($groupInfo) {
+											echo "<b>Group:</b> " . $groupInfo . ",";
+										}
+									} ?>
 									<b>Year:</b> <?= $_GET['syear'] ?>
 								</h3>
 
@@ -157,6 +169,9 @@ if(isset($_GET['exam'])):
 												if ($sec != "") {
 													$stdQuery .= " AND infoSection = $sec";
 												}
+												if ($group != "") {
+													$stdQuery .= " AND infoGroup = $group";
+												}
 												if($class == 41){
 											 $stdQuery .= " ORDER BY groupName DESC, infoRoll ASC";
 											}else{
@@ -184,6 +199,9 @@ if(isset($_GET['exam'])):
 												}
 												if ($sec != "") {
 													$stdQuery .= " AND infoSection = $sec";
+												}
+												if ($group != "") {
+													$stdQuery .= " AND infoGroup = $group";
 												}
 											if($class == 41){
 											 $stdQuery .= " ORDER BY groupName DESC, infoRoll ASC";

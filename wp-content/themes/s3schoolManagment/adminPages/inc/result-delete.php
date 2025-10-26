@@ -47,21 +47,26 @@
 				</select>
 			</div>
 
-			<div class="form-group ">
-				<label>Section</label>
-				<select id="resultSection" class="form-control" name="sec" disabled>
-					<option disabled selected>Select Class First</option>
-				</select>
-			</div>
+		<div class="form-group ">
+			<label>Section</label>
+			<select id="resultSection" class="form-control" name="sec" disabled>
+				<option disabled selected>Select Class First</option>
+			</select>
+		</div>
 
-			<div class="form-group">
-				<label>Year</label>
-				<select id='resultYear' class="form-control" name="syear" required disabled>
-					<option disabled selected>Select Class First</option>
-				</select>
-			</div>
+		<div class="form-group ">
+			<label>Group</label>
+			<select id="resultGroup" class="form-control" name="group" disabled>
+				<option value="">Select Class First</option>
+			</select>
+		</div>
 
-
+		<div class="form-group">
+			<label>Year</label>
+			<select id='resultYear' class="form-control" name="syear" required disabled>
+				<option disabled selected>Select Class First</option>
+			</select>
+		</div>
 			<div class="form-group">
 				<label>Subject</label>
 				<select id='resultSubject' class="form-control" name="subject" disabled>
@@ -85,6 +90,7 @@ if(isset($_GET['exam'])):
 	$class 	= $_GET['class'];
 	$sec 		= isset($_GET['sec']) ? $_GET['sec'] : '' ;
 	$sub 		= isset($_GET['subject']) ? $_GET['subject'] : '' ;
+	$group 	= isset($_GET['group']) ? $_GET['group'] : ''; // Get selected group
 
 
 	?>
@@ -105,21 +111,21 @@ if(isset($_GET['exam'])):
 						LEFT JOIN ct_section ON ct_studentinfo.infoSection = ct_section.sectionid
 						LEFT JOIN ct_exam ON ct_exam.examid = $exam";
 
-					if($sub != ''){ $qrey .= " LEFT JOIN ct_subject ON ct_subject.subjectid = $sub"; }
-						
-					$qrey .= " WHERE stdCurntYear = '$year' AND stdCurrentClass = $class";
+				if($sub != ''){ $qrey .= " LEFT JOIN ct_subject ON ct_subject.subjectid = $sub"; }
+					
+				$qrey .= " WHERE stdCurntYear = '$year' AND stdCurrentClass = $class";
 
-					if($sec != ''){ $qrey .= " AND infoSection = $sec"; }
+				if($sec != ''){ $qrey .= " AND infoSection = $sec"; }
 
-					$qrey .= " AND studentid IN (SELECT resStudentId FROM `ct_result` WHERE resClass = $class AND resultYear = '$year' AND resExam = $exam";
+				if($group != ''){ $qrey .= " AND infoGroup = $group"; }
 
-	  			if($sub != ''){ $qrey .= " AND resSubject = $sub"; }
+				$qrey .= " AND studentid IN (SELECT resStudentId FROM `ct_result` WHERE resClass = $class AND resultYear = '$year' AND resExam = $exam";
 
-	  			if($sec != ''){ $qrey .= " AND resSec = $sec"; }
-	  			
-	  			$qrey .= ") ORDER BY infoRoll ASC";
+  			if($sub != ''){ $qrey .= " AND resSubject = $sub"; }
 
-	  			
+  			if($sec != ''){ $qrey .= " AND resSec = $sec"; }
+  			
+  			$qrey .= ") ORDER BY infoRoll ASC";	  			
 	  			$groupsBy = $wpdb->get_results($qrey);
 
 

@@ -976,7 +976,7 @@ get_header();
         ?>
           <!-- No of students in classes -->
           <div class="classes-container">
-            <div class="<?= esc_attr($classes_grid_class); ?>">
+            <div class="<?= esc_attr($classes_grid_class); ?>" style="display:grid;grid-template-columns:repeat(5, 1fr);">
               <?php
               if (!empty($classes)) {
                 foreach ($classes as $name => $count) {

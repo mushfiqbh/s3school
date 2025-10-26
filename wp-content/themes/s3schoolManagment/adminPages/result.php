@@ -166,7 +166,7 @@ if (isset($_POST['deleteResult'])) {
                         } elseif ($_GET['view'] == 'edit') { //Single Result Edit
                             require 'inc/result-edit.php';
                         } elseif ($_GET['view'] == 'resultedit') { //All Result Edit
-                            require 'inc/allresult-edit.php';
+                            require 'inc/result-edit.php';
                         } elseif ($_GET['view'] == 'delete') {
                             require 'inc/result-delete.php';
                         } elseif ($_GET['view'] == 'marksheet') {
@@ -229,17 +229,33 @@ if (isset($_POST['deleteResult'])) {
                 $("#resultSection").html(msg);
                 $("#resultSection").prop('disabled', false);
             });
+
+            // Load groups for selected class
+            $.ajax({
+                url: $siteUrl + "/inc/ajaxAction.php",
+                method: "POST",
+                data: {
+                    class: $(this).val(),
+                    type: 'getGroupsByClass'
+                },
+                dataType: "html"
+            }).done(function(msg) {
+                $("#resultGroup").html(msg);
+                $("#resultGroup").prop('disabled', false);
+            });
         });
 
 
         $('#resultExam').change(function() {
             var $siteUrl = $('#theSiteURL').text();
+            var selectedGroup = $('#resultGroup').val();
 
             $.ajax({
                 url: $siteUrl + "/inc/ajaxAction.php",
                 method: "POST",
                 data: {
                     exam: $(this).val(),
+                    group: selectedGroup,
                     type: 'getExamSubject'
                 },
                 dataType: "html"
@@ -248,6 +264,29 @@ if (isset($_POST['deleteResult'])) {
                 $("#resultSubject").prop('disabled', false);
             });
 
+        });
+
+        // When group changes, reload subjects
+        $('#resultGroup').change(function() {
+            var $siteUrl = $('#theSiteURL').text();
+            var selectedExam = $('#resultExam').val();
+            var selectedGroup = $(this).val();
+
+            if (selectedExam) {
+                $.ajax({
+                    url: $siteUrl + "/inc/ajaxAction.php",
+                    method: "POST",
+                    data: {
+                        exam: selectedExam,
+                        group: selectedGroup,
+                        type: 'getExamSubject'
+                    },
+                    dataType: "html"
+                }).done(function(msg) {
+                    $("#resultSubject").html(msg);
+                    $("#resultSubject").prop('disabled', false);
+                });
+            }
         });
 
         $('.resultInput').keyup(function(event) {
