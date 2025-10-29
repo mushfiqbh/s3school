@@ -318,7 +318,7 @@ foreach ($haveTechquer as $vtech) {
 
 					    	<div class="form-group col-md-6">
 					    		<label>Designation</label>
-					    		<input class="form-control" type="text" name="teacherDesignation" value="<?= isset($edit) ? $edit->teacherDesignation : ''; ?>" required>
+					    		<input class="form-control" type="text" name="teacherDesignation" placeholder="Lecturer/ Senior Teacher/ Assistant Teacher" value="<?= isset($edit) ? $edit->teacherDesignation : ''; ?>" required>
 					    	</div>
 
 					    	<div class="form-group col-md-6">

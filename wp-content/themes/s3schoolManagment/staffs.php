@@ -97,8 +97,9 @@ get_header();
 
     .staff-photo {
         width: 100%;
-        height: 220px;
+        height: 220px; /* fixed thumbnail height */
         object-fit: cover;
+        display: block;
         background: #e2e8f0;
     }
 
@@ -141,6 +142,7 @@ get_header();
 
     .staff-detail-photo {
         flex: 0 0 220px;
+        height: 220px; /* fixed detail photo height to match thumbnail */
         border-radius: 18px;
         overflow: hidden;
         box-shadow: 0 10px 25px rgba(234, 88, 12, 0.18);
@@ -149,7 +151,8 @@ get_header();
     .staff-detail-photo img {
         width: 100%;
         height: 100%;
-        object-fit: cover;
+        object-fit: cover; /* ensure image covers the fixed box */
+        display: block;
     }
 
     .staff-detail-meta h3 {

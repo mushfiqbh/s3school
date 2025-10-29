@@ -97,8 +97,9 @@ get_header();
 
 	.teacher-photo {
 		width: 100%;
-		height: 220px;
+		height: 220px; /* fixed thumbnail height */
 		object-fit: cover;
+		display: block;
 		background: #e2e8f0;
 	}
 
@@ -169,6 +170,7 @@ get_header();
 
 	.teacher-detail-photo {
 		flex: 0 0 220px;
+		height: 220px; /* fixed detail photo height to match thumbnail */
 		border-radius: 18px;
 		overflow: hidden;
 		box-shadow: 0 10px 25px rgba(79, 70, 229, 0.15);
@@ -177,7 +179,8 @@ get_header();
 	.teacher-detail-photo img {
 		width: 100%;
 		height: 100%;
-		object-fit: cover;
+		object-fit: cover; /* ensure image covers the fixed box */
+		display: block;
 	}
 
 	.teacher-detail-meta h3 {
@@ -317,8 +320,10 @@ get_header();
 			gap: 20px;
 		}
 
+		/* On small screens keep a reasonable fixed height to maintain visual layout */
 		.teacher-detail-photo {
 			flex: 0 0 auto;
+			height: 220px; /* retain fixed height on small screens; change if you prefer smaller */
 		}
 
 		.teacher-meta-list {

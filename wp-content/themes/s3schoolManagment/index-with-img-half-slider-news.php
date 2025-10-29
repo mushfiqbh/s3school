@@ -383,7 +383,7 @@ get_header();
       <div class="row">
         <div class="col-md-3 col-xs-6 col-sm-6 text-center wow fadeInUp" data-wow-delay=".1s">
           <div class="statistics-item">
-            <img src="wp-content/uploads/statistics/class.svg" alt="">
+            <img src="img/class.svg" alt="">
             <h3>
               <strong>
                 <span class="stat-count" data-count="<?= (int) get_option('totalClasses', '0'); ?>">0</span>+
@@ -395,7 +395,7 @@ get_header();
         </div>
         <div class="col-md-3 col-xs-6 col-sm-6 text-center wow fadeInUp" data-wow-delay=".2s">
           <div class="statistics-item">
-            <img src="wp-content/uploads/statistics/student.png" alt="">
+            <img src="img/student.png" alt="">
             <h3>
               <strong>
                 <span class="stat-count" data-count="<?= (int) get_option('totalStudents', '0'); ?>">0</span>+
@@ -407,7 +407,7 @@ get_header();
         </div>
         <div class="col-md-3 col-xs-6 col-sm-6 text-center wow fadeInUp" data-wow-delay=".3s">
           <div class="statistics-item">
-            <img src="wp-content/uploads/statistics/teacher.png" alt="">
+            <img src="img/teacher.png" alt="">
             <h3>
               <strong>
                 <span class="stat-count" data-count="<?= (int) get_option('totalTeachers', '0'); ?>">0</span>+
@@ -419,7 +419,7 @@ get_header();
         </div>
         <div class="col-md-3 col-xs-6 col-sm-6 text-center wow fadeInUp" data-wow-delay=".4s">
           <div class="statistics-item">
-            <img src="wp-content/uploads/statistics/staff.png" alt="">
+            <img src="img/staff.png" alt="">
             <h3>
               <strong>
                 <span class="stat-count" data-count="<?= (int) get_option('totalStaffs', '0'); ?>">0</span>+
@@ -808,7 +808,7 @@ get_header();
 
     if ($teacherTable === 'ct_teacher') {
       $teacherRows = $wpdb->get_results(
-        "SELECT teacherid, teacherName, teacherImg, teacherDesignation, teacherPhone FROM ct_teacher WHERE status='Present' ORDER BY teacherName ASC LIMIT 12"
+        "SELECT teacherid, teacherName, teacherImg, teacherDesignation, teacherPhone FROM ct_teacher WHERE status='Present' AND teacherDesignation NOT LIKE '%Lecturer%' ORDER BY teacherName ASC LIMIT 12"
       );
     }
 

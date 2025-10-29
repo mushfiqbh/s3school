@@ -712,7 +712,7 @@ if (isset($_POST['editStudent'])) {
 		window.printSlip = printSlip;
 		window.deleteSlip = deleteSlip;
 
-		// On c:\xampp\htdocs\ziisc\wp-content\themes\s3schoolManagment\templatesform submit, save slip data
+		// On c:\xampp\htdocs\s3school\wp-content\themes\s3schoolManagment\templatesform submit, save slip data
 		$('.applyForm').on('submit', function(e) {
 			// Only save to localStorage if not submitting for backend
 			if (!e.originalEvent.submitter || e.originalEvent.submitter.name !== 'addStudent') return;

@@ -84,21 +84,21 @@ if (!empty($group_options)) {
 	}
 }
 
-$selected_class = isset($_GET['ziisc_export_class']) ? absint($_GET['ziisc_export_class']) : 0;
-$selected_section = isset($_GET['ziisc_export_section']) ? absint($_GET['ziisc_export_section']) : 0;
-$selected_group = isset($_GET['ziisc_export_group']) ? absint($_GET['ziisc_export_group']) : 0;
-$selected_year = isset($_GET['ziisc_export_year']) ? sanitize_text_field(wp_unslash($_GET['ziisc_export_year'])) : '';
+$selected_class = isset($_GET['s3school_export_class']) ? absint($_GET['s3school_export_class']) : 0;
+$selected_section = isset($_GET['s3school_export_section']) ? absint($_GET['s3school_export_section']) : 0;
+$selected_group = isset($_GET['s3school_export_group']) ? absint($_GET['s3school_export_group']) : 0;
+$selected_year = isset($_GET['s3school_export_year']) ? sanitize_text_field(wp_unslash($_GET['s3school_export_year'])) : '';
 $selected_year = trim($selected_year);
 
-if (!function_exists('ziisc_post_value')) {
-	function ziisc_post_value($key, $default = null)
+if (!function_exists('s3school_post_value')) {
+	function s3school_post_value($key, $default = null)
 	{
 		return isset($_POST[$key]) ? wp_unslash($_POST[$key]) : $default;
 	}
 }
 
-if (!function_exists('ziisc_read_csv_header')) {
-	function ziisc_read_csv_header($file_path)
+if (!function_exists('s3school_read_csv_header')) {
+	function s3school_read_csv_header($file_path)
 	{
 		$handle = fopen($file_path, 'r');
 		if ($handle === false) {
@@ -116,8 +116,8 @@ if (!function_exists('ziisc_read_csv_header')) {
 	}
 }
 
-if (!function_exists('ziisc_excel_column_to_index')) {
-	function ziisc_excel_column_to_index($cell_ref)
+if (!function_exists('s3school_excel_column_to_index')) {
+	function s3school_excel_column_to_index($cell_ref)
 	{
 		if (!is_string($cell_ref) || $cell_ref === '') {
 			return 0;
@@ -135,16 +135,16 @@ if (!function_exists('ziisc_excel_column_to_index')) {
 	}
 }
 
-if (!function_exists('ziisc_convert_excel_to_csv')) {
-	function ziisc_convert_excel_to_csv($file_path)
+if (!function_exists('s3school_convert_excel_to_csv')) {
+	function s3school_convert_excel_to_csv($file_path)
 	{
 		if (!class_exists('ZipArchive')) {
-			return new WP_Error('ziisc_excel_zip_missing', esc_html__('Excel imports require the ZipArchive PHP extension.', 's3schoolManagment'));
+			return new WP_Error('s3school_excel_zip_missing', esc_html__('Excel imports require the ZipArchive PHP extension.', 's3schoolManagment'));
 		}
 
 		$zip = new ZipArchive();
 		if ($zip->open($file_path) !== true) {
-			return new WP_Error('ziisc_excel_open_failed', esc_html__('Unable to open the uploaded Excel file.', 's3schoolManagment'));
+			return new WP_Error('s3school_excel_open_failed', esc_html__('Unable to open the uploaded Excel file.', 's3schoolManagment'));
 		}
 
 		$shared_strings = [];
@@ -169,13 +169,13 @@ if (!function_exists('ziisc_convert_excel_to_csv')) {
 		$sheet_contents = $zip->getFromName('xl/worksheets/sheet1.xml');
 		if ($sheet_contents === false) {
 			$zip->close();
-			return new WP_Error('ziisc_excel_sheet_missing', esc_html__('Unable to locate the first worksheet inside the Excel file.', 's3schoolManagment'));
+			return new WP_Error('s3school_excel_sheet_missing', esc_html__('Unable to locate the first worksheet inside the Excel file.', 's3schoolManagment'));
 		}
 
 		$sheet_xml = simplexml_load_string($sheet_contents);
 		if ($sheet_xml === false || !isset($sheet_xml->sheetData)) {
 			$zip->close();
-			return new WP_Error('ziisc_excel_sheet_invalid', esc_html__('The Excel worksheet appears to be corrupt or unreadable.', 's3schoolManagment'));
+			return new WP_Error('s3school_excel_sheet_invalid', esc_html__('The Excel worksheet appears to be corrupt or unreadable.', 's3schoolManagment'));
 		}
 
 		$rows = [];
@@ -184,7 +184,7 @@ if (!function_exists('ziisc_convert_excel_to_csv')) {
 			$previous_index = -1;
 			foreach ($row->c as $cell) {
 				$ref       = isset($cell['r']) ? (string) $cell['r'] : '';
-				$col_index = ziisc_excel_column_to_index($ref);
+				$col_index = s3school_excel_column_to_index($ref);
 				while ($previous_index + 1 < $col_index) {
 					$current_row[] = '';
 					++$previous_index;
@@ -211,17 +211,17 @@ if (!function_exists('ziisc_convert_excel_to_csv')) {
 		$zip->close();
 
 		if (empty($rows)) {
-			return new WP_Error('ziisc_excel_empty', esc_html__('The Excel file does not contain any readable rows.', 's3schoolManagment'));
+			return new WP_Error('s3school_excel_empty', esc_html__('The Excel file does not contain any readable rows.', 's3schoolManagment'));
 		}
 
-		$csv_path = wp_tempnam('ziisc_student_import');
+		$csv_path = wp_tempnam('s3school_student_import');
 		if (!$csv_path) {
-			return new WP_Error('ziisc_excel_temp_failed', esc_html__('Unable to create a temporary CSV file for the Excel conversion.', 's3schoolManagment'));
+			return new WP_Error('s3school_excel_temp_failed', esc_html__('Unable to create a temporary CSV file for the Excel conversion.', 's3schoolManagment'));
 		}
 
 		$handle = fopen($csv_path, 'w');
 		if ($handle === false) {
-			return new WP_Error('ziisc_excel_temp_unwritable', esc_html__('Unable to write the converted CSV file.', 's3schoolManagment'));
+			return new WP_Error('s3school_excel_temp_unwritable', esc_html__('Unable to write the converted CSV file.', 's3schoolManagment'));
 		}
 
 		foreach ($rows as $row_values) {
@@ -234,15 +234,15 @@ if (!function_exists('ziisc_convert_excel_to_csv')) {
 	}
 }
 
-if (!function_exists('ziisc_handle_unused_columns_ajax')) {
-	function ziisc_handle_unused_columns_ajax()
+if (!function_exists('s3school_handle_unused_columns_ajax')) {
+	function s3school_handle_unused_columns_ajax()
 	{
 		if (!current_user_can('manage_options')) {
 			wp_send_json_error(['message' => esc_html__('Unauthorized request.', 's3schoolManagment')], 403);
 		}
 
 		$nonce = isset($_POST['nonce']) ? sanitize_text_field(wp_unslash($_POST['nonce'])) : '';
-		if (!wp_verify_nonce($nonce, 'ziisc_import_students')) {
+		if (!wp_verify_nonce($nonce, 's3school_import_students')) {
 			wp_send_json_error(['message' => esc_html__('Invalid request token.', 's3schoolManagment')], 400);
 		}
 
@@ -274,7 +274,7 @@ if (!function_exists('ziisc_handle_unused_columns_ajax')) {
 		wp_send_json_success(['unused' => $unused]);
 	}
 
-	add_action('wp_ajax_ziisc_unused_columns', 'ziisc_handle_unused_columns_ajax');
+	add_action('wp_ajax_s3school_unused_columns', 's3school_handle_unused_columns_ajax');
 }
 
 $import_stage   = 'upload';
@@ -284,20 +284,20 @@ $mapping_header = [];
 $cleanup_token  = false;
 $stored_data    = null;
 
-if (isset($_POST['ziisc_import_stage']) && isset($_POST['ziisc_import_nonce'])) {
-	if (!check_admin_referer('ziisc_import_students', 'ziisc_import_nonce')) {
+if (isset($_POST['s3school_import_stage']) && isset($_POST['s3school_import_nonce'])) {
+	if (!check_admin_referer('s3school_import_students', 's3school_import_nonce')) {
 		wp_die(esc_html__('Invalid import request.', 's3schoolManagment'));
 	}
 
-	$stage = sanitize_text_field(ziisc_post_value('ziisc_import_stage'));
+	$stage = sanitize_text_field(s3school_post_value('s3school_import_stage'));
 
 	if ($stage === 'prepare_mapping') {
 		require_once ABSPATH . 'wp-admin/includes/file.php';
 
-		if (!isset($_FILES['ziisc_students_file']) || empty($_FILES['ziisc_students_file']['tmp_name'])) {
+		if (!isset($_FILES['s3school_students_file']) || empty($_FILES['s3school_students_file']['tmp_name'])) {
 			$import_result = ['type' => 'error', 'message' => esc_html__('No file uploaded.', 's3schoolManagment')];
 		} else {
-			$uploaded = wp_handle_upload($_FILES['ziisc_students_file'], [
+			$uploaded = wp_handle_upload($_FILES['s3school_students_file'], [
 				'test_form' => false,
 				'mimes'     => [
 					'csv'  => 'text/csv',
@@ -314,7 +314,7 @@ if (isset($_POST['ziisc_import_stage']) && isset($_POST['ziisc_import_nonce'])) 
 				$cleanup_files = [$uploaded_path];
 
 				if ($extension === 'xlsx') {
-					$converted = ziisc_convert_excel_to_csv($uploaded_path);
+					$converted = s3school_convert_excel_to_csv($uploaded_path);
 					if (is_wp_error($converted)) {
 						@unlink($uploaded_path);
 						$import_result = ['type' => 'error', 'message' => esc_html($converted->get_error_message())];
@@ -330,7 +330,7 @@ if (isset($_POST['ziisc_import_stage']) && isset($_POST['ziisc_import_nonce'])) 
 				}
 
 				if (!$import_result && $csv_path) {
-					$header = ziisc_read_csv_header($csv_path);
+					$header = s3school_read_csv_header($csv_path);
 
 					if (empty($header)) {
 						foreach (array_unique($cleanup_files) as $file_path) {
@@ -341,7 +341,7 @@ if (isset($_POST['ziisc_import_stage']) && isset($_POST['ziisc_import_nonce'])) 
 						$import_result = ['type' => 'error', 'message' => esc_html__('The uploaded file appears to be empty or invalid.', 's3schoolManagment')];
 					} else {
 						$mapping_token = wp_generate_password(16, false, false);
-						set_transient('ziisc_student_import_' . $mapping_token, [
+						set_transient('s3school_student_import_' . $mapping_token, [
 							'path'          => $csv_path,
 							'columns'       => $header,
 							'cleanup_files' => array_unique($cleanup_files),
@@ -353,22 +353,22 @@ if (isset($_POST['ziisc_import_stage']) && isset($_POST['ziisc_import_nonce'])) 
 			}
 		}
 	} elseif ($stage === 'process_import') {
-		$mapping_token = sanitize_text_field(ziisc_post_value('ziisc_import_token', ''));
+		$mapping_token = sanitize_text_field(s3school_post_value('s3school_import_token', ''));
 		if ($mapping_token !== '') {
-			$stored_data = get_transient('ziisc_student_import_' . $mapping_token);
+			$stored_data = get_transient('s3school_student_import_' . $mapping_token);
 		}
 
 		if (!$stored_data || empty($stored_data['path']) || !file_exists($stored_data['path'])) {
 			$import_result = ['type' => 'error', 'message' => esc_html__('Unable to locate the uploaded CSV. Please upload again.', 's3schoolManagment')];
 			$cleanup_token = true;
 		} else {
-			$header = ziisc_read_csv_header($stored_data['path']);
+			$header = s3school_read_csv_header($stored_data['path']);
 
 			if (empty($header)) {
 				$import_result = ['type' => 'error', 'message' => esc_html__('The uploaded CSV appears to be empty or invalid.', 's3schoolManagment')];
 				$cleanup_token = true;
 			} else {
-				$column_map_raw = isset($_POST['ziisc_column_map']) ? (array) $_POST['ziisc_column_map'] : [];
+				$column_map_raw = isset($_POST['s3school_column_map']) ? (array) $_POST['s3school_column_map'] : [];
 				$column_map     = [];
 				$studentinfo_map = [];
 
@@ -407,8 +407,8 @@ if (isset($_POST['ziisc_import_stage']) && isset($_POST['ziisc_import_nonce'])) 
 					$cleanup_token  = false;
 				} else {
 					$default_info_input = [];
-					if (isset($_POST['ziisc_default_info']) && is_array($_POST['ziisc_default_info'])) {
-						$default_info_input = wp_unslash($_POST['ziisc_default_info']);
+					if (isset($_POST['s3school_default_info']) && is_array($_POST['s3school_default_info'])) {
+						$default_info_input = wp_unslash($_POST['s3school_default_info']);
 					}
 
 					$default_class = isset($default_info_input['className']) ? absint($default_info_input['className']) : 0;
@@ -624,7 +624,7 @@ if (isset($_POST['ziisc_import_stage']) && isset($_POST['ziisc_import_nonce'])) 
 	}
 
 	if ($cleanup_token && $mapping_token) {
-		$transient_key = 'ziisc_student_import_' . $mapping_token;
+		$transient_key = 's3school_student_import_' . $mapping_token;
 		delete_transient($transient_key);
 		$files_to_remove = [];
 		if ($stored_data) {
@@ -644,8 +644,8 @@ if (isset($_POST['ziisc_import_stage']) && isset($_POST['ziisc_import_nonce'])) 
 }
 
 // Export handler triggers before any HTML output.
-if (isset($_GET['ziisc_export_students']) && isset($_GET['ziisc_export_nonce'])) {
-	if (!check_admin_referer('ziisc_export_students', 'ziisc_export_nonce')) {
+if (isset($_GET['s3school_export_students']) && isset($_GET['s3school_export_nonce'])) {
+	if (!check_admin_referer('s3school_export_students', 's3school_export_nonce')) {
 		wp_die(esc_html__('Invalid export request.', 's3schoolManagment'));
 	}
 
@@ -759,8 +759,8 @@ if (isset($_GET['ziisc_export_students']) && isset($_GET['ziisc_export_nonce']))
 }
 
 $default_info_submission = [];
-if (isset($_POST['ziisc_default_info']) && is_array($_POST['ziisc_default_info'])) {
-	$default_info_submission = wp_unslash($_POST['ziisc_default_info']);
+if (isset($_POST['s3school_default_info']) && is_array($_POST['s3school_default_info'])) {
+	$default_info_submission = wp_unslash($_POST['s3school_default_info']);
 }
 
 $default_selected_class = isset($default_info_submission['className']) ? absint($default_info_submission['className']) : 0;
@@ -785,7 +785,7 @@ get_header();
 ?>
 
 <style>
-	.ziisc-panel {
+	.s3school-panel {
 		max-width: 960px;
 		margin: 0 auto 4rem;
 		padding: 2rem 1.5rem;
@@ -795,7 +795,7 @@ get_header();
 		font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 	}
 
-	.ziisc-panel h1 {
+	.s3school-panel h1 {
 		margin: 0 0 1.75rem;
 		font-weight: 700;
 		color: #0f172a;
@@ -804,7 +804,7 @@ get_header();
 		gap: .75rem;
 	}
 
-	.ziisc-panel .notice {
+	.s3school-panel .notice {
 		border-radius: 14px;
 		padding: 1rem 1.25rem;
 		margin-bottom: 1.5rem;
@@ -812,13 +812,13 @@ get_header();
 		box-shadow: 0 10px 25px rgba(15, 23, 42, .08);
 	}
 
-	.ziisc-flex {
+	.s3school-flex {
 		display: flex;
 		flex-direction: column;
 		gap: 1.5rem;
 	}
 
-	.ziisc-card {
+	.s3school-card {
 		background: #fff;
 		border-radius: 16px;
 		padding: 1.75rem;
@@ -828,25 +828,25 @@ get_header();
 		gap: 1.1rem;
 	}
 
-	.ziisc-card h2 {
+	.s3school-card h2 {
 		margin: 0;
 		font-weight: 600;
 		color: #1e293b;
 	}
 
-	.ziisc-card p {
+	.s3school-card p {
 		margin: 0;
 		color: #475569;
 		line-height: 1.55;
 	}
 
-	.ziisc-card form {
+	.s3school-card form {
 		display: flex;
 		flex-direction: column;
 		gap: 1.25rem;
 	}
 
-	.ziisc-card button.button.button-primary {
+	.s3school-card button.button.button-primary {
 		color: #fff;
 		align-self: flex-start;
 		border-radius: 999px;
@@ -857,7 +857,7 @@ get_header();
 		box-shadow: 0 12px 24px rgba(37, 99, 235, .25);
 	}
 
-	.ziisc-pill {
+	.s3school-pill {
 		display: inline-flex;
 		align-items: center;
 		gap: .4rem;
@@ -868,13 +868,13 @@ get_header();
 		color: #4338ca;
 	}
 
-	.ziisc-map-grid {
+	.s3school-map-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 		gap: 1rem 1.25rem;
 	}
 
-	.ziisc-map-field {
+	.s3school-map-field {
 		background: #f8fafc;
 		border: 1px solid #e2e8f0;
 		border-radius: 12px;
@@ -884,13 +884,13 @@ get_header();
 		gap: .45rem;
 	}
 
-	.ziisc-map-field strong {
+	.s3school-map-field strong {
 		color: #1f2937;
 		font-weight: 600;
 		letter-spacing: .01em;
 	}
 
-	.ziisc-map-field select {
+	.s3school-map-field select {
 		width: 100%;
 		border-radius: 10px;
 		border: 1px solid #cbd5f5;
@@ -898,13 +898,13 @@ get_header();
 		transition: border-color .2s ease, box-shadow .2s ease;
 	}
 
-	.ziisc-map-field select:focus {
+	.s3school-map-field select:focus {
 		border-color: #2563eb;
 		box-shadow: 0 0 0 3px rgba(37, 99, 235, .15);
 		outline: none;
 	}
 
-	.ziisc-map-heading {
+	.s3school-map-heading {
 		grid-column: 1/-1;
 		font-weight: 700;
 		color: #0f172a;
@@ -913,13 +913,13 @@ get_header();
 		margin-top: .5rem;
 	}
 
-	.ziisc-upload {
+	.s3school-upload {
 		display: flex;
 		flex-direction: column;
 		gap: .6rem;
 	}
 
-	.ziisc-upload input[type=file] {
+	.s3school-upload input[type=file] {
 		border: 1px dashed #94a3b8;
 		border-radius: 12px;
 		padding: 1.3rem;
@@ -927,12 +927,12 @@ get_header();
 		transition: border-color .2s ease, background .2s ease;
 	}
 
-	.ziisc-upload input[type=file]:hover {
+	.s3school-upload input[type=file]:hover {
 		border-color: #2563eb;
 		background: #f1f5ff;
 	}
 
-	.ziisc-defaults {
+	.s3school-defaults {
 		margin-top: 1rem;
 		padding: 1.25rem 1.5rem;
 		background: #ffffff;
@@ -943,44 +943,44 @@ get_header();
 		gap: .85rem;
 	}
 
-	.ziisc-defaults-title {
+	.s3school-defaults-title {
 		font-weight: 600;
 		color: #1f2937;
 	}
 
-	.ziisc-defaults-description {
+	.s3school-defaults-description {
 		margin: 0;
 		color: #475569;
 	}
 
-	.ziisc-defaults-field {
+	.s3school-defaults-field {
 		display: flex;
 		gap: .45rem;
 		color: #1f2937;
 	}
 
-	.ziisc-defaults-field select,
-	.ziisc-defaults-field input[type=text] {
+	.s3school-defaults-field select,
+	.s3school-defaults-field input[type=text] {
 		border-radius: 10px;
 		border: 1px solid #cbd5f5;
 		padding: .55rem .75rem;
 		transition: border-color .2s ease, box-shadow .2s ease;
 	}
 
-	.ziisc-defaults-field select:focus,
-	.ziisc-defaults-field input[type=text]:focus {
+	.s3school-defaults-field select:focus,
+	.s3school-defaults-field input[type=text]:focus {
 		border-color: #2563eb;
 		box-shadow: 0 0 0 3px rgba(37, 99, 235, .15);
 		outline: none;
 	}
 
-	.ziisc-export-filters {
+	.s3school-export-filters {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 		gap: 1rem;
 	}
 
-	.ziisc-export-filters label {
+	.s3school-export-filters label {
 		display: flex;
 		flex-direction: column;
 		gap: .35rem;
@@ -988,7 +988,7 @@ get_header();
 		color: #1e293b;
 	}
 
-	.ziisc-export-filters select {
+	.s3school-export-filters select {
 		border-radius: 10px;
 		border: 1px solid #cbd5f5;
 		padding: .55rem .75rem;
@@ -996,13 +996,13 @@ get_header();
 		transition: border-color .2s ease, box-shadow .2s ease;
 	}
 
-	.ziisc-export-filters select:focus {
+	.s3school-export-filters select:focus {
 		border-color: #2563eb;
 		box-shadow: 0 0 0 3px rgba(37, 99, 235, .15);
 		outline: none;
 	}
 
-	.ziisc-unused-wrapper {
+	.s3school-unused-wrapper {
 		margin-top: 2rem;
 		position: relative;
 		border: 1px solid #cbd5f5;
@@ -1012,40 +1012,40 @@ get_header();
 		box-shadow: inset 0 1px 0 rgba(148, 163, 184, .15);
 	}
 
-	.ziisc-unused-wrapper strong {
+	.s3school-unused-wrapper strong {
 		display: block;
 		margin-bottom: .35rem;
 		color: #1e293b;
 	}
 
-	.ziisc-unused-description {
+	.s3school-unused-description {
 		margin: 0 0 .75rem;
 		color: #475569;
 		opacity: .7;
 		display: flex;
 	}
 
-	.ziisc-unused-list {
+	.s3school-unused-list {
 		margin: 0;
 		padding-left: 1.25rem;
 		color: #ff0000;
 	}
 
-	.ziisc-unused-list li {
+	.s3school-unused-list li {
 		margin-bottom: .3rem;
 	}
 
-	.ziisc-unused-empty {
+	.s3school-unused-empty {
 		list-style: none;
 		padding-left: 0;
 		color: #64748b;
 	}
 
-	.ziisc-unused-wrapper.ziisc-unused-loading {
+	.s3school-unused-wrapper.s3school-unused-loading {
 		opacity: .7;
 	}
 
-	.ziisc-unused-wrapper.ziisc-unused-loading::after {
+	.s3school-unused-wrapper.s3school-unused-loading::after {
 		content: 'Updating...';
 		position: absolute;
 		top: .75rem;
@@ -1054,7 +1054,7 @@ get_header();
 		color: #2563eb;
 	}
 
-	.ziisc-confirm-import {
+	.s3school-confirm-import {
 		margin-top: 1rem;
 		padding: .75rem 1rem;
 		border-radius: 10px;
@@ -1066,7 +1066,7 @@ get_header();
 		color: #1e293b;
 	}
 
-	.ziisc-confirm-import label {
+	.s3school-confirm-import label {
 		display: flex;
 		align-items: center;
 		gap: .55rem;
@@ -1074,11 +1074,11 @@ get_header();
 		cursor: pointer;
 	}
 
-	.ziisc-confirm-import input[type=checkbox] {
+	.s3school-confirm-import input[type=checkbox] {
 		transform: scale(1.1);
 	}
 
-	.ziisc-confirm-import.ziisc-highlight {
+	.s3school-confirm-import.s3school-highlight {
 		border-color: #fb923c;
 		background: #fff7ed;
 		color: #9a3412;
@@ -1093,29 +1093,29 @@ get_header();
 	}
 </style>
 
-<div class="ziisc-panel">
+<div class="s3school-panel">
 	<?php if ($import_result) : ?>
 		<div class="notice notice-<?php echo esc_attr($import_result['type']); ?>">
 			<p><?php echo esc_html($import_result['message']); ?></p>
 		</div>
 	<?php endif; ?>
 
-	<div class="ziisc-flex">
-		<div class="ziisc-card">
-			<span class="ziisc-pill"><?php esc_html_e('Guided Import', 's3schoolManagment'); ?></span>
+	<div class="s3school-flex">
+		<div class="s3school-card">
+			<span class="s3school-pill"><?php esc_html_e('Guided Import', 's3schoolManagment'); ?></span>
 			<h2><?php esc_html_e('Import Students', 's3schoolManagment'); ?></h2>
 			<p><?php esc_html_e('Upload your CSV or Excel (.xlsx) file, map header labels to database columns, then run the import with confidence.', 's3schoolManagment'); ?></p>
 			<?php if ($import_stage === 'mapping' && !empty($mapping_header)) : ?>
 				<form method="post">
-					<?php wp_nonce_field('ziisc_import_students', 'ziisc_import_nonce'); ?>
-					<input type="hidden" name="ziisc_import_stage" value="process_import" />
-					<input type="hidden" name="ziisc_import_token" value="<?php echo esc_attr($mapping_token); ?>" />
-					<div class="ziisc-map-grid">
-						<span class="ziisc-map-heading"><?php esc_html_e('Student Table Columns', 's3schoolManagment'); ?></span>
+					<?php wp_nonce_field('s3school_import_students', 's3school_import_nonce'); ?>
+					<input type="hidden" name="s3school_import_stage" value="process_import" />
+					<input type="hidden" name="s3school_import_token" value="<?php echo esc_attr($mapping_token); ?>" />
+					<div class="s3school-map-grid">
+						<span class="s3school-map-heading"><?php esc_html_e('Student Table Columns', 's3schoolManagment'); ?></span>
 						<?php foreach ($student_columns as $column_name) : ?>
-							<div class="ziisc-map-field">
+							<div class="s3school-map-field">
 								<strong><?php echo esc_html($column_name); ?></strong>
-								<select name="ziisc_column_map[<?php echo esc_attr($column_name); ?>]">
+								<select name="s3school_column_map[<?php echo esc_attr($column_name); ?>]">
 									<option value="__skip"><?php esc_html_e('Skip', 's3schoolManagment'); ?></option>
 									<?php foreach ($mapping_header as $header_label) : ?>
 										<option value="<?php echo esc_attr($header_label); ?>" <?php selected($column_name === $header_label); ?>><?php echo esc_html($header_label); ?></option>
@@ -1123,11 +1123,11 @@ get_header();
 								</select>
 							</div>
 						<?php endforeach; ?>
-						<span class="ziisc-map-heading"><?php esc_html_e('Student Info & Related Columns', 's3schoolManagment'); ?></span>
+						<span class="s3school-map-heading"><?php esc_html_e('Student Info & Related Columns', 's3schoolManagment'); ?></span>
 						<?php foreach ($additional_export_columns as $column_name) : ?>
-							<div class="ziisc-map-field">
+							<div class="s3school-map-field">
 								<strong><?php echo esc_html($column_name); ?></strong>
-								<select name="ziisc_column_map[<?php echo esc_attr($column_name); ?>]">
+								<select name="s3school_column_map[<?php echo esc_attr($column_name); ?>]">
 									<option value="__skip"><?php esc_html_e('Skip', 's3schoolManagment'); ?></option>
 									<?php foreach ($mapping_header as $header_label) : ?>
 										<option value="<?php echo esc_attr($header_label); ?>" <?php selected($column_name === $header_label); ?>><?php echo esc_html($header_label); ?></option>
@@ -1137,12 +1137,12 @@ get_header();
 						<?php endforeach; ?>
 					</div>
 
-					<div class="ziisc-defaults">
-						<p class="ziisc-defaults-description"><?php esc_html_e('Set default values if Class, Section, Group or Year are skipped (Optional)', 's3schoolManagment'); ?></p>
-						<div class="ziisc-defaults-grid">
-							<label class="ziisc-defaults-field">
+					<div class="s3school-defaults">
+						<p class="s3school-defaults-description"><?php esc_html_e('Set default values if Class, Section, Group or Year are skipped (Optional)', 's3schoolManagment'); ?></p>
+						<div class="s3school-defaults-grid">
+							<label class="s3school-defaults-field">
 								<span><?php esc_html_e('Default Class', 's3schoolManagment'); ?></span>
-								<select name="ziisc_default_info[className]" id="ziisc_default_class">
+								<select name="s3school_default_info[className]" id="s3school_default_class">
 									<option value=""><?php esc_html_e('No default', 's3schoolManagment'); ?></option>
 									<?php if (!empty($class_options)) : ?>
 										<?php foreach ($class_options as $class_option) : ?>
@@ -1152,9 +1152,9 @@ get_header();
 									<?php endif; ?>
 								</select>
 							</label>
-							<label class="ziisc-defaults-field">
+							<label class="s3school-defaults-field">
 								<span><?php esc_html_e('Default Section', 's3schoolManagment'); ?></span>
-								<select name="ziisc_default_info[sectionName]" id="ziisc_default_section" <?php disabled(!$default_selected_class); ?>>
+								<select name="s3school_default_info[sectionName]" id="s3school_default_section" <?php disabled(!$default_selected_class); ?>>
 									<option value=""><?php esc_html_e('No default', 's3schoolManagment'); ?></option>
 									<?php if (!empty($section_options)) : ?>
 										<?php foreach ($section_options as $section_option) : ?>
@@ -1167,9 +1167,9 @@ get_header();
 									<?php endif; ?>
 								</select>
 							</label>
-							<label class="ziisc-defaults-field">
+							<label class="s3school-defaults-field">
 								<span><?php esc_html_e('Default Group', 's3schoolManagment'); ?></span>
-								<select name="ziisc_default_info[groupName]">
+								<select name="s3school_default_info[groupName]">
 									<option value=""><?php esc_html_e('No default', 's3schoolManagment'); ?></option>
 									<?php if (!empty($group_options)) : ?>
 										<?php foreach ($group_options as $group_option) : ?>
@@ -1179,11 +1179,11 @@ get_header();
 									<?php endif; ?>
 								</select>
 							</label>
-							<label class="ziisc-defaults-field">
+							<label class="s3school-defaults-field">
 								<span><?php esc_html_e('Default Year', 's3schoolManagment'); ?></span>
-								<input type="text" name="ziisc_default_info[year]" value="<?php echo esc_attr($default_selected_year); ?>" placeholder="<?php esc_attr_e('e.g. 2025', 's3schoolManagment'); ?>" list="ziisc-default-year-options" />
+								<input type="text" name="s3school_default_info[year]" value="<?php echo esc_attr($default_selected_year); ?>" placeholder="<?php esc_attr_e('e.g. 2025', 's3schoolManagment'); ?>" list="s3school-default-year-options" />
 								<?php if (!empty($year_options)) : ?>
-									<datalist id="ziisc-default-year-options">
+									<datalist id="s3school-default-year-options">
 										<?php foreach ($year_options as $year_option) : ?>
 											<option value="<?php echo esc_attr($year_option); ?>"></option>
 										<?php endforeach; ?>
@@ -1194,29 +1194,29 @@ get_header();
 					</div>
 
 					<div
-						id="ziisc-unused-columns"
-						class="ziisc-unused-wrapper"
+						id="s3school-unused-columns"
+						class="s3school-unused-wrapper"
 						data-available="<?php echo esc_attr(wp_json_encode(array_values($mapping_header))); ?>"
 						data-ajax-url="<?php echo esc_url(admin_url('admin-ajax.php')); ?>">
 						<strong><?php esc_html_e('Unmapped File Columns (Columns from your file that are not mapped yet)', 's3schoolManagment'); ?></strong>
-						<ul class="ziisc-unused-list" aria-live="polite"></ul>
+						<ul class="s3school-unused-list" aria-live="polite"></ul>
 					</div>
 
-					<div class="ziisc-confirm-import" id="ziisc_confirm_wrapper">
-						<label for="ziisc_skip_existing">
-							<input type="checkbox" id="ziisc_skip_existing" name="ziisc_skip_existing" value="1" />
+					<div class="s3school-confirm-import" id="s3school_confirm_wrapper">
+						<label for="s3school_skip_existing">
+							<input type="checkbox" id="s3school_skip_existing" name="s3school_skip_existing" value="1" />
 							<span><?php esc_html_e('Import anyway skipping unmapped fields. (Skipped fields leave existing data untouched.)', 's3schoolManagment'); ?></span>
 						</label>
 					</div>
-					<button class="button button-primary" id="ziisc_run_import" type="submit" disabled><?php esc_html_e('Run Import', 's3schoolManagment'); ?></button>
+					<button class="button button-primary" id="s3school_run_import" type="submit" disabled><?php esc_html_e('Run Import', 's3schoolManagment'); ?></button>
 				</form>
 			<?php else : ?>
 				<form method="post" enctype="multipart/form-data">
-					<?php wp_nonce_field('ziisc_import_students', 'ziisc_import_nonce'); ?>
-					<input type="hidden" name="ziisc_import_stage" value="prepare_mapping" />
-					<div class="ziisc-upload">
-						<label for="ziisc_students_file"><?php esc_html_e('Upload CSV or Excel (.xlsx) file', 's3schoolManagment'); ?></label>
-						<input type="file" id="ziisc_students_file" name="ziisc_students_file" accept=".csv,.xlsx" required />
+					<?php wp_nonce_field('s3school_import_students', 's3school_import_nonce'); ?>
+					<input type="hidden" name="s3school_import_stage" value="prepare_mapping" />
+					<div class="s3school-upload">
+						<label for="s3school_students_file"><?php esc_html_e('Upload CSV or Excel (.xlsx) file', 's3schoolManagment'); ?></label>
+						<input type="file" id="s3school_students_file" name="s3school_students_file" accept=".csv,.xlsx" required />
 						<small><?php esc_html_e('Ensure the first row contains column labels that match your data. Excel files are converted to CSV automatically.', 's3schoolManagment'); ?></small>
 					</div>
 					<button class="button button-primary" type="submit"><?php esc_html_e('Next: Map Columns', 's3schoolManagment'); ?></button>
@@ -1225,17 +1225,17 @@ get_header();
 		</div>
 
 
-		<div class="ziisc-card">
-			<span class="ziisc-pill"><?php esc_html_e('Quick Export', 's3schoolManagment'); ?></span>
+		<div class="s3school-card">
+			<span class="s3school-pill"><?php esc_html_e('Quick Export', 's3schoolManagment'); ?></span>
 			<h2><?php esc_html_e('Export Students', 's3schoolManagment'); ?></h2>
 			<p><?php esc_html_e('Download every student and related detail in a single CSV tailored for spreadsheets and analytics.', 's3schoolManagment'); ?></p>
 			<form method="get" action="<?php echo esc_url(get_permalink()); ?>">
-				<input type="hidden" name="ziisc_export_students" value="1" />
-				<?php wp_nonce_field('ziisc_export_students', 'ziisc_export_nonce'); ?>
-				<div class="ziisc-export-filters">
+				<input type="hidden" name="s3school_export_students" value="1" />
+				<?php wp_nonce_field('s3school_export_students', 's3school_export_nonce'); ?>
+				<div class="s3school-export-filters">
 					<label>
 						<span><?php esc_html_e('Class', 's3schoolManagment'); ?></span>
-						<select name="ziisc_export_class">
+						<select name="s3school_export_class">
 							<option value="0" <?php selected($selected_class, 0); ?>><?php esc_html_e('All Classes', 's3schoolManagment'); ?></option>
 							<?php if (!empty($class_options)) : ?>
 								<?php foreach ($class_options as $class_option) : ?>
@@ -1246,7 +1246,7 @@ get_header();
 					</label>
 					<label>
 						<span><?php esc_html_e('Section', 's3schoolManagment'); ?></span>
-						<select name="ziisc_export_section">
+						<select name="s3school_export_section">
 							<option value="0" <?php selected($selected_section, 0); ?>><?php esc_html_e('All Sections', 's3schoolManagment'); ?></option>
 							<?php if (!empty($section_options)) : ?>
 								<?php foreach ($section_options as $section_option) : ?>
@@ -1257,7 +1257,7 @@ get_header();
 					</label>
 					<label>
 						<span><?php esc_html_e('Group', 's3schoolManagment'); ?></span>
-						<select name="ziisc_export_group">
+						<select name="s3school_export_group">
 							<option value="0" <?php selected($selected_group, 0); ?>><?php esc_html_e('All Groups', 's3schoolManagment'); ?></option>
 							<?php if (!empty($group_options)) : ?>
 								<?php foreach ($group_options as $group_option) : ?>
@@ -1268,7 +1268,7 @@ get_header();
 					</label>
 					<label>
 						<span><?php esc_html_e('Year', 's3schoolManagment'); ?></span>
-						<select name="ziisc_export_year">
+						<select name="s3school_export_year">
 							<option value="" <?php selected($selected_year, ''); ?>><?php esc_html_e('All Years', 's3schoolManagment'); ?></option>
 							<?php if (!empty($year_options)) : ?>
 								<?php foreach ($year_options as $year_option) : ?>
@@ -1286,11 +1286,11 @@ get_header();
 
 <?php
 if ($import_stage === 'mapping' && !empty($mapping_header)) :
-	$ziisc_unused_empty_text = esc_js(__('Every column is mapped. Nice work!', 's3schoolManagment'));
+	$s3school_unused_empty_text = esc_js(__('Every column is mapped. Nice work!', 's3schoolManagment'));
 ?>
 	<script>
 		document.addEventListener('DOMContentLoaded', function() {
-			var container = document.getElementById('ziisc-unused-columns');
+			var container = document.getElementById('s3school-unused-columns');
 			if (!container) {
 				return;
 			}
@@ -1308,16 +1308,16 @@ if ($import_stage === 'mapping' && !empty($mapping_header)) :
 			}
 
 			var ajaxUrl = container.dataset.ajaxUrl || '';
-			var listEl = container.querySelector('.ziisc-unused-list');
+			var listEl = container.querySelector('.s3school-unused-list');
 			var form = container.closest('form');
 
 			if (!listEl || !form) {
 				return;
 			}
 
-			var checkboxWrapper = document.getElementById('ziisc_confirm_wrapper');
-			var checkbox = document.getElementById('ziisc_skip_existing');
-			var submitBtn = document.getElementById('ziisc_run_import');
+			var checkboxWrapper = document.getElementById('s3school_confirm_wrapper');
+			var checkbox = document.getElementById('s3school_skip_existing');
+			var submitBtn = document.getElementById('s3school_run_import');
 			var currentUnused = 0;
 
 			var applyUnusedState = function(unusedCount) {
@@ -1325,10 +1325,10 @@ if ($import_stage === 'mapping' && !empty($mapping_header)) :
 				if (checkboxWrapper) {
 					if (unusedCount === 0) {
 						checkboxWrapper.style.display = 'none';
-						checkboxWrapper.classList.remove('ziisc-highlight');
+						checkboxWrapper.classList.remove('s3school-highlight');
 					} else {
 						checkboxWrapper.style.display = '';
-						checkboxWrapper.classList.add('ziisc-highlight');
+						checkboxWrapper.classList.add('s3school-highlight');
 					}
 				}
 
@@ -1362,8 +1362,8 @@ if ($import_stage === 'mapping' && !empty($mapping_header)) :
 				checkbox.addEventListener('change', handleCheckboxChange);
 			}
 
-			var selectFields = Array.prototype.slice.call(form.querySelectorAll('.ziisc-map-field select'));
-			var nonceField = form.querySelector('input[name="ziisc_import_nonce"]');
+			var selectFields = Array.prototype.slice.call(form.querySelectorAll('.s3school-map-field select'));
+			var nonceField = form.querySelector('input[name="s3school_import_nonce"]');
 
 			var renderUnused = function(items) {
 				var unusedItems = Array.isArray(items) ? items.filter(function(label) {
@@ -1373,8 +1373,8 @@ if ($import_stage === 'mapping' && !empty($mapping_header)) :
 				listEl.innerHTML = '';
 				if (!unusedItems.length) {
 					var emptyItem = document.createElement('li');
-					emptyItem.className = 'ziisc-unused-empty';
-					emptyItem.textContent = '<?php echo $ziisc_unused_empty_text; ?>';
+					emptyItem.className = 's3school-unused-empty';
+					emptyItem.textContent = '<?php echo $s3school_unused_empty_text; ?>';
 					listEl.appendChild(emptyItem);
 					applyUnusedState(0);
 					return;
@@ -1411,12 +1411,12 @@ if ($import_stage === 'mapping' && !empty($mapping_header)) :
 				}
 
 				var payload = new window.FormData();
-				payload.append('action', 'ziisc_unused_columns');
+				payload.append('action', 's3school_unused_columns');
 				payload.append('nonce', nonceField.value);
 				payload.append('available', JSON.stringify(available));
 				payload.append('selected', JSON.stringify(getSelectedValues()));
 
-				container.classList.add('ziisc-unused-loading');
+				container.classList.add('s3school-unused-loading');
 
 				window.fetch(ajaxUrl, {
 						method: 'POST',
@@ -1440,7 +1440,7 @@ if ($import_stage === 'mapping' && !empty($mapping_header)) :
 						renderUnused(fallbackUnused());
 					})
 					.finally(function() {
-						container.classList.remove('ziisc-unused-loading');
+						container.classList.remove('s3school-unused-loading');
 					});
 			};
 

@@ -400,7 +400,7 @@ global $s3sRedux;
                     if (!empty($s3sRedux['institute_email'])) {
                         echo '<a href="mailto:' . esc_html($s3sRedux['institute_email']) . '">' . esc_html($s3sRedux['institute_email']) . '</a>';
                     } else {
-                        echo '<a href="mailto:ziisc@gmail.com">ziisc@gmail.com</a>';
+                        echo '<a href="mailto:s3school@gmail.com">s3school@gmail.com</a>';
                     } ?>
                 </p>
             </div>

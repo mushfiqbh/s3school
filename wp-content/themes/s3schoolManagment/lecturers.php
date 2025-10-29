@@ -97,8 +97,9 @@ get_header();
 
 	.teacher-photo {
 		width: 100%;
-		height: 220px;
+		height: 220px; /* fixed thumbnail height */
 		object-fit: cover;
+		display: block;
 		background: #e2e8f0;
 	}
 
@@ -169,6 +170,7 @@ get_header();
 
 	.teacher-detail-photo {
 		flex: 0 0 220px;
+		height: 220px; /* fixed detail photo height to match thumbnail */
 		border-radius: 18px;
 		overflow: hidden;
 		box-shadow: 0 10px 25px rgba(79, 70, 229, 0.15);
@@ -177,7 +179,8 @@ get_header();
 	.teacher-detail-photo img {
 		width: 100%;
 		height: 100%;
-		object-fit: cover;
+		object-fit: cover; /* ensure image covers the fixed box */
+		display: block;
 	}
 
 	.teacher-detail-meta h3 {
@@ -317,8 +320,10 @@ get_header();
 			gap: 20px;
 		}
 
+		/* On small screens keep a reasonable fixed height to maintain visual layout */
 		.teacher-detail-photo {
 			flex: 0 0 auto;
+			height: 220px; /* retain fixed height on small screens; change if you prefer smaller */
 		}
 
 		.teacher-meta-list {
@@ -347,7 +352,7 @@ $default_img = esc_url(get_template_directory_uri() . '/img/No_Image.jpg');
 			<div class="col-xs-12">
 				<br><br>
 				<div class="b-title-page__info text-center">
-					<h2>Our Teachers</h2>
+					<h2>Our Lecturers</h2>
 				</div>
 			</div>
 		</div>
@@ -366,12 +371,16 @@ $default_img = esc_url(get_template_directory_uri() . '/img/No_Image.jpg');
 						<div class="clearfix">
 							<?php if (!$teacher_id) : ?>
 								<?php
-								$teachers = $wpdb->get_results('SELECT teacherid, teacherName, teacherImg, teacherDesignation FROM ct_teacher WHERE status="Present" ORDER BY teacherName ASC');
+								$teachers = $wpdb->get_results($wpdb->prepare(
+									'SELECT teacherid, teacherName, teacherImg, teacherDesignation FROM ct_teacher WHERE status = %s AND teacherDesignation LIKE %s ORDER BY teacherName ASC',
+									'Present',
+									'%lecturer%'
+								));
 								?>
 
 								<div class="teacher-directory">
 									<div class="teacher-directory__heading">
-										<h3><?php echo esc_html__('Meet Our Teachers', 's3schoolManagment'); ?></h3>
+										<h3><?php echo esc_html__('Meet Our Lecturers', 's3schoolManagment'); ?></h3>
 										<p><?php echo esc_html__('Discover the dedicated educators who nurture and inspire our students every day.', 's3schoolManagment'); ?></p>
 									</div>
 
@@ -407,13 +416,13 @@ $default_img = esc_url(get_template_directory_uri() . '/img/No_Image.jpg');
 										</div>
 									<?php else : ?>
 										<div class="teacher-empty-state">
-											<p><?php echo esc_html__('Teacher profiles will appear here once they are added.', 's3schoolManagment'); ?></p>
+											<p><?php echo esc_html__('Lecture Profiles will appear here once they are added.', 's3schoolManagment'); ?></p>
 										</div>
 									<?php endif; ?>
 
 									<div class="text-center" style="margin-top: 40px;color:black;">
-										<a href="<?php echo home_url('/former-teachers'); ?>" class="btn-view-all">
-											<?php echo esc_html__('View Former Teachers', 's3schoolManagment'); ?> <i class="fa fa-arrow-right"></i>
+										<a href="<?php echo home_url('/teachers'); ?>" class="btn-view-all">
+											<?php echo esc_html__('View Our Teachers', 's3schoolManagment'); ?> <i class="fa fa-arrow-right"></i>
 										</a>
 									</div>
 								</div>
