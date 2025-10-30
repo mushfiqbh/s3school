@@ -63,58 +63,9 @@ if (isset($_POST['downloadDatabase'])) {
 						z-index: 1;
 					}
 				</style>
-				<?php if (wp_get_current_user()->roles[0] == 'um_teachers') { ?>
-					<div class="panel panel-default">
-						<div class="panel-heading">Dashboard</div>
-						<div class="panel-body">
-							<div class="row">
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-student'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Student</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-attendance'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Attendance</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-result'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Result</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-
-
-							</div>
-						</div>
-					</div>
-			</div>
-
-		<?php } else { ?>
+				<?php if (wp_get_current_user()->roles[0] == 'um_teachers') {
+					@include 'teacher-dashboard.php';
+		 } else { ?>
 			<div style="margin-bottom:20px;">
 				<form action="" method="POST">
 					<button type="submit" class="btn btn-primary" name="downloadDatabase">Download A Database Backup</button>

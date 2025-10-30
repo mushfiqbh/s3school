@@ -88,9 +88,11 @@ if (isset($_POST['addTeacher'])) {
 			'teacherMpo' 						=> htmlentities($_POST['teacherMpo'], ENT_QUOTES),
 			'teacherQualificarion' 	=> $teacherQualificarion,
 			'teacher_serial' 	=>  htmlentities($_POST['teacher_serial'], ENT_QUOTES),
-			'assignSection' 	=>  htmlentities($_POST['sec'], ENT_QUOTES),
+			'assignSection' 	=>  isset($_POST["sections"]) ? json_encode(array_filter($_POST["sections"])) : '',
 			'status' 		=> htmlentities(isset($_POST['status']) ? $_POST['status'] : 'Present', ENT_QUOTES),
-			'teacherTraining' 			=> $teacherTraining
+			'teacherTraining' 			=> $teacherTraining,
+			'teacherOfClass' 			=> isset($_POST['teacherOfClass']) && !empty($_POST['teacherOfClass']) ? intval($_POST['teacherOfClass']) : null,
+			'teacherOfSection' 			=> isset($_POST['teacherOfSection']) && !empty($_POST['teacherOfSection']) ? intval($_POST['teacherOfSection']) : null
 		)
 	);
 	
@@ -199,9 +201,11 @@ if (isset($_POST['updateTeacher'])) {
 			'teacherMpo' 						=> htmlentities($_POST['teacherMpo'], ENT_QUOTES),
 			'teacherQualificarion' 	=> $teacherQualificarion,
 			'teacher_serial' 	=>  htmlentities($_POST['teacher_serial'], ENT_QUOTES),
-			'assignSection' 	=>  htmlentities($_POST['sec'], ENT_QUOTES),
+			'assignSection' 	=>  isset($_POST["sections"]) ? json_encode(array_filter($_POST["sections"])) : '',
 			'status' 		=> htmlentities(isset($_POST['status']) ? $_POST['status'] : 'Present', ENT_QUOTES),
-			'teacherTraining' 			=> $teacherTraining
+			'teacherTraining' 			=> $teacherTraining,
+			'teacherOfClass' 			=> isset($_POST['teacherOfClass']) && !empty($_POST['teacherOfClass']) ? intval($_POST['teacherOfClass']) : null,
+			'teacherOfSection' 			=> isset($_POST['teacherOfSection']) && !empty($_POST['teacherOfSection']) ? intval($_POST['teacherOfSection']) : null
 		),
 		array( 'teacherid' => $_POST['id'])
 	);
@@ -476,21 +480,25 @@ foreach ($haveTechquer as $vtech) {
 	        				$tecAss = json_decode($edit->tecAssignSub);
 	        				if ($tecAss != null && sizeof($tecAss) > 0) {
 	        					$dataNow = sizeof($tecAss);
-	        					$tecAssignSub = $wpdb->get_results( "SELECT subjectid,subjectClass FROM ct_subject WHERE subjectid IN (".implode(",", $tecAss).") ORDER BY subjectClass DESC");
+	        				$tecAssignSub = $wpdb->get_results( "SELECT subjectid,subjectClass FROM ct_subject WHERE subjectid IN (".implode(",", $tecAss).")");
 	        				}
 		        		}
 				    	?>
 
 				    	<div class="tecAssignSub" data-now='<?= $dataNow ?>'>
-				    		<label>Assign Subjet To Teacher</label>
-				    		<?php for ($i=0; $i < $dataNow; $i++) { ?>
+				    		<label>Assign Subject To Teacher</label>
+				    		<?php 
+				    		$assignSections = isset($edit) ? json_decode($edit->assignSection, true) : [];
+				    		for ($i=0; $i < $dataNow; $i++) { 
+				    			$currentSection = isset($assignSections[$i]) ? $assignSections[$i] : '';
+				    		?>
 					    		<div class="inputGrp row">
 							    	<div class="form-group col-md-6">
 							    		<select class="form-control assignClass">
 							    			<option value=''>Select Class</option>
 							    			<?php
 							    				$classQuery = $wpdb->get_results( "SELECT classid,className FROM ct_class WHERE classid IN (SELECT subjectClass FROM `ct_subject` GROUP BY subjectClass) ORDER BY className");
-							    				$subCls = $tecAssignSub[$i]->subjectClass;
+							    				$subCls = isset($tecAssignSub[$i]) ? $tecAssignSub[$i]->subjectClass : '';
 							    				foreach ($classQuery as $value) {
 							    					$sel = ($subCls == $value->classid) ? 'selected' : '';
 							    					echo "<option value='".$value->classid."' $sel>".$value->className."</option>";
@@ -499,15 +507,14 @@ foreach ($haveTechquer as $vtech) {
 							    			?>
 							    		</select>
 							    	</div>
-							    	
-							    	<div class="form-group col-md-6"">
-					<select id="resultSection" class="form-control" name="sec"  >
+							    	<div class="form-group col-md-6">
+					<select class="form-control resultSection" name="sections[]"  >
 					<?php
-								    			if (isset($edit)) { 
+								    			if (isset($edit) && $subCls) { 
 								    				$subQry = $wpdb->get_results( "SELECT sectionid,sectionName FROM `ct_section` WHERE forClass = $subCls ORDER BY sectionName");
 								    				echo "<option value=''>  Section</option>";
 								    				foreach ($subQry as $subv) {
-								    					$sel = ($edit->assignSection == $subv->sectionid) ? 'selected' : '';
+								    					$sel = ($currentSection == $subv->sectionid) ? 'selected' : '';
 								    					echo "<option value='".$subv->sectionid."' $sel>".$subv->sectionName."</option>";
 								    				}
 							    				}else{
@@ -520,10 +527,10 @@ foreach ($haveTechquer as $vtech) {
 							    	<div class="form-group col-md-6">
 							    		<select class="form-control assignSub" name="subjects[]">
 							    			<?php
-								    			if (isset($edit)) { 
+								    			if (isset($edit) && $subCls) { 
 								    				$subQry = $wpdb->get_results( "SELECT subjectid,subjectName FROM `ct_subject` WHERE subjectClass = $subCls ORDER BY subjectName");
 								    				foreach ($subQry as $subv) {
-								    					$sel = ($tecAssignSub[$i]->subjectid == $subv->subjectid) ? 'selected' : '';
+								    					$sel = (isset($tecAssignSub[$i]) && $tecAssignSub[$i]->subjectid == $subv->subjectid) ? 'selected' : '';
 								    					echo "<option value='".$subv->subjectid."' $sel>".$subv->subjectName."</option>";
 								    				}
 							    				}else{
@@ -542,6 +549,38 @@ foreach ($haveTechquer as $vtech) {
 				    	</div>
 
 				    	<div class="form-group">
+				    		<label>Class Teacher For</label>
+				    		<div class="row">
+				    			<div class="col-md-6">
+				    				<select class="form-control" name="teacherOfClass" id="teacherOfClass">
+				    					<option value="">Select Class</option>
+				    					<?php
+				    						$classQuery = $wpdb->get_results( "SELECT classid,className FROM ct_class ORDER BY className");
+				    						foreach ($classQuery as $value) {
+				    							$sel = (isset($edit) && $edit->teacherOfClass == $value->classid) ? 'selected' : '';
+				    							echo "<option value='".$value->classid."' $sel>".$value->className."</option>";
+				    						}
+				    					?>
+				    				</select>
+				    			</div>
+				    			<div class="col-md-6">
+				    				<select class="form-control" name="teacherOfSection" id="teacherOfSection">
+				    					<option value="">Select Section</option>
+				    					<?php
+				    						if (isset($edit) && $edit->teacherOfClass) {
+				    							$sectionQuery = $wpdb->get_results( "SELECT sectionid,sectionName FROM ct_section WHERE forClass = $edit->teacherOfClass ORDER BY sectionName");
+				    							foreach ($sectionQuery as $value) {
+				    								$sel = (isset($edit) && $edit->teacherOfSection == $value->sectionid) ? 'selected' : '';
+				    								echo "<option value='".$value->sectionid."' $sel>".$value->sectionName."</option>";
+				    							}
+				    						}
+				    					?>
+				    				</select>
+				    			</div>
+				    		</div>
+				    	</div>
+
+				    	<div class="form-group">
 				    		<label>Note</label>
 				    		<textarea class="form-control" name="teacherNote"><?= isset($edit) ? $edit->teacherNote : ''; ?></textarea>
 				    	</div>
@@ -550,19 +589,68 @@ foreach ($haveTechquer as $vtech) {
 				    		<input class="form-control" type="text" name="userid" autocomplete="userid" value="<?= $userName ?>" >
 				    	</div>
 						<div class="form-group">
-				    		<label>Password</label>
-				    		<input class="form-control" type="password" autocomplete="new-password" name="userpass" >
-				    	</div>
+							<label>Password</label>
+							<div style="position:relative;display:flex;align-items:center;">
+								<input class="form-control" type="password" autocomplete="new-password" name="userpass" id="userpass" style="flex:1;">
+								<button type="button" id="togglePass" style="position:absolute;right:10px;background:none;border:none;outline:none;cursor:pointer;z-index:2;" tabindex="-1">
+									<span id="eyeIcon" style="font-size:18px;">👁️</span>
+								</button>
+							</div>
+						</div>
+						<div class="form-group">
+							<label>Confirm Password</label>
+							<input class="form-control" type="password" autocomplete="new-password" name="confirm_userpass" id="confirm_userpass">
+							<small id="passMatchMsg" style="color:red;display:none;">Passwords do not match.</small>
+						</div>
 						<div class="form-group">
 				    		<label>Teacher Serial Number</label>
 				    		<input class="form-control" type="number" autocomplete="" value="<?= isset($edit) ? $edit->teacher_serial : ''; ?>" name="teacher_serial" >
 				    	</div>
 
-				    	<div class="form-group text-right">
-				    		<button class="btn btn-primary" type="submit" name="<?= isset($edit) ? 'updateTeacher' : 'addTeacher'; ?>"><?= isset($edit) ? 'Update' : 'Add'; ?> Teacher</button>
-				    	</div>
+						<div class="form-group text-right">
+						    <button class="btn btn-primary" type="submit" name="<?= isset($edit) ? 'updateTeacher' : 'addTeacher'; ?>" id="submitBtn"><?= isset($edit) ? 'Update' : 'Add'; ?> Teacher</button>
+						</div>
 
-				    </form>
+					<script>
+					// View password toggle
+					document.addEventListener('DOMContentLoaded', function() {
+						var pass = document.getElementById('userpass');
+						var confirm = document.getElementById('confirm_userpass');
+						var toggle = document.getElementById('togglePass');
+						var eyeIcon = document.getElementById('eyeIcon');
+						var submitBtn = document.getElementById('submitBtn');
+						var passMatchMsg = document.getElementById('passMatchMsg');
+						if (toggle && pass) {
+							toggle.addEventListener('click', function(e) {
+								e.preventDefault();
+								if (pass.type === 'password') {
+									pass.type = 'text';
+									if (confirm) confirm.type = 'text';
+									eyeIcon.textContent = '🙈';
+								} else {
+									pass.type = 'password';
+									if (confirm) confirm.type = 'password';
+									eyeIcon.textContent = '👁️';
+								}
+							});
+						}
+						// Password match validation
+						function checkMatch() {
+							if (pass && confirm && pass.value !== confirm.value) {
+								passMatchMsg.style.display = 'block';
+								submitBtn.disabled = true;
+							} else {
+								passMatchMsg.style.display = 'none';
+								submitBtn.disabled = false;
+							}
+						}
+						if (pass && confirm) {
+							pass.addEventListener('input', checkMatch);
+							confirm.addEventListener('input', checkMatch);
+						}
+					});
+					</script>
+					</form>
 				  </div>
 				</div>
 			</div>
@@ -806,7 +894,7 @@ foreach ($haveTechquer as $vtech) {
 				if ($now < 21) {
 					$('.tecAssignSub').data('now',$now);
 					$(".tecAssignSub").find('.inputGrp:first').clone(true).appendTo(".tecAssignSub");
-					$(".tecAssignSub").find('.inputGrp:last').find('input').val('');
+					$(".tecAssignSub").find('.inputGrp:last').find('input, select').val('');
 				}
 			});
 
@@ -848,11 +936,24 @@ foreach ($haveTechquer as $vtech) {
 	      $.ajax({
 	      url: $siteUrl+"/inc/ajaxAction.php",
 	      method: "POST",
-	      data: { class : $(this).val(), type : 'getSection' },
+	      data: { class : $this.val(), type : 'getSection' },
 	      dataType: "html"
 	    }).done(function( msg ) {
-	      $( "#resultSection" ).html( msg );
-	      $( "#resultSection" ).prop('disabled', false);
+	      $this.closest('.inputGrp').find('.resultSection').html( msg );
+	      $this.closest('.inputGrp').find('.resultSection').prop('disabled', false);
+	    });
+			});
+
+			$('#teacherOfClass').change(function(event) {
+				$this = $(this);
+	      $.ajax({
+	      url: $siteUrl+"/inc/ajaxAction.php",
+	      method: "POST",
+	      data: { class : $this.val(), type : 'getSection' },
+	      dataType: "html"
+	    }).done(function( msg ) {
+	      $('#teacherOfSection').html( msg );
+	      $('#teacherOfSection').prop('disabled', false);
 	    });
 			});
 

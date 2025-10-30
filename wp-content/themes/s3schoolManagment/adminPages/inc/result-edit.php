@@ -1,5 +1,31 @@
 <?php
 	global $s3sRedux;
+
+// Check if current user is a teacher and get their assignments
+$current_user = wp_get_current_user();
+$is_teacher = ($current_user->roles[0] == 'um_teachers');
+$teacher_assignments = null;
+
+if ($is_teacher) {
+    $teacher_record = $wpdb->get_row($wpdb->prepare("SELECT tecAssignSub, assignSection FROM ct_teacher WHERE tecUserId = %d", $current_user->ID));
+    if ($teacher_record) {
+        $assigned_subjects = json_decode($teacher_record->tecAssignSub, true);
+        $assigned_sections = json_decode($teacher_record->assignSection, true);
+        
+        // Get unique classes from assigned subjects
+        $assigned_classes = array();
+        if (!empty($assigned_subjects)) {
+            $subjects_data = $wpdb->get_results("SELECT DISTINCT subjectClass FROM ct_subject WHERE subjectid IN (" . implode(',', array_map('intval', $assigned_subjects)) . ")");
+            $assigned_classes = array_column($subjects_data, 'subjectClass');
+        }
+        
+        $teacher_assignments = array(
+            'subjects' => $assigned_subjects ?: array(),
+            'sections' => $assigned_sections ?: array(),
+            'classes' => $assigned_classes ?: array()
+        );
+    }
+}
 if (isset($_POST['updateAllResult'])) {
 	$cq = $_POST['CQ'];
 	$mcq = $_POST['MCQ'];
@@ -54,6 +80,14 @@ if (isset($_POST['updateAllResult'])) {
 					<?php
 
 						$classQuery = $wpdb->get_results( "SELECT classid,className FROM ct_class WHERE classid IN (SELECT examClass FROM ct_exam GROUP BY examClass ORDER BY className ASC)" );
+						
+						// Filter classes if user is a teacher
+						if ($is_teacher && !empty($teacher_assignments['classes'])) {
+							$classQuery = array_filter($classQuery, function($class) use ($teacher_assignments) {
+								return in_array($class->classid, $teacher_assignments['classes']);
+							});
+						}
+						
 						echo "<option value=''>Select Class</option>";
 
 						foreach ($classQuery as $class) {

@@ -113,7 +113,24 @@ $subjects = $wpdb->get_results("
 
 		$class = $_POST['class'];
 
-		$sections = $wpdb->get_results( "SELECT sectionid,sectionName FROM ct_section WHERE forClass = '$class'" );
+		$current_user = wp_get_current_user();
+		$sections_query = "SELECT sectionid,sectionName FROM ct_section WHERE forClass = '$class'";
+
+		if ($current_user->roles[0] == 'um_teachers') {
+			$current_user_id = get_current_user_id();
+			$teacher_record = $wpdb->get_row($wpdb->prepare("SELECT assignSection FROM ct_teacher WHERE tecUserId = %d", $current_user_id));
+
+			if ($teacher_record && !empty($teacher_record->assignSection)) {
+				$assigned_sections = json_decode($teacher_record->assignSection, true);
+				if (is_array($assigned_sections) && !empty($assigned_sections)) {
+					$sections_query .= " AND sectionid IN (" . implode(',', array_map('intval', $assigned_sections)) . ")";
+				}
+			}
+		}
+
+		$sections_query .= " ORDER BY sectionName";
+
+		$sections = $wpdb->get_results($sections_query);
 		if(!empty($sections)){
 			echo "<option value=''>Section</option>";
 			foreach ($sections as $section) {
@@ -122,7 +139,7 @@ $subjects = $wpdb->get_results("
 				<?php
 			}
 		}else{
-			echo 0;
+			echo "<option value=''>No sections available</option>";
 		}
 	}
 
@@ -132,12 +149,34 @@ $subjects = $wpdb->get_results("
 	elseif($_POST['type'] == 'getGroupsByClass'){
 		$class = $_POST['class'];
 		
-		// Get groups that have students in this class
-		$groups = $wpdb->get_results( "SELECT DISTINCT ct_group.groupId, ct_group.groupName 
+		$current_user = wp_get_current_user();
+		$groups_query = "SELECT DISTINCT ct_group.groupId, ct_group.groupName 
 			FROM ct_group 
 			INNER JOIN ct_studentinfo ON ct_studentinfo.infoGroup = ct_group.groupId 
-			WHERE ct_studentinfo.infoClass = '$class' 
-			ORDER BY ct_group.groupName ASC" );
+			WHERE ct_studentinfo.infoClass = '$class'";
+
+		if ($current_user->roles[0] == 'um_teachers') {
+			$current_user_id = get_current_user_id();
+			$teacher_record = $wpdb->get_row($wpdb->prepare("SELECT tecAssignSub FROM ct_teacher WHERE tecUserId = %d", $current_user_id));
+
+			if ($teacher_record && !empty($teacher_record->tecAssignSub)) {
+				$assigned_subjects = json_decode($teacher_record->tecAssignSub, true);
+				if (is_array($assigned_subjects) && !empty($assigned_subjects)) {
+					// Get groups that have subjects assigned to this teacher
+					$groups_query .= " AND ct_studentinfo.infoGroup IN (
+						SELECT DISTINCT forGroup 
+						FROM ct_subject 
+						WHERE subjectid IN (" . implode(',', array_map('intval', $assigned_subjects)) . ") 
+						AND subjectClass = '$class'
+						AND forGroup != 'all'
+					)";
+				}
+			}
+		}
+
+		$groups_query .= " ORDER BY ct_group.groupName ASC";
+		
+		$groups = $wpdb->get_results($groups_query);
 		
 		echo "<option value=''>All Groups</option>";
 		foreach ($groups as $group) {
@@ -267,41 +306,36 @@ $subjects = $wpdb->get_results("
         $subs = [];
     }
 
-    // $current_user = wp_get_current_user();
+    $current_user = wp_get_current_user();
 
-    // if (in_array('um_teachers', (array) $current_user->roles)) {
-    //     $current_user_id = get_current_user_id();
-    //     $tecSubjects = $wpdb->get_var(
-    //         "SELECT tecAssignSub FROM ct_teacher WHERE tecUserId = $current_user_id"
-    //     );
+    if ($current_user->roles[0] == 'um_teachers') {
+        $current_user_id = get_current_user_id();
+        $teacher_record = $wpdb->get_row($wpdb->prepare("SELECT tecAssignSub FROM ct_teacher WHERE tecUserId = %d", $current_user_id));
 
-    //     $subs2 = json_decode($tecSubjects, true);
+        if ($teacher_record && !empty($teacher_record->tecAssignSub)) {
+            $assigned_subjects = json_decode($teacher_record->tecAssignSub, true);
 
-    //     if (is_array($subs2) && !empty($subs2) && !empty($subs)) {
-    //         $subs_escaped1 = array_map('intval', $subs2);
-    //         $subs_escaped2 = array_map('intval', $subs);
-    //         $subjects = $wpdb->get_results(
-    //             "SELECT subjectid,subjectName FROM ct_subject 
-    //              WHERE subjectid IN (" . implode(',', $subs_escaped1) . ") 
-    //               AND subjectid IN (" . implode(',', $subs_escaped2) . ")"
-    //         );
-    //     }
-    // } else {
-        if (!empty($subs)) {
-            $subs_escaped = array_map('intval', $subs);
-            $subjectQuery = "SELECT subjectid,subjectName FROM ct_subject 
-                 WHERE subjectid IN (" . implode(',', $subs_escaped) . ")";
-            
-            // Filter by group if selected
-            if (!empty($group)) {
-                $subjectQuery .= " AND (forGroup = 'all' OR forGroup = '$group' OR forGroup LIKE '%\"$group\"%')";
+            if (is_array($assigned_subjects) && !empty($assigned_subjects) && !empty($subs)) {
+                // Filter exam subjects to only include assigned subjects
+                $subs = array_intersect($subs, $assigned_subjects);
             }
-            
-            $subjectQuery .= " ORDER BY subjectName ASC";
-            
-            $subjects = $wpdb->get_results($subjectQuery);
         }
-    // }
+    }
+
+    if (!empty($subs)) {
+        $subs_escaped = array_map('intval', $subs);
+        $subjectQuery = "SELECT subjectid,subjectName FROM ct_subject 
+             WHERE subjectid IN (" . implode(',', $subs_escaped) . ")";
+        
+        // Filter by group if selected
+        if (!empty($group)) {
+            $subjectQuery .= " AND (forGroup = 'all' OR forGroup = '$group' OR forGroup LIKE '%\"$group\"%')";
+        }
+        
+        $subjectQuery .= " ORDER BY subjectName ASC";
+        
+        $subjects = $wpdb->get_results($subjectQuery);
+    }
 
     if (empty($subjects)) {
         echo "<option value=''>No subject!</option>";
