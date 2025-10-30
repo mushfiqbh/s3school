@@ -2,7 +2,7 @@
 -- SET THE URL OF YOUR SITE
 -- Must have trailing slash at the end, example: https://www.yoursite.com/
 -- =============================================
-SELECT "http://ziisc.com/" INTO @yoursite_url;
+SELECT "https://www.ziisc.com/" INTO @yoursite_url;
 
 
 
