@@ -19,13 +19,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Create current release file for auto-patch system
-      - name: Create current release file
-        run: |
-          RELEASE_TAG="${GITHUB_REF_NAME}"
-          echo "<?php define('CURRENT_RELEASE', '${RELEASE_TAG}'); ?>" > wp-content/current_release.php
-          echo "Created release file with tag: ${RELEASE_TAG}"
-
       # 3️⃣ Zip the wp-content folder
       - name: Create wp-content.zip
         run: |
