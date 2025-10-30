@@ -3,6 +3,26 @@
 
 <?php
 global $wpdb, $s3sRedux;
+
+// Check if current user is a teacher and get their restrictions
+$current_user = wp_get_current_user();
+$isTeacher = (isset($current_user->roles[0]) && $current_user->roles[0] == 'um_teachers');
+$teacherRestrictions = null;
+
+if ($isTeacher) {
+    // Determine table name (try prefixed first, fallback to ct_teacher)
+    $prefixed = $wpdb->prefix . 'ct_teacher';
+    $exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $prefixed));
+    $table = ($exists === $prefixed) ? $prefixed : 'ct_teacher';
+    
+    $user_id = $current_user->ID;
+    $teacher = $wpdb->get_row($wpdb->prepare("SELECT teacherOfClass, teacherOfSection FROM $table WHERE tecUserId = %d", $user_id));
+    
+    if ($teacher && !empty($teacher->teacherOfClass) && !empty($teacher->teacherOfSection)) {
+        $teacherRestrictions = $teacher;
+    }
+}
+
 $yearGroup = $wpdb->get_results("SELECT stdCurntYear FROM ct_student GROUP BY stdCurntYear");
 $classGroup = $wpdb->get_results("SELECT classid,className FROM ct_student
     LEFT JOIN ct_class ON ct_class.classid = ct_student.stdAdmitClass
@@ -28,7 +48,16 @@ $admitYear = isset($_POST['filter']) ? $_POST['filter'] : date("Y");
           <select id='resultClass' class="form-control" name="stdclass" required>
             <?php
 
-            $classQuery = $wpdb->get_results("SELECT classid,className FROM ct_class  ORDER BY className ASC");
+            // If teacher, only show their assigned class
+            if ($isTeacher && $teacherRestrictions) {
+              $classQuery = $wpdb->get_results( $wpdb->prepare(
+                "SELECT classid,className FROM ct_class WHERE classid = %d ORDER BY className ASC",
+                $teacherRestrictions->teacherOfClass
+              ));
+            } else {
+              $classQuery = $wpdb->get_results("SELECT classid,className FROM ct_class  ORDER BY className ASC");
+            }
+            
             echo "<option value=''>Select Class</option>";
 
             foreach ($classQuery as $class) {
@@ -90,6 +119,14 @@ $admitYear = isset($_POST['filter']) ? $_POST['filter'] : date("Y");
               LEFT JOIN ct_section ON ct_studentinfo.infoSection = ct_section.sectionid
               LEFT JOIN ct_class ON ct_class.classid = $class
               WHERE infoClass = $class AND infoYear = '$year'";
+
+        // Add teacher restrictions if user is a teacher
+        if ($isTeacher && $teacherRestrictions) {
+            $stSql .= $wpdb->prepare(" AND infoClass = %d AND infoSection = %d", 
+                $teacherRestrictions->teacherOfClass, 
+                $teacherRestrictions->teacherOfSection
+            );
+        }
 
         if ($sec != '') {
           $stSql .= " AND infoSection = $sec";

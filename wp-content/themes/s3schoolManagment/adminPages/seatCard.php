@@ -2,7 +2,46 @@
 /*
 ** Template Name: Admin SeatCard
 */
-global $wpdb; global $s3sRedux; ?>
+global $wpdb; global $s3sRedux; 
+
+// Check if current user is a teacher and get their restrictions
+$current_user = wp_get_current_user();
+$isTeacher = (isset($current_user->roles[0]) && $current_user->roles[0] == 'um_teachers');
+$teacherRestrictions = null;
+
+if ($isTeacher) {
+    // Determine table name (try prefixed first, fallback to ct_teacher)
+    $prefixed = $wpdb->prefix . 'ct_teacher';
+    $exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $prefixed));
+    $table = ($exists === $prefixed) ? $prefixed : 'ct_teacher';
+    
+    $user_id = $current_user->ID;
+    $teacher = $wpdb->get_row($wpdb->prepare("SELECT teacherOfClass, teacherOfSection FROM $table WHERE tecUserId = %d", $user_id));
+    
+    if ($teacher && !empty($teacher->teacherOfClass) && !empty($teacher->teacherOfSection)) {
+        $teacherRestrictions = $teacher;
+    }
+}
+
+$attendanceGroups = $wpdb->get_results("SELECT groupId, groupName FROM ct_group ORDER BY groupName ASC");
+$attendanceGroupLookup = array();
+if (!empty($attendanceGroups)) {
+    foreach ($attendanceGroups as $attendanceGroup) {
+        $attendanceGroupLookup[$attendanceGroup->groupId] = $attendanceGroup->groupName;
+    }
+}
+
+$genderSelectOptions = array(
+    '' => 'All Genders',
+    '1' => 'Boy',
+    '0' => 'Girl',
+    '2' => 'Other',
+);
+
+$selectedGroupFilter = isset($_GET['group']) ? intval($_GET['group']) : 0;
+$rawGenderFilter = isset($_GET['gender']) ? trim($_GET['gender']) : '';
+$selectedGenderFilter = array_key_exists($rawGenderFilter, $genderSelectOptions) ? $rawGenderFilter : '';
+?>
 
 <?php if ( ! is_admin() ) { get_header(); ?>
 <div class="b-layer-main">
@@ -30,7 +69,16 @@ global $wpdb; global $s3sRedux; ?>
 							<select id='resultClass' class="form-control" name="class" required>
 								<?php
 
-									$classQuery = $wpdb->get_results( "SELECT classid,className FROM ct_class WHERE classid IN (SELECT examClass FROM ct_exam GROUP BY examClass ORDER BY className ASC)" );
+									// If teacher, only show their assigned class
+									if ($isTeacher && $teacherRestrictions) {
+										$classQuery = $wpdb->get_results( $wpdb->prepare(
+											"SELECT classid,className FROM ct_class WHERE classid = %d AND classid IN (SELECT examClass FROM ct_exam GROUP BY examClass)",
+											$teacherRestrictions->teacherOfClass
+										));
+									} else {
+										$classQuery = $wpdb->get_results( "SELECT classid,className FROM ct_class WHERE classid IN (SELECT examClass FROM ct_exam GROUP BY examClass ORDER BY className ASC)" );
+									}
+									
 									echo "<option value=''>Select Class</option>";
 
 									foreach ($classQuery as $class) {
@@ -58,6 +106,25 @@ global $wpdb; global $s3sRedux; ?>
 							<label>Year</label>
 							<select id='resultYear' class="form-control" name="syear" required disabled>
 								<option disabled selected>Select Class First</option>
+							</select>
+						</div>
+
+						<div class="form-group">
+							<label>Group</label>
+							<select id="resultGroup" class="form-control" name="group">
+								<option value="0">All Groups</option>
+								<?php foreach ($attendanceGroups as $group) { ?>
+									<option value="<?php echo $group->groupId; ?>" <?php echo ($selectedGroupFilter == $group->groupId) ? 'selected' : ''; ?>><?php echo $group->groupName; ?></option>
+								<?php } ?>
+							</select>
+						</div>
+
+						<div class="form-group">
+							<label>Gender</label>
+							<select id="resultGender" class="form-control" name="gender">
+								<?php foreach ($genderSelectOptions as $key => $label) { ?>
+									<option value="<?php echo $key; ?>" <?php echo ($selectedGenderFilter === $key) ? 'selected' : ''; ?>><?php echo $label; ?></option>
+								<?php } ?>
 							</select>
 						</div>
 
@@ -100,7 +167,10 @@ global $wpdb; global $s3sRedux; ?>
  
 					  		$query .= ($_GET['roll'] != '') ? " AND infoRoll IN ($roll)" : ''; 
 					  		$query .= ($_GET['section'] != 0) ? " AND infoSection = $section" : '';
-
+					  		$query .= ($selectedGroupFilter > 0) ? " AND infoGroup = $selectedGroupFilter" : '';
+					  		if ($selectedGenderFilter !== '') {
+					  		    $query .= ' AND ct_student.stdGender = ' . intval($selectedGenderFilter);
+					  		}
 					  		$query .= " ORDER BY infoRoll ASC";
 					  		$groupsBy = $wpdb->get_results( $query );
 					  	}

@@ -1,5 +1,25 @@
 <?php 
 
+// Check if current user is a teacher and get their restrictions
+$current_user = wp_get_current_user();
+$isTeacher = (isset($current_user->roles[0]) && $current_user->roles[0] == 'um_teachers');
+$teacherRestrictions = null;
+
+if ($isTeacher) {
+    global $wpdb;
+    // Determine table name (try prefixed first, fallback to ct_teacher)
+    $prefixed = $wpdb->prefix . 'ct_teacher';
+    $exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $prefixed));
+    $table = ($exists === $prefixed) ? $prefixed : 'ct_teacher';
+    
+    $user_id = $current_user->ID;
+    $teacher = $wpdb->get_row($wpdb->prepare("SELECT teacherOfClass, teacherOfSection FROM $table WHERE tecUserId = %d", $user_id));
+    
+    if ($teacher && !empty($teacher->teacherOfClass) && !empty($teacher->teacherOfSection)) {
+        $teacherRestrictions = $teacher;
+    }
+}
+
 /*===============
 ** Edit Student
 ================*/
@@ -288,7 +308,18 @@ if (isset($_GET['edit']))
                 <label>Section <span>*</span></label>
                 <?php 
                   $class = $edit->stdCurrentClass;
-                  $sections = $wpdb->get_results( "SELECT sectionid,sectionName FROM ct_section WHERE forClass = '$class'" );
+                  
+                  // If teacher, only show their assigned section
+                  if ($isTeacher && $teacherRestrictions) {
+                    $sections = $wpdb->get_results( $wpdb->prepare(
+                      "SELECT sectionid,sectionName FROM ct_section WHERE sectionid = %d AND forClass = %d",
+                      $teacherRestrictions->teacherOfSection,
+                      $teacherRestrictions->teacherOfClass
+                    ));
+                  } else {
+                    $sections = $wpdb->get_results( "SELECT sectionid,sectionName FROM ct_section WHERE forClass = '$class'" );
+                  }
+                  
                   if(sizeof($sections) > 0){
                     ?>
                     <select class="form-control sectionSelect" name="stdSection" required>
@@ -743,7 +774,16 @@ else{ ?>
                     
                     echo "<option disabled selected value=''>Select a Class..</option>";
                     
-                    $classes = $wpdb->get_results("SELECT classid,className FROM ct_class");
+                    // If teacher, only show their assigned class
+                    if ($isTeacher && $teacherRestrictions) {
+                      $classes = $wpdb->get_results( $wpdb->prepare(
+                        "SELECT classid,className FROM ct_class WHERE classid = %d",
+                        $teacherRestrictions->teacherOfClass
+                      ));
+                    } else {
+                      $classes = $wpdb->get_results("SELECT classid,className FROM ct_class");
+                    }
+                    
                     foreach ($classes as $class) {
                       ?>
                       <option value='<?= $class->classid ?>'>

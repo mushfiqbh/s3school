@@ -6,7 +6,7 @@ $is_teacher = ($current_user->roles[0] == 'um_teachers');
 $teacher_assignments = null;
 
 if ($is_teacher) {
-    $teacher_record = $wpdb->get_row($wpdb->prepare("SELECT tecAssignSub, assignSection FROM ct_teacher WHERE tecUserId = %d", $current_user->ID));
+    $teacher_record = $wpdb->get_row($wpdb->prepare("SELECT tecAssignSub, assignSection, teacherOfClass, teacherOfSection FROM ct_teacher WHERE tecUserId = %d", $current_user->ID));
     if ($teacher_record) {
         $assigned_subjects = json_decode($teacher_record->tecAssignSub, true);
         $assigned_sections = json_decode($teacher_record->assignSection, true);
@@ -18,10 +18,17 @@ if ($is_teacher) {
             $assigned_classes = array_column($subjects_data, 'subjectClass');
         }
         
+        // Add class teacher assignments
+        if (!empty($teacher_record->teacherOfClass)) {
+            $assigned_classes[] = $teacher_record->teacherOfClass;
+        }
+        
         $teacher_assignments = array(
             'subjects' => $assigned_subjects ?: array(),
             'sections' => $assigned_sections ?: array(),
-            'classes' => $assigned_classes ?: array()
+            'classes' => array_unique($assigned_classes) ?: array(),
+            'class_teacher_class' => $teacher_record->teacherOfClass,
+            'class_teacher_section' => $teacher_record->teacherOfSection
         );
     }
 }
@@ -124,11 +131,20 @@ if(isset($_GET['exam'])):
 	$user = wp_get_current_user();
 	$canAdd = true;
 	if ( !in_array( 'editor', (array) $user->roles ) && !in_array( 'administrator', (array) $user->roles ) ) {
-		$restric = $wpdb->get_results("SELECT tecAssignSub FROM `ct_teacher` WHERE tecUserId = ".get_current_user_id());
+		$teacher_record = $wpdb->get_row($wpdb->prepare("SELECT tecAssignSub, teacherOfClass FROM ct_teacher WHERE tecUserId = %d", get_current_user_id()));
 
-		if (sizeof($restric) > 0) {
-			$restric = json_decode($restric[0]->tecAssignSub);
-			if (!in_array($sub, $restric)) {
+		if ($teacher_record) {
+			$assigned_subjects = json_decode($teacher_record->tecAssignSub, true) ?: array();
+			
+			// Check if subject is directly assigned
+			$has_subject_access = in_array($sub, $assigned_subjects);
+			
+			// Check if teacher is class teacher for this subject's class
+			$subject_class = $wpdb->get_var($wpdb->prepare("SELECT subjectClass FROM ct_subject WHERE subjectid = %d", $sub));
+			$has_class_teacher_access = (!empty($teacher_record->teacherOfClass) && $teacher_record->teacherOfClass == $subject_class);
+			
+			// Allow access if either condition is true
+			if (!$has_subject_access && !$has_class_teacher_access) {
 				$canAdd = false;
 			}
 		}

@@ -118,13 +118,33 @@ $subjects = $wpdb->get_results("
 
 		if ($current_user->roles[0] == 'um_teachers') {
 			$current_user_id = get_current_user_id();
-			$teacher_record = $wpdb->get_row($wpdb->prepare("SELECT assignSection FROM ct_teacher WHERE tecUserId = %d", $current_user_id));
+			
+			// Determine table name (try prefixed first, fallback to ct_teacher)
+			$prefixed = $wpdb->prefix . 'ct_teacher';
+			$exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $prefixed));
+			$table = ($exists === $prefixed) ? $prefixed : 'ct_teacher';
+			
+			$teacher_record = $wpdb->get_row($wpdb->prepare("SELECT teacherOfClass, teacherOfSection, assignSection FROM $table WHERE tecUserId = %d", $current_user_id));
 
+			$allowed_sections = array();
+
+			// Add subject-assigned sections
 			if ($teacher_record && !empty($teacher_record->assignSection)) {
 				$assigned_sections = json_decode($teacher_record->assignSection, true);
 				if (is_array($assigned_sections) && !empty($assigned_sections)) {
-					$sections_query .= " AND sectionid IN (" . implode(',', array_map('intval', $assigned_sections)) . ")";
+					$allowed_sections = array_merge($allowed_sections, $assigned_sections);
 				}
+			}
+
+			// Add class teacher section (only if it matches the requested class)
+			if ($teacher_record && !empty($teacher_record->teacherOfClass) && !empty($teacher_record->teacherOfSection) && $teacher_record->teacherOfClass == $class) {
+				$allowed_sections[] = $teacher_record->teacherOfSection;
+			}
+
+			// If we have any allowed sections, filter the query
+			if (!empty($allowed_sections)) {
+				$allowed_sections = array_unique($allowed_sections);
+				$sections_query .= " AND sectionid IN (" . implode(',', array_map('intval', $allowed_sections)) . ")";
 			}
 		}
 

@@ -27,6 +27,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_teacher_profile'
         wp_die('Teacher profile not found.');
     }
 
+    // Handle image upload
+    $image_url = $teacher->teacherImg; // Default to existing image
+    if (!empty($_FILES['teacherImg']['name'])) {
+        // Process file upload
+        $upload_dir = wp_upload_dir();
+        $file_name = sanitize_file_name($_FILES['teacherImg']['name']);
+        $file_tmp = $_FILES['teacherImg']['tmp_name'];
+        $file_size = $_FILES['teacherImg']['size'];
+        $file_error = $_FILES['teacherImg']['error'];
+
+        // Validate file
+        $allowed_types = array('image/jpeg', 'image/png', 'image/gif', 'image/webp');
+        $file_type = wp_check_filetype($file_name);
+
+        if ($file_error === UPLOAD_ERR_OK && in_array($file_type['type'], $allowed_types) && $file_size <= 2 * 1024 * 1024) { // 2MB limit
+            // Generate unique filename
+            $unique_name = 'teacher_' . $user_id . '_' . time() . '.' . $file_type['ext'];
+            $upload_path = $upload_dir['path'] . '/' . $unique_name;
+            $upload_url = $upload_dir['url'] . '/' . $unique_name;
+
+            if (move_uploaded_file($file_tmp, $upload_path)) {
+                // Delete old image if it exists and is not a default avatar
+                if (!empty($teacher->teacherImg) && strpos($teacher->teacherImg, 'wp-content/uploads') !== false) {
+                    $old_image_path = str_replace($upload_dir['url'], $upload_dir['path'], $teacher->teacherImg);
+                    if (file_exists($old_image_path)) {
+                        unlink($old_image_path);
+                    }
+                }
+                $image_url = $upload_url;
+            } else {
+                $save_message = 'Error uploading image.';
+            }
+        } else {
+            $save_message = 'Invalid image file. Please upload a JPEG, PNG, GIF, or WebP file under 2MB.';
+        }
+    }
+
     // Collect and sanitize fields we allow to edit
     $data = array(
         'teacherName' => sanitize_text_field($_POST['teacherName'] ?? ''),
@@ -35,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_teacher_profile'
         'teacherPresent' => sanitize_text_field($_POST['teacherPresent'] ?? ''),
         'teacherPermanent' => sanitize_text_field($_POST['teacherPermanent'] ?? ''),
         'teacherJoining' => sanitize_text_field($_POST['teacherJoining'] ?? ''),
-        'teacherImg' => esc_url_raw($_POST['teacherImg'] ?? ''),
+        'teacherImg' => esc_url_raw($image_url),
     );
 
     $formats = array('%s', '%s', '%s', '%s', '%s', '%s', '%s');
@@ -50,9 +87,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_teacher_profile'
 
     if ($updated !== false) {
         // Add a transient or query var to show success message — we'll set a simple flag
-        $save_message = 'Profile updated successfully.';
+        $save_message = isset($save_message) ? $save_message : 'Profile updated successfully.';
     } else {
-        $save_message = 'No changes saved.';
+        $save_message = isset($save_message) ? $save_message : 'No changes saved.';
     }
 }
 
@@ -131,12 +168,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_teacher_profile'
     }
 
     .profile-form input[type=text],
-    .profile-form textarea {
+    .profile-form textarea,
+    .profile-form input[type=file] {
         width: 100%;
         padding: 8px;
         border: 1px solid #ccc;
         border-radius: 4px;
         box-sizing: border-box
+    }
+
+    .image-preview {
+        margin-top: 10px;
+        max-width: 200px;
+        max-height: 200px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        display: none;
     }
 
     .field-row {
@@ -223,7 +270,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_teacher_profile'
                 <a href="#" id="editProfileBtn" class="btn">Edit profile</a>
             </div>
 
-            <form method="post" class="profile-form" id="teacherProfileForm">
+            <form method="post" enctype="multipart/form-data" class="profile-form" id="teacherProfileForm">
                 <?php wp_nonce_field('save_teacher_profile', 'teacher_profile_nonce'); ?>
                 <input type="hidden" name="save_teacher_profile" value="1">
 
@@ -258,8 +305,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_teacher_profile'
                 </div>
 
                 <div class="field-row">
-                    <label>Avatar image URL</label>
-                    <input type="text" name="teacherImg" value="<?php echo esc_attr($teacher->teacherImg); ?>">
+                    <label>Profile Image</label>
+                    <input type="file" name="teacherImg" accept="image/*" id="teacherImgInput">
+                    <small>Accepted formats: JPEG, PNG, GIF, WebP. Max size: 2MB</small>
+                    <div id="imagePreview" class="image-preview"></div>
+                    <?php if (!empty($teacher->teacherImg)): ?>
+                        <div style="margin-top: 5px;">
+                            <small>Current image: <a href="<?php echo esc_url($teacher->teacherImg); ?>" target="_blank">View</a></small>
+                        </div>
+                    <?php endif; ?>
                 </div>
 
                 <div style="margin-top:8px">
@@ -294,6 +348,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_teacher_profile'
             cancelBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 form.style.display = 'none';
+            });
+        }
+
+        // Image preview functionality
+        var imgInput = document.getElementById('teacherImgInput');
+        var imgPreview = document.getElementById('imagePreview');
+        if (imgInput && imgPreview) {
+            imgInput.addEventListener('change', function(e) {
+                var file = e.target.files[0];
+                if (file) {
+                    var reader = new FileReader();
+                    reader.onload = function(e) {
+                        imgPreview.innerHTML = '<img src="' + e.target.result + '" style="max-width: 100%; max-height: 200px;">';
+                        imgPreview.style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    imgPreview.style.display = 'none';
+                    imgPreview.innerHTML = '';
+                }
             });
         }
     })();

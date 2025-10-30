@@ -1,6 +1,6 @@
 <?php 
 /*
-** Template Name: 
+** Template Name: Admin ID card
 */
 	global $wpdb; global $s3sRedux;
 	$conStyle0 = '';
@@ -75,11 +75,10 @@
 						</div>.
 					</div>
 
-                    <?php if(current_user_can('administrator')) {?>
-    					<div class="col-md-12">
-    			  		    <button onclick="print('printArea')" class="pull-right btn btn-primary">Print</button>
-    					</div>
-                    <?php } ?>
+					<div class="col-md-12">
+			  		<button onclick="print('printArea')" class="pull-right btn btn-primary">Print</button>
+					</div>
+
 				  <div id="printArea" class="col-md-12 printBG" >
 
 
@@ -88,7 +87,7 @@
 								@page { size: auto  !important;  margin: 0px !important; } 
 					  		*{
 								  -webkit-print-color-adjust: exact !important;
-								  print-color-adjust: exact !important;
+								  print-color-adjust:exact !important;
 								  line-height: 1;
 					  		}
 					  	</style>
@@ -262,11 +261,11 @@
 		} 
  
 		if(isset($_GET['syear'])){ ?>  
-  <?php if(current_user_can('administrator')) {?>
+ 
 			<div class="col-md-12">
 	  		<button onclick="print('printArea')" class="pull-right btn btn-primary">Print</button>
 			</div>
- <?php }?>
+
 		  <div id="printArea" class="col-md-12 printBG">
 
 
@@ -404,186 +403,125 @@
 								  		
 		
 	                            
-	                            	<!-- This is extra design start  --> 	<?php }
-							else if( $_GET['design'] == 5){
+	                            	<!-- This is extra design start  --> 						  	
+								  	<?php
+								}
+								else if( $_GET['design'] == 5){
+									
 									?>
 								  <?php
-                                    $background_image_url = get_template_directory_uri() . '/img/id02.jpeg';
+                                    $background_image_url = get_template_directory_uri() . '/img/Studentid-design3.jpg';
                                   ?>
-								   <div style="width: 5.3cm;height: 8.7cm;background: blue;display: inline-block;margin: 5px;overflow: hidden;background-image: url('<?php echo $background_image_url; ?>');background-size: cover;background-position: center; position:relative;">
-                            <!-- <img width="40" src="<?= $s3sRedux['instLogo']['url'] ?>" style="border-radius: 25px; margin: 14px 0 0 15px;">-->
-							<!--<h3 style="margin: -3px 0 0 22px;font-size: 18px;font-weight: 750; color: #800000;letter-spacing: -.25px;"><?= $s3sRedux['institute_name'] ?></h3>-->
-										  <!--<p style="font-size: 12px; margin:3px 1px;color: white;"><?= $s3sRedux['institute_address'] ?></p>-->
+								   <div style="width: 5.3cm;height: 8.3cm;background: blue;display: inline-block;margin: 5px;overflow: hidden;background-image: url('<?php echo $background_image_url; ?>');background-size: cover;background-position: center; position:relative;">
+
+						        		 <!-- <h3 style="margin: 0;font-size: 18px;color:blue;font-weight: 800; margin:5px 5px 0px 5px; color: #FFFF00;letter-spacing: -.4px;"><?= $s3sRedux['institute_name'] ?></h3>--> 
+										 <!-- <p style="font-size: 12px; margin:3px 1px;color: white;"><?= $s3sRedux['institute_address'] ?></p> --> 
 										  <div class="text-center">
-								  				<img alt="Student_Image" width="110" height="105" style="border-radius:55px;margin: 65px 0px 0px 5px;" src="<?php echo ($value->stdImg != "") ? $value->stdImg : get_template_directory_uri()."/img/No_Image.jpg" ?>">
+								  				<img alt="Student_Image" width="90" height="95" style="border-radius:45px;margin: 65px 0px 0px 5px; border: 2px solid white;" src="<?php echo ($value->stdImg != "") ? $value->stdImg : get_template_directory_uri()."/img/No_Image.jpg" ?>">
 								  			</div>
-				        	<!--<p style="background: #ff7800;font-weight: bold; border-radius: 40px; margin-bottom: 0px; font-size:14px;margin: 5px -2px 0px 5px; color:#fff; 
-				        	 padding:inherit; margin-bottom:2px;min-height:28px;margin-left:-6px;display: flex;align-items: center;justify-content: center;  padding: 4px 4px; font-family: sans-serif;"><?= $value->stdName  ?></p>--> 
- 				  		  	
-						 <p style="font-weight: bold;border-radius: 0px;padding: 0 10px; font-size:13px; margin-bottom: 0px;margin-top: 6px; color:#800000; padding:inherit; margin-left:-6px;display: flex;align-items: center;justify-content: center;"><?= $value->stdName  ?></p>  
-									 <!-- This is student info details table start  --> 
-									  <table style="position:absolute; margin: 5px 0 0 15px; width:95%;font-size:12px;color:black;text-align:left;">
-										     	 <!--<tr>
-										          <td style="width:21%;"><b>DoB</b></td>
-										          <td>:  <?= date('d-m-Y', strtotime($value->stdBrith)) ?></td>
-										      </tr> --> 
-											 	 <!--<tr>
-										          <td style="width:21%;"><b>Name </b></td>
-										          <td style="font-size:10px;"> : <?= $value->stdName  ?></td>
-										      </tr> --> 						      
-										  <tr>
-										    <td style="width:21%;"><b>Father </b></td>
-										          <td style="font-size:11px;">:<?= $value->stdFather ?> </td>
-										      </tr>
-										      <!-- <tr>
-										          <td style="width:21%;"><b> Mother </b></td>
-										          <td style="font-size:10px;">:<?= $value->stdMother ?></td>
-										      </tr> --> 								      
-										      <tr>
-										          <td style="width:21%;"><b>Class </b></td>
-										          <td style="font-size:11px;"><b>: XI-XII  </b> </td>
-										      </tr>
-										      <tr>
-										          <td style="width:21%;"><b>Roll </b></td>
-										          <td style="font-size:11px;">:  <?= $value->infoRoll ?></td>
-										      </tr>
-									<tr>
-										      <td style="width:21%;"><b>Session </b></td>
-										          <td style="font-size:11px;">: 2024-2025 </td>
-										      </tr> 
-											    <tr> 
-										      <td style="width:31%;"><b>Group:</td> 
-										        <td><?= $value->groupName ?></b></td> 
-										       </tr> 								      
-									      <tr>
-										          <td style="width:21%;"><b>Phone</b></td>
-										          <td style="font-size:11px;">: <?= $value->stdPhone ?></td>
-										      </tr>
-										  </table>
-										  	 <!-- This is student info details table Closed  --> 
-                   <!-- <img align="Principal_Signature" style="display: block; position:absolute; margin: 75px 0 0 111px;" width="60" src="<?= $s3sRedux['principalSign']['url'] ?>">--> 
+										  
+							<p style="background: #003766;font-weight: bold; font-size: 13px;border-radius: 0px; padding: 3px 10px 3px 10px; margin-bottom: 2px; margin-top: 1px; color:#fff; margin-bottom:2px;min-height:30px;width:207px;margin-left:-6px;display: flex;align-items: center;justify-content: center;"><?= $value->stdName  ?></p>
+ 
+									<p style="<?= $conStyle ?> "><b>Father:</b> <?= $value->stdFather ?></p>
+								  		 <p style="<?= $conStyle ?>"><b>Mother:</b> <?= $value->stdMother ?></p> 
+											<p style="<?= $conStyle ?>"><b><?= $value->className ?></b><br> <b>Roll:</b> <?= $value->infoRoll ?></p>
+											<!--<p style="<?= $conStyle ?>"><b><?= $value->className ?></b> (<?= $value->sectionName ?>)</p>-->
+											<?php if($class == 40 || $class == 41){?>
+											<p style="<?= $conStyle ?>"><b>Group:</b> <?= $value->groupName ?></p>
+											<?php }?>
+											<p style="<?= $conStyle ?>"><b>Year:</b> <?= $value->infoYear ?></p>
+											<!--<p style="<?= $conStyle ?>"><b>Valid Up:</b> 30 JUN <?= substr($value->infoYear,0,4) +2?></p>-->
+								  			<!-- <p style="<?= $conStyle ?>"><b>Blood Group:</b> <?= $value->stdBldGrp ?></p>-->
+								  			<p style="<?= $conStyle ?>"><b>DOB: <?= date('d-m-Y', strtotime($value->stdBrith)) ?></b></p> 
+								  			<p style="<?= $conStyle ?>"><b>Phone: <?= $value->stdPhone ?></b></p> 
 								  	</div>
                             
 	                            
 	                            	<!-- This is extra design start  --> 						  	
-<?php }
-							else if( $_GET['design'] == 6){
+								  	<?php
+								}
+								else if( $_GET['design'] == 6){
+									
 									?>
 								  <?php
-                                    $background_image_url = get_template_directory_uri() . '/img/id01.jpeg';
+                                    $background_image_url = get_template_directory_uri() . '/img/student-id-design8.jpg';
                                   ?>
-								   <div style="width: 5.3cm;height: 8.7cm;background: blue;display: inline-block;margin: 5px;overflow: hidden;background-image: url('<?php echo $background_image_url; ?>');background-size: cover;background-position: center; position:relative;">
-                            <!-- <img width="40" src="<?= $s3sRedux['instLogo']['url'] ?>" style="border-radius: 25px; margin: 14px 0 0 15px;">-->
-							<!--<h3 style="margin: -3px 0 0 22px;font-size: 18px;font-weight: 750; color: #800000;letter-spacing: -.25px;"><?= $s3sRedux['institute_name'] ?></h3>-->
-										  <!--<p style="font-size: 12px; margin:3px 1px;color: white;"><?= $s3sRedux['institute_address'] ?></p>-->
+								   <div style="width: 5.3cm;height: 8.3cm;background: blue;display: inline-block;margin: 5px;overflow: hidden;background-image: url('<?php echo $background_image_url; ?>');background-size: cover;background-position: center; position:relative;">
+
+						        		 <!-- <h3 style="margin: 0;font-size: 18px;color:blue;font-weight: 800; margin:5px 5px 0px 5px; color: #FFFF00;letter-spacing: -.4px;"><?= $s3sRedux['institute_name'] ?></h3>--> 
+										 <!-- <p style="font-size: 12px; margin:3px 1px;color: white;"><?= $s3sRedux['institute_address'] ?></p> --> 
 										  <div class="text-center">
-								  				<img alt="Student_Image" width="110" height="105" style="border-radius:55px;margin: 65px 0px 0px 5px;" src="<?php echo ($value->stdImg != "") ? $value->stdImg : get_template_directory_uri()."/img/No_Image.jpg" ?>">
+								  				<img alt="Student_Image" width="90" height="95" style="border-radius:45px;margin: 65px 0px 0px 5px; border: 2px solid white;" src="<?php echo ($value->stdImg != "") ? $value->stdImg : get_template_directory_uri()."/img/No_Image.jpg" ?>">
 								  			</div>
-				        	<!--<p style="background: #ff7800;font-weight: bold; border-radius: 40px; margin-bottom: 0px; font-size:14px;margin: 5px -2px 0px 5px; color:#fff; 
-				        	 padding:inherit; margin-bottom:2px;min-height:28px;margin-left:-6px;display: flex;align-items: center;justify-content: center;  padding: 4px 4px; font-family: sans-serif;"><?= $value->stdName  ?></p>--> 
- 				  		  	
-						 <p style="font-weight: bold;border-radius: 0px;padding: 0 10px; font-size:13px; margin-bottom: 0px;margin-top: 6px; color:#800000; padding:inherit; margin-left:-6px;display: flex;align-items: center;justify-content: center;"><?= $value->stdName  ?></p>  
-									 <!-- This is student info details table start  --> 
-									  <table style="position:absolute; margin: 5px 0 0 15px; width:95%;font-size:12px;color:black;text-align:left;">
-										     	 <!--<tr>
-										          <td style="width:21%;"><b>DoB</b></td>
-										          <td>:  <?= date('d-m-Y', strtotime($value->stdBrith)) ?></td>
-										      </tr> --> 
-											 	 <!--<tr>
-										          <td style="width:21%;"><b>Name </b></td>
-										          <td style="font-size:10px;"> : <?= $value->stdName  ?></td>
-										      </tr> --> 						      
-										  <tr>
-										    <td style="width:19%;">Father</td>
-										          <td style="font-size:11px;"> : <?= $value->stdFather ?> </td>
-										      </tr>
-										      <!-- <tr>
-										          <td style="width:21%;"><b> Mother </b></td>
-										          <td style="font-size:10px;"> :<?= $value->stdMother ?></td>
-										      </tr> --> 								      
-										      <tr>
-										          <td style="width:19%;">Class </td>
-										          <td style="font-size:11px;"> : XI-XII </td>
-										      </tr>
-										      <tr>
-										          <td style="width:19%;">Roll </td>
-										          <td style="font-size:11px;"> :  <?= $value->infoRoll ?></td>
-										      </tr>
-									<tr>
-										      <td style="width:19%;">Session</td>
-										          <td style="font-size:11px;"> : 2024-2025 </td>
-										      </tr> 
-											    <tr> 
-											    <td style="width:19%;">Group</td> 
-											    <td> : <?= $value->groupName ?> </td> 
-										       </tr> 								      
-									      <tr>
-										          <td style="width:19%;">Phone</td>
-										          <td style="font-size:11px;"> : <?= $value->stdPhone ?></td>
-										      </tr>
-										  </table>
 										  
-										  	 <!-- This is student info details table Closed  --> 
-                   <!-- <img align="Principal_Signature" style="display: block; position:absolute; margin: 75px 0 0 111px;" width="60" src="<?= $s3sRedux['principalSign']['url'] ?>">--> 
+							<p style="background: #ADD8E6;font-weight: bold; border-radius: 0px; padding: 3px 10px 3px 10px; margin-bottom: 2px; margin-top: 1px; color:#800000; margin-bottom:2px;min-height:28px;width:207px;margin-left:-6px;display: flex;align-items: center;justify-content: center;"><?= $value->stdName  ?></p>
+ 
+									<p style="<?= $conStyle ?> "><b>Father:</b> <?= $value->stdFather ?></p>
+								  		 <p style="<?= $conStyle ?>"><b>Mother:</b> <?= $value->stdMother ?></p> 
+											<p style="<?= $conStyle ?>"><b><?= $value->className ?></b><br> <b>Roll: <?= $value->infoRoll ?></b></p>
+											<!--<p style="<?= $conStyle ?>"><b><?= $value->className ?></b> (<?= $value->sectionName ?>)</p>-->
+											<?php if($class == 40 || $class == 41){?>
+											<p style="<?= $conStyle ?>"><b>Group:</b> <?= $value->groupName ?></p>
+											<?php }?>
+											<p style="<?= $conStyle ?>"><b>Year:</b> <?= $value->infoYear ?></p>
+											<!--<p style="<?= $conStyle ?>"><b>Valid Up:</b> 30 JUN <?= substr($value->infoYear,0,4) +2?></p>-->
+								  			<!-- <p style="<?= $conStyle ?>"><b>Blood Group:</b> <?= $value->stdBldGrp ?></p>-->
+								  			<p style="<?= $conStyle ?>"><b>DOB: <?= date('d-m-Y', strtotime($value->stdBrith)) ?></b></p> 
+								  			<p style="<?= $conStyle ?>"><b>Phone: <?= $value->stdPhone ?></b></p> 
 								  	</div>
-                                           
+                            
                             <!-- This is extra design closed  5--> 	
                             <!-- This is extra design closed 6 --> 							  	
 								  	
-							<?php }
-							else if( $_GET['design'] == 4){
+							<?php }	else if( $_GET['design'] == 4){
 									?>
 								  <?php
-                                    $background_image_url = get_template_directory_uri() . '/img/id04.jpeg';
+                                    $background_image_url = get_template_directory_uri() . '/img/sujanagor-id-design-main-4.jfif';
                                   ?>
 								   <div style="width: 5.3cm;height: 8.7cm;background: blue;display: inline-block;margin: 5px;overflow: hidden;background-image: url('<?php echo $background_image_url; ?>');background-size: cover;background-position: center; position:relative;">
                             <!-- <img width="40" src="<?= $s3sRedux['instLogo']['url'] ?>" style="border-radius: 25px; margin: 14px 0 0 15px;">-->
 							<!--<h3 style="margin: -3px 0 0 22px;font-size: 18px;font-weight: 750; color: #800000;letter-spacing: -.25px;"><?= $s3sRedux['institute_name'] ?></h3>-->
 										  <!--<p style="font-size: 12px; margin:3px 1px;color: white;"><?= $s3sRedux['institute_address'] ?></p>-->
 										  <div class="text-center">
-								  				<img alt="Student_Image" width="110" height="105" style="border-radius:55px;margin: 65px 0px 0px 5px;" src="<?php echo ($value->stdImg != "") ? $value->stdImg : get_template_directory_uri()."/img/No_Image.jpg" ?>">
+								  				<img alt="Student_Image" width="80" height="85" style="border-radius:45px;margin: 45px 0px 0px 5px;" src="<?php echo ($value->stdImg != "") ? $value->stdImg : get_template_directory_uri()."/img/No_Image.jpg" ?>">
 								  			</div>
-				        	<!--<p style="background: #ff7800;font-weight: bold; border-radius: 40px; margin-bottom: 0px; font-size:14px;margin: 5px -2px 0px 5px; color:#fff; 
-				        	 padding:inherit; margin-bottom:2px;min-height:28px;margin-left:-6px;display: flex;align-items: center;justify-content: center;  padding: 4px 4px; font-family: sans-serif;"><?= $value->stdName  ?></p>--> 
+				 	<p style="background: #ff7800;font-weight: bold; border-radius: 40px; margin-bottom: 0px; font-size:14px;margin: 5px -2px 0px 5px; color:#fff; 
+					 padding:inherit; margin-bottom:2px;min-height:28px;margin-left:-6px;display: flex;align-items: center;justify-content: center;  padding: 4px 4px; font-family: sans-serif;"><?= $value->stdName  ?></p>
  				  		  	
-						 <p style="font-weight: bold;border-radius: 0px;padding: 0 10px; font-size:13px; margin-bottom: 0px;margin-top: 6px; color:#800000; padding:inherit; margin-left:-6px;display: flex;align-items: center;justify-content: center;"><?= $value->stdName  ?></p>  
+							<!-- <p style="font-weight: bold;border-radius: 0px;padding: 0 10px; font-size:13px; margin-bottom: 0px;margin-top: 6px; color:#800000; padding:inherit; margin-left:-6px;display: flex;align-items: center;justify-content: center;"><?= $value->stdName  ?></p> --> 
 									 <!-- This is student info details table start  --> 
 									  <table style="position:absolute; margin: 5px 0 0 15px; width:95%;font-size:12px;color:black;text-align:left;">
-										     	 <!--<tr>
+										     	<tr>
 										          <td style="width:21%;"><b>DoB</b></td>
 										          <td>:  <?= date('d-m-Y', strtotime($value->stdBrith)) ?></td>
-										      </tr> --> 
-											 	 <!--<tr>
-										          <td style="width:21%;"><b>Name </b></td>
-										          <td style="font-size:10px;"> : <?= $value->stdName  ?></td>
-										      </tr> --> 						      
-										  <tr>
-										    <td style="width:19%;">Father</td>
-										          <td style="font-size:11px;"> : <?= $value->stdFather ?> </td>
-										      </tr>
-										      <!-- <tr>
-										          <td style="width:21%;"><b> Mother </b></td>
-										          <td style="font-size:10px;"> :<?= $value->stdMother ?></td>
-										      </tr> --> 								      
-										      <tr>
-										          <td style="width:19%;">Class </td>
-										          <td style="font-size:11px;"> : XI-XII </td>
-										      </tr>
-										      <tr>
-										          <td style="width:19%;">Roll </td>
-										          <td style="font-size:11px;"> :  <?= $value->infoRoll ?></td>
-										      </tr>
-									<tr>
-										      <td style="width:19%;">Session</td>
-										          <td style="font-size:11px;"> : 2024-2025 </td>
 										      </tr> 
-											    <tr> 
-											    <td style="width:19%;">Group</td> 
-											    <td> : <?= $value->groupName ?> </td> 
-										       </tr> 								      
-									      <tr>
-										          <td style="width:19%;">Phone</td>
-										          <td style="font-size:11px;"> : <?= $value->stdPhone ?></td>
+											      <tr>
+										          <td style="width:21%;"><b>Father </b></td>
+										          <td style="font-size:10px;"> : <?= $value->stdFather ?> </td>
+										      </tr>
+										      <tr>
+										          <td style="width:21%;"><b> Mother </b></td>
+										          <td style="font-size:10px;">:  <?= $value->stdMother ?></td>
+										      </tr>								      
+										      <tr>
+										          <td style="width:21%;"><b>Class </b></td>
+										          <td>: <?= $value->className ?> (<?= $value->sectionName ?>)</td>
+										      </tr>
+										      <tr>
+										          <td style="width:21%;"><b>Roll </b></td>
+										          <td>: <?= $value->infoRoll ?></td>
+										      </tr>
+										      <tr>
+										          <td style="width:21%;"><b>Year </b></td>
+										          <td>: <?= $value->infoYear ?></td>
+										      </tr>
+										      <!--<tr>-->
+										      <!--    <td style="width:31%;"><b>Blood </b></td>-->
+										      <!--    <td><b>: <?= $value->stdBldGrp ?></b></td>-->
+										      <!--</tr>-->
+										      <tr>
+										          <td style="width:21%;"><b>Phone</b></td>
+										          <td>: <?= $value->stdPhone ?></td>
 										      </tr>
 										  </table>
 										  	 <!-- This is student info details table Closed  --> 

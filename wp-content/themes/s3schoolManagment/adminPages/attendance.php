@@ -4,6 +4,24 @@
 */
 global $wpdb,$s3sRedux;
 
+// Check if current user is a teacher and get their restrictions
+$current_user = wp_get_current_user();
+$isTeacher = (isset($current_user->roles[0]) && $current_user->roles[0] == 'um_teachers');
+$teacherRestrictions = null;
+
+if ($isTeacher) {
+    // Determine table name (try prefixed first, fallback to ct_teacher)
+    $prefixed = $wpdb->prefix . 'ct_teacher';
+    $exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $prefixed));
+    $table = ($exists === $prefixed) ? $prefixed : 'ct_teacher';
+    
+    $user_id = $current_user->ID;
+    $teacher = $wpdb->get_row($wpdb->prepare("SELECT teacherOfClass, teacherOfSection FROM $table WHERE tecUserId = %d", $user_id));
+    
+    if ($teacher && !empty($teacher->teacherOfClass) && !empty($teacher->teacherOfSection)) {
+        $teacherRestrictions = $teacher;
+    }
+}
 
 /*Add Atta*/
 if (isset($_POST['addAtta'])) {
@@ -115,7 +133,16 @@ if (isset($_POST['addAtta'])) {
 									<select id='resultClass' class="form-control" name="class" required>
 										<?php
 
-											$classQuery = $wpdb->get_results( "SELECT classid,className FROM ct_class WHERE classid IN (SELECT attClass FROM ct_attendance GROUP BY attClass) ORDER BY className ASC" );
+											// If teacher, only show their assigned class
+											if ($isTeacher && $teacherRestrictions) {
+												$classQuery = $wpdb->get_results( $wpdb->prepare(
+													"SELECT classid,className FROM ct_class WHERE classid = %d AND classid IN (SELECT attClass FROM ct_attendance GROUP BY attClass)",
+													$teacherRestrictions->teacherOfClass
+												));
+											} else {
+												$classQuery = $wpdb->get_results( "SELECT classid,className FROM ct_class WHERE classid IN (SELECT attClass FROM ct_attendance GROUP BY attClass) ORDER BY className ASC" );
+											}
+											
 											echo "<option value=''>Select Class</option>";
 
 											foreach ($classQuery as $class) {
@@ -269,7 +296,16 @@ if (isset($_POST['addAtta'])) {
 									<select id='resultClass' class="form-control" name="class" required>
 										<?php
 
-											$classQuery = $wpdb->get_results( "SELECT classid,className FROM ct_class WHERE classid IN (SELECT attClass FROM ct_attendance GROUP BY attClass) ORDER BY className ASC" );
+											// If teacher, only show their assigned class
+											if ($isTeacher && $teacherRestrictions) {
+												$classQuery = $wpdb->get_results( $wpdb->prepare(
+													"SELECT classid,className FROM ct_class WHERE classid = %d AND classid IN (SELECT attClass FROM ct_attendance GROUP BY attClass)",
+													$teacherRestrictions->teacherOfClass
+												));
+											} else {
+												$classQuery = $wpdb->get_results( "SELECT classid,className FROM ct_class WHERE classid IN (SELECT attClass FROM ct_attendance GROUP BY attClass) ORDER BY className ASC" );
+											}
+											
 											echo "<option value=''>Select Class</option>";
 
 											foreach ($classQuery as $class) {
@@ -456,7 +492,16 @@ if (isset($_POST['addAtta'])) {
 								<select id='resultClass' class="form-control" name="class" required>
 									<?php
 
-										$classQuery = $wpdb->get_results( "SELECT classid,className FROM ct_class WHERE classid IN (SELECT examClass FROM ct_exam GROUP BY examClass ORDER BY className ASC)" );
+										// If teacher, only show their assigned class
+										if ($isTeacher && $teacherRestrictions) {
+											$classQuery = $wpdb->get_results( $wpdb->prepare(
+												"SELECT classid,className FROM ct_class WHERE classid = %d AND classid IN (SELECT examClass FROM ct_exam GROUP BY examClass)",
+												$teacherRestrictions->teacherOfClass
+											));
+										} else {
+											$classQuery = $wpdb->get_results( "SELECT classid,className FROM ct_class WHERE classid IN (SELECT examClass FROM ct_exam GROUP BY examClass ORDER BY className ASC)" );
+										}
+										
 										echo "<option value=''>Select Class</option>";
 
 										foreach ($classQuery as $class) {

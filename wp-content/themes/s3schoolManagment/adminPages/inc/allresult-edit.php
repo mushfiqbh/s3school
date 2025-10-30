@@ -1,58 +1,48 @@
 <?php
 	global $s3sRedux;
-
-// Check if current user is a teacher and get their assignments
-$current_user = wp_get_current_user();
-$is_teacher = ($current_user->roles[0] == 'um_teachers');
-$teacher_assignments = null;
-
-if ($is_teacher) {
-    $teacher_record = $wpdb->get_row($wpdb->prepare("SELECT tecAssignSub, assignSection, teacherOfClass, teacherOfSection FROM ct_teacher WHERE tecUserId = %d", $current_user->ID));
-    if ($teacher_record) {
-        $assigned_subjects = json_decode($teacher_record->tecAssignSub, true);
-        $assigned_sections = json_decode($teacher_record->assignSection, true);
-        
-        // Get unique classes from assigned subjects
-        $assigned_classes = array();
-        if (!empty($assigned_subjects)) {
-            $subjects_data = $wpdb->get_results("SELECT DISTINCT subjectClass FROM ct_subject WHERE subjectid IN (" . implode(',', array_map('intval', $assigned_subjects)) . ")");
-            $assigned_classes = array_column($subjects_data, 'subjectClass');
-        }
-        
-        // Add class teacher assignments
-        if (!empty($teacher_record->teacherOfClass)) {
-            $assigned_classes[] = $teacher_record->teacherOfClass;
-        }
-        
-        $teacher_assignments = array(
-            'subjects' => $assigned_subjects ?: array(),
-            'sections' => $assigned_sections ?: array(),
-            'classes' => array_unique($assigned_classes) ?: array(),
-            'class_teacher_class' => $teacher_record->teacherOfClass,
-            'class_teacher_section' => $teacher_record->teacherOfSection
-        );
-    }
-}
 if (isset($_POST['updateAllResult'])) {
 	$cq = $_POST['CQ'];
 	$mcq = $_POST['MCQ'];
 	$prc = $_POST['P'];
 	$ca = $_POST['ca'];
 	$response = false;
+	
 	foreach ($_POST['id'] as $id) {
-		$update = $wpdb->update(
-		'ct_result',
-			array(
-				'resCQ' 		=> $cq[$id],
-				'resMCQ' 		=> $mcq[$id],
-				'resPrec' 	=> $prc[$id],
-				'resCa' 	=> $ca[$id],
-				'resTotal' 	=> isnum($cq[$id])+isnum($mcq[$id])+isnum($prc[$id])+isnum($ca[$id])
-			),
-			array( 'resultId' => $id)
-		);
-		if ($update) { $response = $update;	}
-	}
+        $cqVal   = trim($cq[$id]);
+        $mcqVal  = trim($mcq[$id]);
+        $prcVal  = trim($prc[$id]);
+        $caVal   = trim($ca[$id]);
+
+        $update = $wpdb->update(
+            'ct_result',
+            array(
+                'resCQ'     => $cqVal,
+                'resMCQ'    => $mcqVal,
+                'resPrec'   => $prcVal,
+                'resCa'     => $caVal,
+                'resTotal'  => isnum($cqVal) + isnum($mcqVal) + isnum($prcVal) + isnum($caVal)
+            ),
+            array('resultId' => $id)
+        );
+
+        if ($update) {
+            $response = $update;
+        }
+    }
+// 	foreach ($_POST['id'] as $id) {
+// 		$update = $wpdb->update(
+// 		'ct_result',
+// 			array(
+// 				'resCQ' 		=> $cq[$id],
+// 				'resMCQ' 		=> $mcq[$id],
+// 				'resPrec' 	=> $prc[$id],
+// 				'resCa' 	=> $ca[$id],
+// 				'resTotal' 	=> isnum($cq[$id])+isnum($mcq[$id])+isnum($prc[$id])+isnum($ca[$id])
+// 			),
+// 			array( 'resultId' => $id)
+// 		);
+// 		if ($update) { $response = $update;	}
+// 	}
 	if ($response) {
 		$message = array('status' => 'success', 'message' => 'Successfully updated' );
 	}else{
@@ -87,14 +77,6 @@ if (isset($_POST['updateAllResult'])) {
 					<?php
 
 						$classQuery = $wpdb->get_results( "SELECT classid,className FROM ct_class WHERE classid IN (SELECT examClass FROM ct_exam GROUP BY examClass ORDER BY className ASC)" );
-						
-						// Filter classes if user is a teacher
-						if ($is_teacher && !empty($teacher_assignments['classes'])) {
-							$classQuery = array_filter($classQuery, function($class) use ($teacher_assignments) {
-								return in_array($class->classid, $teacher_assignments['classes']);
-							});
-						}
-						
 						echo "<option value=''>Select Class</option>";
 
 						foreach ($classQuery as $class) {
@@ -175,7 +157,7 @@ if (isset($_POST['updateAllResult'])) {
 						$sec			= isset($_GET['sec']) ? $_GET['sec'] : '';
 						$subject  = $sub = $_GET['subject'];
 						$grou 	= $_GET['grou'];
-						$query = "SELECT stdName,infoRoll,resultId,subjectName,assessment,resMCQ,resCQ,resPrec,resCa,subCQ,subMCQ,subPect,subCa FROM `ct_result`
+						$query = "SELECT stdName,infoRoll,infoSection,resultId,subjectName,assessment,resMCQ,resCQ,resPrec,resCa,subCQ,subMCQ,subPect,subCa FROM `ct_result`
 							LEFT JOIN ct_student ON ct_student.studentid = ct_result.resStudentId
 							LEFT JOIN ct_studentinfo ON ct_studentinfo.infoStdid = ct_result.resStudentId
 							LEFT JOIN ct_subject ON ct_result.resSubject = ct_subject.subjectid
@@ -184,26 +166,18 @@ if (isset($_POST['updateAllResult'])) {
 						if ($grou != "") {
 													$query .= " AND infoGroup = $grou";
 												}
-						$query .= " Group By resStudentId";
+						$query .= " Group By resStudentId order by infoSection asc, infoRoll asc";
 
 						$results = $wpdb->get_results($query);
 
+						$restric = $wpdb->get_results("SELECT tecAssignSub FROM `ct_teacher` WHERE tecUserId = ".get_current_user_id());
 						$canAdd = true;
 						if (isset($user) && !in_array( 'editor', (array) $user->roles ) && !in_array( 'administrator', (array) $user->roles ) ) {
-							$teacher_record = $wpdb->get_row($wpdb->prepare("SELECT tecAssignSub, teacherOfClass FROM ct_teacher WHERE tecUserId = %d", get_current_user_id()));
+							$restric = $wpdb->get_results("SELECT tecAssignSub FROM `ct_teacher` WHERE tecUserId = ".get_current_user_id());
 
-							if ($teacher_record) {
-								$assigned_subjects = json_decode($teacher_record->tecAssignSub, true) ?: array();
-								
-								// Check if subject is directly assigned
-								$has_subject_access = in_array($sub, $assigned_subjects);
-								
-								// Check if teacher is class teacher for this subject's class
-								$subject_class = $wpdb->get_var($wpdb->prepare("SELECT subjectClass FROM ct_subject WHERE subjectid = %d", $sub));
-								$has_class_teacher_access = (!empty($teacher_record->teacherOfClass) && $teacher_record->teacherOfClass == $subject_class);
-								
-								// Allow access if either condition is true
-								if (!$has_subject_access && !$has_class_teacher_access) {
+							if (sizeof($restric) > 0) {
+								$restric = json_decode($restric[0]->tecAssignSub);
+								if (!in_array($sub, $restric)) {
 									$canAdd = false;
 								}
 							}
@@ -212,10 +186,10 @@ if (isset($_POST['updateAllResult'])) {
 							if($results){
 								?>
 
-								<input type="hidden" name="subCQ" value="<?= $result->subCQ ?>">
-								<input type="hidden" name="subMCQ" value="<?= $result->subMCQ ?>">
-								<input type="hidden" name="subPect" value="<?= $result->subPect ?>">
-								<input type="hidden" name="subCa" value="<?= $result->subCa ?>">
+								<input type="hidden" name="subCQ" value="<?= @$result->subCQ ?>">
+								<input type="hidden" name="subMCQ" value="<?= @$result->subMCQ ?>">
+								<input type="hidden" name="subPect" value="<?= @$result->subPect ?>">
+								<input type="hidden" name="subCa" value="<?=@ $result->subCa ?>">
 								<table class="table table-bordered table-striped">
 									<tbody>
 										<tr>

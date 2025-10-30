@@ -156,38 +156,6 @@ $haveAccess = $isClassTeacher;
                 </div>
               <?php } ?>
 
-              <?php if ($haveAccess || $acgpaGenarate) { ?>
-                <div class="col-md-3 col-sm-4">
-                  <a class="managmentItem" href="<?= home_url('cgpa-genarate'); ?>">
-                    <div class="media">
-                      <div class="media-left">
-                        <span class="dashicons dashicons-networking"></span>
-                      </div>
-                      <div class="media-body">
-                        <h3 class="media-heading">CGPA Genarate</h3>
-                        <hr>
-                      </div>
-                    </div>
-                  </a>
-                </div>
-              <?php } ?>
-
-              <?php if ($haveAccess || $aprogressReport) { ?>
-                <div class="col-md-3 col-sm-4">
-                  <a class="managmentItem" href="<?= home_url('progress-report'); ?>">
-                    <div class="media">
-                      <div class="media-left">
-                        <span class="dashicons dashicons-networking"></span>
-                      </div>
-                      <div class="media-body">
-                        <h3 class="media-heading">Progress Report</h3>
-                        <hr>
-                      </div>
-                    </div>
-                  </a>
-                </div>
-              <?php } ?>
-
               <?php if ($haveAccess || $ameritlist) { ?>
                 <div class="col-md-3 col-sm-4">
                   <a class="managmentItem" href="<?= home_url('admin-meritlist'); ?>">
@@ -251,6 +219,102 @@ $haveAccess = $isClassTeacher;
                   </a>
                 </div>
               <?php } ?>
+
+              <?php if ($haveAccess || $acgpaGenarate) { ?>
+                <div class="col-md-3 col-sm-4">
+                  <a class="managmentItem" href="<?= home_url('cgpa-genarate'); ?>">
+                    <div class="media">
+                      <div class="media-left">
+                        <span class="dashicons dashicons-networking"></span>
+                      </div>
+                      <div class="media-body">
+                        <h3 class="media-heading">CGPA Genarate</h3>
+                        <hr>
+                      </div>
+                    </div>
+                  </a>
+                </div>
+              <?php } ?>
+
+              <?php if ($haveAccess || $aprogressReport) { ?>
+                <div class="col-md-3 col-sm-4">
+                  <a class="managmentItem" href="<?= home_url('progress-report'); ?>">
+                    <div class="media">
+                      <div class="media-left">
+                        <span class="dashicons dashicons-networking"></span>
+                      </div>
+                      <div class="media-body">
+                        <h3 class="media-heading">Progress Report</h3>
+                        <hr>
+                      </div>
+                    </div>
+                  </a>
+                </div>
+              <?php } ?>              
+
+              <?php if ($haveAccess || $apromotion) { ?>
+								<div class="col-md-3 col-sm-4">
+									<a class="managmentItem" href="<?= home_url('admin-promotion'); ?>">
+										<div class="media">
+											<div class="media-left">
+												<span class="dashicons dashicons-networking"></span>
+											</div>
+											<div class="media-body">
+												<h3 class="media-heading">Promotion</h3>
+												<hr>
+											</div>
+										</div>
+									</a>
+								</div>
+							<?php } ?>
+
+							<?php if ($haveAccess || $apromotion) { ?>
+								<div class="col-md-3 col-sm-4">
+									<a class="managmentItem" href="<?= home_url('auto-promotion'); ?>">
+										<div class="media">
+											<div class="media-left">
+												<span class="dashicons dashicons-networking"></span>
+											</div>
+											<div class="media-body">
+												<h3 class="media-heading">Auto Promotion</h3>
+												<hr>
+											</div>
+										</div>
+									</a>
+								</div>
+							<?php } ?>
+
+							<?php if ($haveAccess || $acgpapromotion) { ?>
+								<div class="col-md-3 col-sm-4">
+									<a class="managmentItem" href="<?= home_url('cgpa-promotion'); ?>">
+										<div class="media">
+											<div class="media-left">
+												<span class="dashicons dashicons-networking"></span>
+											</div>
+											<div class="media-body">
+												<h3 class="media-heading">CGPA Promotion</h3>
+												<hr>
+											</div>
+										</div>
+									</a>
+								</div>
+							<?php } ?>
+
+							<?php if ($haveAccess || $apromotion) { ?>
+								<div class="col-md-3 col-sm-4">
+									<a class="managmentItem" href="<?= home_url('demotion'); ?>">
+										<div class="media">
+											<div class="media-left">
+												<span class="dashicons dashicons-networking"></span>
+											</div>
+											<div class="media-body">
+												<h3 class="media-heading">Demotion</h3>
+												<hr>
+											</div>
+										</div>
+									</a>
+								</div>
+							<?php } ?>
             </div>
           </div>
         </div>

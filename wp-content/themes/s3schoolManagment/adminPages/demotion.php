@@ -3,6 +3,34 @@
 ** Template Name: Admin Demotion
 */ 
  global $wpdb; global $s3sRedux; 
+
+// Check if current user is a teacher and get their restrictions
+$current_user = wp_get_current_user();
+$isTeacher = (isset($current_user->roles[0]) && $current_user->roles[0] == 'um_teachers');
+$teacherRestrictions = null;
+
+if ($isTeacher) {
+    global $wpdb;
+    // Determine table name (try prefixed first, fallback to ct_teacher)
+    $prefixed = $wpdb->prefix . 'ct_teacher';
+    $exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $prefixed));
+    $table = ($exists === $prefixed) ? $prefixed : 'ct_teacher';
+    
+    $user_id = $current_user->ID;
+    $teacher = $wpdb->get_row($wpdb->prepare("SELECT teacherOfClass, teacherOfSection FROM $table WHERE tecUserId = %d", $user_id));
+    
+    if ($teacher && !empty($teacher->teacherOfClass) && !empty($teacher->teacherOfSection)) {
+        $teacherRestrictions = $teacher;
+    }
+}
+
+// Extract teacher restrictions for use in queries
+$teacherOfClass = '';
+$teacherOfSection = '';
+if ($teacherRestrictions) {
+    $teacherOfClass = $teacherRestrictions->teacherOfClass;
+    $teacherOfSection = $teacherRestrictions->teacherOfSection;
+}
 	
 
 if (isset($_POST['demotStu'])) {
@@ -87,8 +115,11 @@ if (isset($_POST['demotStu'])) {
 							<label>Class</label>
 							<select id='resultClass' class="form-control" name="class" required>
 								<?php
-
-									$classQuery = $wpdb->get_results( "SELECT classid,className FROM ct_class WHERE classid IN (SELECT stdCurrentClass FROM ct_student GROUP BY stdCurrentClass ORDER BY className ASC)" );
+									if ($isTeacher) {
+										$classQuery = $wpdb->get_results( $wpdb->prepare( "SELECT classid,className FROM ct_class WHERE classid IN (SELECT stdCurrentClass FROM ct_student GROUP BY stdCurrentClass ORDER BY className ASC) AND classid IN ($teacherOfClass)", null ) );
+									} else {
+										$classQuery = $wpdb->get_results( "SELECT classid,className FROM ct_class WHERE classid IN (SELECT stdCurrentClass FROM ct_student GROUP BY stdCurrentClass ORDER BY className ASC)" );
+									}
 									echo "<option value=''>Select Class</option>";
 
 									foreach ($classQuery as $class) {
