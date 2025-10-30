@@ -1,0 +1,47 @@
+---
+deployment:
+  tasks:
+    - export DEPLOY_PATH=/home/${USER}/public_html
+    - export BACKUP_DIR=/home/${USER}/uploads_backup
+
+    # 1️⃣ Create backup directory if missing
+    - /bin/mkdir -p $BACKUP_DIR
+
+    # 2️⃣ If uploads exists, back it up (compressed)
+    - |
+      if [ -d "$DEPLOY_PATH/wp-content/uploads" ]; then
+        echo "Backing up existing uploads..."
+        /bin/tar -czf $BACKUP_DIR/uploads-$(date +%F-%H%M%S).tar.gz -C $DEPLOY_PATH/wp-content uploads
+      else
+        echo "No existing uploads directory found. Skipping backup."
+      fi
+
+    # 3️⃣ Run cPanel’s default deployment (syncs repo)
+    - /bin/echo "Deploying repository contents to $DEPLOY_PATH..."
+    - /bin/rsync -a --delete ./ $DEPLOY_PATH/
+
+    # 4️⃣ Restore uploads backup (extract to same path)
+    - |
+      LATEST_BACKUP=$(ls -t $BACKUP_DIR/uploads-*.tar.gz 2>/dev/null | head -n 1)
+      if [ -n "$LATEST_BACKUP" ]; then
+        echo "Restoring uploads from backup: $LATEST_BACKUP"
+        /bin/tar -xzf "$LATEST_BACKUP" -C $DEPLOY_PATH/wp-content/
+      else
+        echo "No uploads backup found to restore."
+      fi
+
+    # 5️⃣ Clean up old backups (keep only latest)
+    - |
+      echo "Cleaning up old uploads backups..."
+      LATEST_BACKUP=$(ls -t $BACKUP_DIR/uploads-*.tar.gz 2>/dev/null | head -n 1)
+      if [ -n "$LATEST_BACKUP" ]; then
+        # Delete all backups except the latest one
+        /bin/find $BACKUP_DIR -name "uploads-*.tar.gz" ! -name "$(basename "$LATEST_BACKUP")" -type f -delete
+        echo "Kept latest backup: $(basename "$LATEST_BACKUP")"
+      fi
+
+    # 6️⃣ Fix permissions (optional but good practice)
+    - /bin/find $DEPLOY_PATH -type d -exec chmod 755 {} \;
+    - /bin/find $DEPLOY_PATH -type f -exec chmod 644 {} \;
+
+    - /bin/echo "✅ Deployment complete with uploads preserved and old backups cleaned."

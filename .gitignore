@@ -1,4 +1,3 @@
 wp-content/uploads
 wp-config.php
 .htaccess
-DATABASE_PATCH.sql
