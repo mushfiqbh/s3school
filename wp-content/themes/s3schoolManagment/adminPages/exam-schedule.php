@@ -1,6 +1,6 @@
 <?php
 /**
- * Template Name: Admin Exam Schedule
+ * Template Name: Admin ExamSchedule
 */
 get_header();
 

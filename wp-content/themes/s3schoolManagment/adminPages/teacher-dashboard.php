@@ -25,7 +25,6 @@ $teacher = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE tecUserId =
 
 // Check if the teacher is assigned as a class teacher
 $isClassTeacher = (!empty($teacher->teacherOfClass) && !empty($teacher->teacherOfSection));
-$haveAccess = $isClassTeacher;
 
 
 ?>
@@ -44,7 +43,7 @@ $haveAccess = $isClassTeacher;
           <div class="panel-body">
             <div class="row">
 
-              <?php if ($haveAccess || $astudent) { ?>
+              <?php if ($isClassTeacher) { ?>
                 <div class="col-md-3 col-sm-4">
                   <a class="managmentItem" href="<?= home_url('admin-student'); ?>">
                     <div class="media">
@@ -60,7 +59,7 @@ $haveAccess = $isClassTeacher;
                 </div>
               <?php } ?>
 
-              <?php if ($haveAccess || $aattendance) { ?>
+              <?php if ($isClassTeacher) { ?>
                 <div class="col-md-3 col-sm-4">
                   <a class="managmentItem" href="<?= home_url('admin-attendance'); ?>">
                     <div class="media">
@@ -76,7 +75,7 @@ $haveAccess = $isClassTeacher;
                 </div>
               <?php } ?>
 
-              <?php if ($haveAccess || $aadmit) { ?>
+              <?php if ($isClassTeacher) { ?>
                 <div class="col-md-3 col-sm-4">
                   <a class="managmentItem" href="<?= home_url('admin-admitcard'); ?>">
                     <div class="media">
@@ -92,7 +91,7 @@ $haveAccess = $isClassTeacher;
                 </div>
               <?php } ?>
 
-              <?php if ($haveAccess || $aseat) { ?>
+              <?php if ($isClassTeacher) { ?>
                 <div class="col-md-3 col-sm-4">
                   <a class="managmentItem" href="<?= home_url('admin-seatcard'); ?>">
                     <div class="media">
@@ -108,7 +107,7 @@ $haveAccess = $isClassTeacher;
                 </div>
               <?php } ?>
 
-              <?php if ($aresult) { ?>
+              <?php if (true) { ?>
                 <div class="col-md-3 col-sm-4">
                   <a class="managmentItem" href="<?= home_url('admin-result'); ?>">
                     <div class="media">
@@ -116,7 +115,7 @@ $haveAccess = $isClassTeacher;
                         <span class="dashicons dashicons-networking"></span>
                       </div>
                       <div class="media-body">
-                        <h3 class="media-heading">Result Entry</h3>
+                        <h3 class="media-heading">Marks Entry</h3>
                         <hr>
                       </div>
                     </div>
@@ -124,7 +123,7 @@ $haveAccess = $isClassTeacher;
                 </div>
               <?php } ?>
 
-              <?php if ($haveAccess || $aresultpublis) { ?>
+              <?php if ($isClassTeacher) { ?>
                 <div class="col-md-3 col-sm-4">
                   <a class="managmentItem" href="<?= home_url('admin-resultpublish'); ?>">
                     <div class="media">
@@ -140,7 +139,7 @@ $haveAccess = $isClassTeacher;
                 </div>
               <?php } ?>
 
-              <?php if ($haveAccess || $aresultsummery) { ?>
+              <?php if ($isClassTeacher) { ?>
                 <div class="col-md-3 col-sm-4">
                   <a class="managmentItem" href="<?= home_url('result-summery'); ?>">
                     <div class="media">
@@ -156,7 +155,7 @@ $haveAccess = $isClassTeacher;
                 </div>
               <?php } ?>
 
-              <?php if ($haveAccess || $ameritlist) { ?>
+              <?php if ($isClassTeacher) { ?>
                 <div class="col-md-3 col-sm-4">
                   <a class="managmentItem" href="<?= home_url('admin-meritlist'); ?>">
                     <div class="media">
@@ -172,7 +171,7 @@ $haveAccess = $isClassTeacher;
                 </div>
               <?php } ?>
 
-              <?php if ($haveAccess || $afaillist) { ?>
+              <?php if ($isClassTeacher) { ?>
                 <div class="col-md-3 col-sm-4">
                   <a class="managmentItem" href="<?= home_url('admin-faillist'); ?>">
                     <div class="media">
@@ -188,7 +187,7 @@ $haveAccess = $isClassTeacher;
                 </div>
               <?php } ?>
 
-              <?php if ($haveAccess || $atabulation1) { ?>
+              <?php if ($isClassTeacher) { ?>
                 <div class="col-md-3 col-sm-4">
                   <a class="managmentItem" href="<?= home_url('admin-tabulation'); ?>">
                     <div class="media">
@@ -204,7 +203,7 @@ $haveAccess = $isClassTeacher;
                 </div>
               <?php } ?>
 
-              <?php if ($haveAccess || $allmarksheet) { ?>
+              <?php if ($isClassTeacher) { ?>
                 <div class="col-md-3 col-sm-4">
                   <a class="managmentItem" href="<?= home_url('all-marksheet'); ?>">
                     <div class="media">
@@ -220,7 +219,7 @@ $haveAccess = $isClassTeacher;
                 </div>
               <?php } ?>
 
-              <?php if ($haveAccess || $acgpaGenarate) { ?>
+              <?php if ($isClassTeacher) { ?>
                 <div class="col-md-3 col-sm-4">
                   <a class="managmentItem" href="<?= home_url('cgpa-genarate'); ?>">
                     <div class="media">
@@ -236,7 +235,7 @@ $haveAccess = $isClassTeacher;
                 </div>
               <?php } ?>
 
-              <?php if ($haveAccess || $aprogressReport) { ?>
+              <?php if ($isClassTeacher) { ?>
                 <div class="col-md-3 col-sm-4">
                   <a class="managmentItem" href="<?= home_url('progress-report'); ?>">
                     <div class="media">
@@ -252,7 +251,7 @@ $haveAccess = $isClassTeacher;
                 </div>
               <?php } ?>              
 
-              <?php if ($haveAccess || $apromotion) { ?>
+              <?php if ($isClassTeacher) { ?>
 								<div class="col-md-3 col-sm-4">
 									<a class="managmentItem" href="<?= home_url('admin-promotion'); ?>">
 										<div class="media">
@@ -268,7 +267,7 @@ $haveAccess = $isClassTeacher;
 								</div>
 							<?php } ?>
 
-							<?php if ($haveAccess || $apromotion) { ?>
+							<?php if ($isClassTeacher) { ?>
 								<div class="col-md-3 col-sm-4">
 									<a class="managmentItem" href="<?= home_url('auto-promotion'); ?>">
 										<div class="media">
@@ -284,7 +283,7 @@ $haveAccess = $isClassTeacher;
 								</div>
 							<?php } ?>
 
-							<?php if ($haveAccess || $acgpapromotion) { ?>
+							<?php if ($isClassTeacher) { ?>
 								<div class="col-md-3 col-sm-4">
 									<a class="managmentItem" href="<?= home_url('cgpa-promotion'); ?>">
 										<div class="media">
@@ -300,7 +299,7 @@ $haveAccess = $isClassTeacher;
 								</div>
 							<?php } ?>
 
-							<?php if ($haveAccess || $apromotion) { ?>
+							<?php if ($isClassTeacher) { ?>
 								<div class="col-md-3 col-sm-4">
 									<a class="managmentItem" href="<?= home_url('demotion'); ?>">
 										<div class="media">

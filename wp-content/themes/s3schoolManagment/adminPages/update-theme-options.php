@@ -617,14 +617,14 @@ if (wp_get_current_user()->roles[0] == 'um_headmaster' || current_user_can('admi
     if (isset($_POST['action']) && $_POST['action'] === 'get_class_students_from_db') {
         global $wpdb;
 
-        // Query to get student counts per class from ct_class and ct_studentInfo tables
+        // Query to get student counts per class from ct_class and ct_studentinfo tables
         $query = "SELECT 
             c.classid,
             c.className,
             c.classOrder,
             COUNT(s.infoStdid) AS totalStudents
         FROM ct_class c
-        LEFT JOIN ct_studentInfo s 
+        LEFT JOIN ct_studentinfo s 
             ON s.infoClass = c.classid
         GROUP BY c.classid, c.className, c.classOrder
         ORDER BY c.classOrder ASC, c.className ASC";
@@ -1169,16 +1169,36 @@ if (wp_get_current_user()->roles[0] == 'um_headmaster' || current_user_can('admi
                         ) {
                             header('Content-Type: application/json');
                             $image_url = esc_url_raw($_POST['image_url']);
+                            
+                            // Server-side file size validation (300KB limit)
+                            $max_size = 300 * 1024; // 300KB in bytes
+                            $image_id = isset($_POST['image_id']) ? intval($_POST['image_id']) : 0;
+                            
+                            if ($image_id) {
+                                $file_path = get_attached_file($image_id);
+                                if ($file_path && file_exists($file_path)) {
+                                    $file_size = filesize($file_path);
+                                    if ($file_size > $max_size) {
+                                        echo json_encode([
+                                            'success' => false, 
+                                            'message' => 'Image size exceeds 300KB limit. Current size: ' . round($file_size / 1024, 2) . 'KB'
+                                        ]);
+                                        exit;
+                                    }
+                                }
+                            }
+                            
                             $saved = $wpdb->insert($table_name, [
                                 'image_url' => $image_url,
                                 'created_at' => current_time('mysql'),
                             ], ['%s', '%s']);
 
                             if ($saved) {
-                                return json_encode(['success' => true, 'message' => 'Image saved successfully!']);
+                                echo json_encode(['success' => true, 'message' => 'Image saved successfully!']);
                             } else {
-                                return json_encode(['success' => false, 'message' => 'Database insert failed.']);
+                                echo json_encode(['success' => false, 'message' => 'Database insert failed.']);
                             }
+                            exit;
                         }
 
                         if (
@@ -1191,16 +1211,17 @@ if (wp_get_current_user()->roles[0] == 'um_headmaster' || current_user_can('admi
                             $id = intval($_POST['id']);
                             $wpdb->delete($table_name, ['id' => $id]);
                             return json_encode(['success' => true, 'message' => 'Image deleted.']);
-                            exit;
                         }
 
                         ?>
 
                         <div class="wrap">
                             <h2>Upload Slider Image</h2>
+                            <p class="description" style="color: #d63638; font-weight: 600;">⚠️ Maximum file size: 300KB</p>
                             <button type="button" id="upload_slider_image_button">Upload Image</button>
                             <input type="hidden" id="slider_image_url" name="slider_image_url" value="">
                             <div id="slider_image_preview" style="margin-top: 10px;"></div>
+                            <div id="slider_upload_error" style="margin-top: 10px; color: #d63638; font-weight: 600; display: none;"></div>
 
                             <hr style="margin: 30px 0;">
 
@@ -1237,9 +1258,25 @@ if (wp_get_current_user()->roles[0] == 'um_headmaster' || current_user_can('admi
                                     frame.on('select', function() {
                                         let attachment = frame.state().get('selection').first().toJSON();
                                         let imageUrl = attachment.url;
+                                        let imageId = attachment.id;
+                                        let fileSize = attachment.filesizeInBytes || 0;
+                                        
+                                        // Client-side validation: 300KB limit
+                                        const maxSize = 300 * 1024; // 300KB in bytes
+                                        
+                                        $('#slider_upload_error').hide().text('');
+                                        
+                                        if (fileSize > maxSize) {
+                                            let sizeInKB = Math.round(fileSize / 1024);
+                                            let errorMsg = '❌ Image size (' + sizeInKB + 'KB) exceeds the 300KB limit. Please choose a smaller image.';
+                                            $('#slider_upload_error').text(errorMsg).show();
+                                            $('#slider_image_preview').html('');
+                                            return;
+                                        }
 
                                         $('#slider_image_url').val(imageUrl);
-                                        $('#slider_image_preview').html('<img src="' + imageUrl + '" style="max-width:200px;">');
+                                        let sizeInKB = Math.round(fileSize / 1024);
+                                        $('#slider_image_preview').html('<img src="' + imageUrl + '" style="max-width:200px;"><p style="color: #2271b1; margin-top: 5px;">✓ Size: ' + sizeInKB + 'KB (Valid)</p>');
 
                                         $.ajax({
                                             url: window.location.href,
@@ -1247,15 +1284,23 @@ if (wp_get_current_user()->roles[0] == 'um_headmaster' || current_user_can('admi
                                             dataType: 'json',
                                             data: {
                                                 action: 'save_slider_image',
-                                                image_url: imageUrl
+                                                image_url: imageUrl,
+                                                image_id: imageId
                                             },
                                             success: function(res) {
-                                                // alert(res.message);
-                                                location.reload(); // Refresh to show new image
+                                                if (res.success) {
+                                                    location.reload(); // Refresh to show new image
+                                                } else {
+                                                    $('#slider_upload_error').text('❌ ' + res.message).show();
+                                                    $('#slider_image_preview').html('');
+                                                }
                                             },
-                                            error: function() {
-                                                // alert('Updated.');
-                                                location.reload();
+                                            error: function(xhr) {
+                                                let errorMsg = 'Upload failed. Please try again.';
+                                                if (xhr.responseJSON && xhr.responseJSON.message) {
+                                                    errorMsg = xhr.responseJSON.message;
+                                                }
+                                                $('#slider_upload_error').text('❌ ' + errorMsg).show();
                                             }
                                         });
                                     });

@@ -42,7 +42,9 @@
 
 
     var media_uploader = '';
-    var MAX_UPLOAD_FILE_SIZE_BYTES = 60 * 1024; // Enforce 60 KB limit for uploaded images
+    var DEFAULT_MAX_SIZE = 60 * 1024; // Default 60 KB limit for uploaded images
+    var GALLERY_MAX_SIZE = 150 * 1024; // 150 KB limit for gallery images
+    
     $('.mediaUploader').click(function(event) {
       var $this = $(this);
       media_uploader = wp.media({
@@ -78,8 +80,24 @@
           }
         }
 
-        if(mimeType.indexOf('image/') === 0 && fileSize > MAX_UPLOAD_FILE_SIZE_BYTES){
-          alert('Please select an image that is 60 KB or smaller.');
+        // Determine max size based on selected category
+        var maxSize = DEFAULT_MAX_SIZE;
+        var sizeLimitText = '60 KB';
+        var isGalleryCategory = false;
+        
+        // Check if this is from add-post page and if gallery category is selected
+        if ($('#pcat').length > 0) {
+          var selectedCategoryText = $('#pcat option:selected').text().toLowerCase();
+          if (selectedCategoryText.indexOf('gallery') !== -1) {
+            isGalleryCategory = true;
+            maxSize = GALLERY_MAX_SIZE;
+            sizeLimitText = '150 KB';
+          }
+        }
+        
+        if(mimeType.indexOf('image/') === 0 && fileSize > maxSize){
+          var fileSizeKB = Math.round(fileSize / 1024);
+          alert('Image size (' + fileSizeKB + ' KB) exceeds the ' + sizeLimitText + ' limit for ' + (isGalleryCategory ? 'gallery' : 'regular') + ' posts. Please select a smaller image.');
           media_uploader.open();
           return;
         }

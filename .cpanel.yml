@@ -2,12 +2,30 @@
 deployment:
   tasks:
     - export DEPLOY_PATH=/home/${USER}/public_html
-    - export BACKUP_DIR=/home/${USER}/uploads_backup
+    - export BACKUP_DIR=/home/${USER}/deployment_backup
 
     # 1️⃣ Create backup directory if missing
     - /bin/mkdir -p $BACKUP_DIR
 
-    # 2️⃣ If uploads exists, back it up (compressed)
+    # 2️⃣ Backup .htaccess if exists
+    - |
+      if [ -f "$DEPLOY_PATH/.htaccess" ]; then
+        echo "Backing up existing .htaccess..."
+        /bin/cp $DEPLOY_PATH/.htaccess $BACKUP_DIR/.htaccess-$(date +%F-%H%M%S)
+      else
+        echo "No existing .htaccess found. Skipping backup."
+      fi
+
+    # 3️⃣ Backup wp-config.php if exists
+    - |
+      if [ -f "$DEPLOY_PATH/wp-config.php" ]; then
+        echo "Backing up existing wp-config.php..."
+        /bin/cp $DEPLOY_PATH/wp-config.php $BACKUP_DIR/wp-config.php-$(date +%F-%H%M%S)
+      else
+        echo "No existing wp-config.php found. Skipping backup."
+      fi
+
+    # 4️⃣ If uploads exists, back it up (compressed)
     - |
       if [ -d "$DEPLOY_PATH/wp-content/uploads" ]; then
         echo "Backing up existing uploads..."
@@ -16,11 +34,31 @@ deployment:
         echo "No existing uploads directory found. Skipping backup."
       fi
 
-    # 3️⃣ Run cPanel’s default deployment (syncs repo)
+    # 5️⃣ Run cPanel’s default deployment (syncs repo)
     - /bin/echo "Deploying repository contents to $DEPLOY_PATH..."
     - /bin/rsync -a --delete ./ $DEPLOY_PATH/
 
-    # 4️⃣ Restore uploads backup (extract to same path)
+    # 6️⃣ Restore .htaccess backup
+    - |
+      LATEST_HTACCESS=$(ls -t $BACKUP_DIR/.htaccess-* 2>/dev/null | head -n 1)
+      if [ -n "$LATEST_HTACCESS" ]; then
+        echo "Restoring .htaccess from backup: $LATEST_HTACCESS"
+        /bin/cp "$LATEST_HTACCESS" $DEPLOY_PATH/.htaccess
+      else
+        echo "No .htaccess backup found to restore."
+      fi
+
+    # 7️⃣ Restore wp-config.php backup
+    - |
+      LATEST_CONFIG=$(ls -t $BACKUP_DIR/wp-config.php-* 2>/dev/null | head -n 1)
+      if [ -n "$LATEST_CONFIG" ]; then
+        echo "Restoring wp-config.php from backup: $LATEST_CONFIG"
+        /bin/cp "$LATEST_CONFIG" $DEPLOY_PATH/wp-config.php
+      else
+        echo "No wp-config.php backup found to restore."
+      fi
+
+    # 8️⃣ Restore uploads backup (extract to same path)
     - |
       LATEST_BACKUP=$(ls -t $BACKUP_DIR/uploads-*.tar.gz 2>/dev/null | head -n 1)
       if [ -n "$LATEST_BACKUP" ]; then
@@ -30,18 +68,30 @@ deployment:
         echo "No uploads backup found to restore."
       fi
 
-    # 5️⃣ Clean up old backups (keep only latest)
+    # 9️⃣ Clean up old backups (keep only latest for each type)
     - |
-      echo "Cleaning up old uploads backups..."
+      echo "Cleaning up old backups..."
+      # Keep latest .htaccess
+      LATEST_HTACCESS=$(ls -t $BACKUP_DIR/.htaccess-* 2>/dev/null | head -n 1)
+      if [ -n "$LATEST_HTACCESS" ]; then
+        /bin/find $BACKUP_DIR -name ".htaccess-*" ! -name "$(basename "$LATEST_HTACCESS")" -type f -delete
+        echo "Kept latest .htaccess backup: $(basename "$LATEST_HTACCESS")"
+      fi
+      # Keep latest wp-config.php
+      LATEST_CONFIG=$(ls -t $BACKUP_DIR/wp-config.php-* 2>/dev/null | head -n 1)
+      if [ -n "$LATEST_CONFIG" ]; then
+        /bin/find $BACKUP_DIR -name "wp-config.php-*" ! -name "$(basename "$LATEST_CONFIG")" -type f -delete
+        echo "Kept latest wp-config.php backup: $(basename "$LATEST_CONFIG")"
+      fi
+      # Keep latest uploads
       LATEST_BACKUP=$(ls -t $BACKUP_DIR/uploads-*.tar.gz 2>/dev/null | head -n 1)
       if [ -n "$LATEST_BACKUP" ]; then
-        # Delete all backups except the latest one
         /bin/find $BACKUP_DIR -name "uploads-*.tar.gz" ! -name "$(basename "$LATEST_BACKUP")" -type f -delete
-        echo "Kept latest backup: $(basename "$LATEST_BACKUP")"
+        echo "Kept latest uploads backup: $(basename "$LATEST_BACKUP")"
       fi
 
-    # 6️⃣ Fix permissions (optional but good practice)
+    # 🔟 Fix permissions (optional but good practice)
     - /bin/find $DEPLOY_PATH -type d -exec chmod 755 {} \;
     - /bin/find $DEPLOY_PATH -type f -exec chmod 644 {} \;
 
-    - /bin/echo "✅ Deployment complete with uploads preserved and old backups cleaned."
+    - /bin/echo "✅ Deployment complete with .htaccess, wp-config.php, and uploads preserved and old backups cleaned."
