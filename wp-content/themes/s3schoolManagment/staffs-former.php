@@ -342,7 +342,7 @@ $default_img = esc_url(get_template_directory_uri() . '/img/No_Image.jpg');
                         <div class="clearfix">
                             <?php if (!$staff_id) : ?>
                                 <?php
-                                $staff_members = $wpdb->get_results('SELECT staffid, staffName, staffImg, staffDesignation FROM ct_staff WHERE status="Former" ORDER BY staffName ASC');
+                                $staff_members = $wpdb->get_results('SELECT staffid, staffName, staffImg, staffDesignation FROM ct_staff WHERE status="Former" ORDER BY staff_serial, staffName ASC');
                                 ?>
 
                                 <div class="staff-directory">

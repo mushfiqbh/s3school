@@ -535,7 +535,7 @@ get_header(); ?>
 
 
 																				if($combin2->resSub4th == 1){
-																					$totalobtain += ($obtain > ((($subTot1+$subTot2)/100)*40) ) ? $obtain-((($subTot1+$subTot2)/100)*40) : 0 ;
+																					$totalobtain += ($obtain > ((($subTot1+$subTot2)/100)*40) ) ? $resTotal-(($subjTotal/100)*40) : 0 ;
 																				}else{
 																					$totalobtain += $obtain;
 																				}

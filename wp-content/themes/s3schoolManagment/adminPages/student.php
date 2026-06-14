@@ -4,54 +4,11 @@
 */
 global $wpdb;
 
-if (!function_exists('s3s_normalize_student_dob')) {
-  function s3s_normalize_student_dob($source)
-  {
-    $candidates = [];
-    foreach (['stdBrith', 'stdBrith_picker', 'stdBrith_text'] as $field) {
-      if (!empty($source[$field])) {
-        $candidates[] = trim($source[$field]);
-      }
-    }
-
-    foreach ($candidates as $value) {
-      if ($value === '') {
-        continue;
-      }
-
-      if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
-        return $value;
-      }
-
-      $normalized = str_replace(['.', ' '], '/', str_replace('-', '/', $value));
-      $parts = array_values(array_filter(explode('/', $normalized), 'strlen'));
-
-      if (count($parts) === 3) {
-        $day = (int) $parts[0];
-        $month = (int) $parts[1];
-        $year = (int) $parts[2];
-
-        if (strlen($parts[2]) === 4 && checkdate($month, $day, $year)) {
-          return sprintf('%04d-%02d-%02d', $year, $month, $day);
-        }
-      }
-
-      $timestamp = strtotime($value);
-      if ($timestamp) {
-        return date('Y-m-d', $timestamp);
-      }
-    }
-
-    return '';
-  }
-}
-
 
 /*=================
 Add Student
 =================*/
 if (isset($_POST['addStudent'])){
-  $normalizedDob = s3s_normalize_student_dob($_POST);
   $insert = $wpdb->insert('ct_student', array(
     'stdName'       => $_POST['stdName'],
     'stdNameBangla' => $_POST['stdNameBangla'],
@@ -72,7 +29,7 @@ if (isset($_POST['addStudent'])){
     'stdAdmitClass' => $_POST['stdAdmitClass'],
     'stdCurrentClass'  => $_POST['stdAdmitClass'],
     'stdPresent'    => $_POST['stdPresent'],
-    'stdBrith'      => $normalizedDob !== '' ? $normalizedDob : (isset($_POST['stdBrith']) ? $_POST['stdBrith'] : ''),
+    'stdBrith'      => $_POST['stdBrith'],
     'facilities'    => $_POST['facilities'],
     'stdNationality'   => $_POST['stdNationality'],
     'stdReligion'   => isset($_POST['stdReligion']) ? $_POST['stdReligion'] : '',
@@ -123,7 +80,6 @@ if (isset($_POST['addStudent'])){
 Update Student
 =================*/
 if (isset($_POST['updateStudent'])){
-  $normalizedDob = s3s_normalize_student_dob($_POST);
 
   $update = $wpdb->update('ct_student', array(
     'stdName'         => $_POST['stdName'],
@@ -143,7 +99,7 @@ if (isset($_POST['updateStudent'])){
     'stdPhone'        => $_POST['stdPhone'],
     'stdPermanent'    => $_POST['stdPermanent'],
     'stdPresent'      => $_POST['stdPresent'],
-    'stdBrith'        => $normalizedDob !== '' ? $normalizedDob : (isset($_POST['stdBrith']) ? $_POST['stdBrith'] : ''),
+    'stdBrith'        => $_POST['stdBrith'],
     'facilities'      => $_POST['facilities'],
     'stdNationality'  => $_POST['stdNationality'],
     'stdReligion'     => isset($_POST['stdReligion']) ? $_POST['stdReligion'] : '',
@@ -192,75 +148,6 @@ if (isset($_POST['deleteStudent'])){
   $delete = $wpdb->delete( 'ct_studentPoint', array( 'spStdID' => $_POST['id'] ) );
   $message = ms3message($delete, 'Deleted');
 }
-
-/*=================
-Upload Student Image (AJAX)
-=================*/
-if (isset($_POST['type']) && $_POST['type'] == 'uploadStudentImage') {
-    // Increase limits for image processing to prevent 503 errors
-    @ini_set('memory_limit', '512M');
-    @set_time_limit(300);
-
-    if (!isset($_FILES['student_image']) || !isset($_POST['student_id'])) {
-        wp_send_json_error('Invalid request');
-    }
-
-    $student_id = intval($_POST['student_id']);
-    $uploadedfile = $_FILES['student_image'];
-
-    if (!function_exists('wp_handle_upload')) {
-        require_once ABSPATH . 'wp-admin/includes/file.php';
-    }
-
-    $upload_overrides = ['test_form' => false];
-    $movefile = wp_handle_upload($uploadedfile, $upload_overrides);
-
-    if ($movefile && !isset($movefile['error'])) {
-        $uploaded_image_url = $movefile['url'];
-
-        // Register image in database as attachment
-        $filename = basename($movefile['file']);
-        $filetype = wp_check_filetype($filename, null);
-        $attachment = [
-            'guid'           => $uploaded_image_url,
-            'post_mime_type' => $filetype['type'],
-            'post_title'     => sanitize_file_name($filename),
-            'post_content'   => '',
-            'post_status'    => 'inherit'
-        ];
-        
-        $attach_id = wp_insert_attachment($attachment, $movefile['file']);
-        
-        if (!is_wp_error($attach_id)) {
-            require_once ABSPATH . 'wp-admin/includes/image.php';
-            require_once ABSPATH . 'wp-admin/includes/media.php';
-
-            // Disable thumbnail generation for this request to save memory and prevent 503 errors
-            add_filter('intermediate_image_sizes_advanced', '__return_empty_array');
-            
-            $attach_data = wp_generate_attachment_metadata($attach_id, $movefile['file']);
-            wp_update_attachment_metadata($attach_id, $attach_data);
-            
-            remove_all_filters('intermediate_image_sizes_advanced');
-
-            // Update student record
-            $wpdb->update(
-                'ct_student',
-                ['stdImg' => $uploaded_image_url],
-                ['studentid' => $student_id]
-            );
-
-            wp_send_json_success(['url' => $uploaded_image_url]);
-        } else {
-            wp_send_json_error($attach_id->get_error_message());
-        }
-    } else {
-        $error_message = (is_array($movefile) && isset($movefile['error'])) ? $movefile['error'] : 'Upload failed';
-        wp_send_json_error($error_message);
-    }
-    exit;
-}
-
 
 ?>
 
@@ -322,44 +209,6 @@ if (isset($_POST['type']) && $_POST['type'] == 'uploadStudentImage') {
         <script type="text/javascript">
           (function($){
             $(function(){
-              function padDob(val) {
-                if (val === undefined || val === null) {
-                  return '';
-                }
-                var str = val.toString();
-                return str.length === 1 ? '0' + str : str;
-              }
-
-              function formatDobDisplay(rawDob) {
-                if (!rawDob) {
-                  return '';
-                }
-                var isoParts = rawDob.split('-');
-                if (isoParts.length === 3 && isoParts[0].length === 4) {
-                  return [padDob(isoParts[2]), padDob(isoParts[1]), isoParts[0]].join('/');
-                }
-                var parsed = new Date(rawDob);
-                if (!isNaN(parsed.getTime())) {
-                  return [padDob(parsed.getDate()), padDob(parsed.getMonth() + 1), parsed.getFullYear()].join('/');
-                }
-                return rawDob;
-              }
-
-              function populateDobFields(rawDob) {
-                var iso = rawDob || '';
-                var displayVal = formatDobDisplay(iso);
-                $('[name="stdBrith"]').val(iso);
-                var $picker = $('[name="stdBrith_picker"]');
-                var $text = $('[name="stdBrith_text"]');
-                if (iso) {
-                  $picker.val(iso).trigger('change');
-                  $text.val(displayVal).trigger('change');
-                } else {
-                  $picker.val('');
-                  $text.val('');
-                }
-              }
-
               var d = <?php echo json_encode($prefill); ?>;
               // Personal
               $('[name="stdName"]').val(d.stdName||'');
@@ -369,7 +218,7 @@ if (isset($_POST['type']) && $_POST['type'] == 'uploadStudentImage') {
                 $('.mediaUploadHolder .teacherImg').val(d.stdImg);
                 $('.mediaUploadHolder span').html("<img height='40' src='"+d.stdImg+"'>");
               }
-              populateDobFields(d.stdBrith);
+              if (d.stdBrith) $('[name="stdBrith"]').val(d.stdBrith);
               if (d.stdGender !== null) $('[name="stdGender"]').val(String(d.stdGender));
               if (d.stdBldGrp) $('[name="stdBldGrp"]').val(d.stdBldGrp);
               $('[name="stdPermanent"]').val(d.stdPermanent||'');

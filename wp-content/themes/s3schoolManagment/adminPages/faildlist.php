@@ -243,17 +243,6 @@ $totalpassed = 0;
 // 											$subid = json_decode($student->infoOptionals);
 // 											$subid[] = $student->info4thSub;
 // 											$subid = implode (", ", $subid);
-
-											// $fourth = '';
-											// if (!empty($student->info4thSub)) {
-											// 	$tmp = json_decode($student->info4thSub, true);
-											// 	if (is_array($tmp)) {
-											// 		$fourth = $tmp[0];
-											// 	} elseif (!empty($tmp)) {
-											// 		$fourth = (string)$tmp;
-											// 	}
-											// }		
-
 											$subjects = $wpdb->get_results("SELECT SUM(subMCQ)+SUM(subCQ)+SUM(subPect)+SUM(subCa) AS totalSmark FROM ct_subject WHERE (subjectClass = $class AND subOptinal = 0 AND sub4th = 0) ")[0];
 										
 											?>

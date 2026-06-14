@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Template Name: Teachers Page
  */
@@ -37,7 +38,7 @@ get_header();
 
 	.teacher-grid {
 		display: grid;
-		grid-template-columns: repeat(4, minmax(100px, 1fr));
+		grid-template-columns: repeat(4, 1fr);
 		gap: 24px;
 	}
 
@@ -61,7 +62,9 @@ get_header();
 	}
 
 	.teacher-card {
-		height: 100%;
+		width: 100%;
+		height: 290px;
+		/* fixed card height */
 		background: #ffffff;
 		border-radius: 16px;
 		box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
@@ -97,10 +100,13 @@ get_header();
 
 	.teacher-photo {
 		width: 100%;
-		height: 220px; /* fixed thumbnail height */
+		aspect-ratio: 1/1;
+		height: 180px;
 		object-fit: cover;
-		display: block; /* removes inline gap under images */
+		display: block;
 		background: #e2e8f0;
+		border-top-left-radius: 16px;
+		border-top-right-radius: 16px;
 	}
 
 	.teacher-content {
@@ -108,9 +114,12 @@ get_header();
 		display: flex;
 		flex-direction: column;
 		flex: 1;
+		justify-content: flex-start;
+		min-height: 0;
 	}
 
 	.teacher-name {
+		margin-top: 0;
 		font-size: 18px;
 		font-weight: 700;
 		color: #1e293b;
@@ -170,7 +179,8 @@ get_header();
 
 	.teacher-detail-photo {
 		flex: 0 0 220px;
-		height: 220px; /* fixed detail photo height to match thumbnail */
+		height: 220px;
+		/* fixed detail photo height to match thumbnail */
 		border-radius: 18px;
 		overflow: hidden;
 		box-shadow: 0 10px 25px rgba(79, 70, 229, 0.15);
@@ -179,7 +189,8 @@ get_header();
 	.teacher-detail-photo img {
 		width: 100%;
 		height: 100%;
-		object-fit: cover; /* ensure image covers the fixed box */
+		object-fit: cover;
+		/* ensure image covers the fixed box */
 		display: block;
 	}
 
@@ -305,7 +316,7 @@ get_header();
 
 	@media (max-width: 992px) {
 		.teacher-directory {
-			padding: 32px 20px;
+			padding: 32px 0;
 		}
 
 		.teacher-grid {
@@ -313,27 +324,26 @@ get_header();
 		}
 	}
 
-	@media (max-width: 768px) {
-		.teacher-detail-header {
-			flex-direction: column;
-			text-align: center;
-			gap: 20px;
+	@media (max-width: 900px) {
+		.teacher-grid {
+			grid-template-columns: repeat(3, 1fr);
 		}
+	}
 
-		/* On small screens keep a reasonable fixed height to maintain visual layout */
-		.teacher-detail-photo {
-			flex: 0 0 auto;
-			height: 220px; /* retain fixed height on small screens; change if you prefer smaller */
+	@media (max-width: 600px) {
+		.teacher-grid {
+			grid-template-columns: repeat(2, 1fr);
 		}
+	}
 
-		.teacher-meta-list {
+
+	/* .teacher-meta-list {
 			text-align: left;
 		}
 
 		.teacher-meta-list span:first-child {
 			width: 110px;
-		}
-	}
+		} */
 </style>
 
 <?php
@@ -399,7 +409,7 @@ $default_img = esc_url(get_template_directory_uri() . '/img/No_Image.jpg');
 												}
 
 												$profile_url = add_query_arg('t', absint($teacher->teacherid), $page_url);
-												?>
+											?>
 
 												<a class="teacher-card-link" href="<?php echo esc_url($profile_url); ?>">
 													<article class="teacher-card">
@@ -538,9 +548,9 @@ $default_img = esc_url(get_template_directory_uri() . '/img/No_Image.jpg');
 																				if (is_scalar($cell_value)) {
 																					$value = ($cell_index === 1) ? '--' : (string) $cell_value;
 																				}
-																			?>
-																			<td><?php echo esc_html($value); ?></td>
-																		<?php endforeach; ?>
+																				?>
+																				<td><?php echo esc_html($value); ?></td>
+																			<?php endforeach; ?>
 																		</tr>
 																	<?php endif; ?>
 																<?php endforeach; ?>
@@ -576,9 +586,9 @@ $default_img = esc_url(get_template_directory_uri() . '/img/No_Image.jpg');
 																				if (is_scalar($cell_value)) {
 																					$value = ($cell_index === 2) ? sprintf('%s %s', $cell_value, __('Days', 's3schoolManagment')) : (string) $cell_value;
 																				}
-																			?>
-																			<td><?php echo esc_html($value); ?></td>
-																		<?php endforeach; ?>
+																				?>
+																				<td><?php echo esc_html($value); ?></td>
+																			<?php endforeach; ?>
 																		</tr>
 																	<?php endif; ?>
 																<?php endforeach; ?>

@@ -142,7 +142,7 @@
 							text-align: center; margin: 20px 0; clear: both;
 						}
 						#itemMainBox .admitCard{
-							margin: 0 0 10px 0;color: #f7740c; font-weight: bold; background: #f0f0f0; print-color-adjust: exact; -webkit-print-color-adjust: exact; padding: 10px; border-radius: 5px; font-size: 25px;
+							margin: 0 0 10px 0;color: #f7740c; font-weight: bold; background: #f0f0f0;-webkit-print-color-adjust: exact; padding: 10px; border-radius: 5px; font-size: 25px;
 							border: 2px solid #f0f0f0;
 						}
 						#itemMainBox .admitNote{

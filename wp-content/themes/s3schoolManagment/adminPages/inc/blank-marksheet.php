@@ -108,11 +108,11 @@ if(isset($_GET['exam'])):
 				  		</div>
 
 							<table class="table table-bordered" style="width: 100%">
-				  			<tr style="background: #4472C4;print-color-adjust: exact; -webkit-print-color-adjust: exact;color: #fff">
+				  			<tr style="background: #4472C4;-webkit-print-color-adjust: exact;color: #fff">
 				  				<td colspan="3"><b>Exam :</b> <?= $info[0]->examName ?></td>
 				  				<td colspan="3"><b>Subject Name :</b> <?= $info[0]->subjectName ?></td>
 				  			</tr>
-				  			<tr style="background: #D9E2F3; print-color-adjust: exact; -webkit-print-color-adjust: exact;">
+				  			<tr style="background: #D9E2F3;-webkit-print-color-adjust: exact;">
 				  				<td colspan="2"><b>Year/Session :</b> <?= $_GET['syear'] ?></td>
 				  				<td colspan="2"><b>Class :</b> <?= $info[0]->className ?></td>
 				  				<td colspan="2"><b>Section :</b> <?= @$info[0]->sectionName ?></td>

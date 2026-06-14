@@ -1172,7 +1172,7 @@ if (wp_get_current_user()->roles[0] == 'um_headmaster' || current_user_can('admi
                         ) {
                             header('Content-Type: application/json');
                             $image_url = esc_url_raw($_POST['image_url']);
-
+                            
                             $saved = $wpdb->insert($table_name, [
                                 'image_url' => $image_url,
                                 'created_at' => current_time('mysql'),
@@ -1246,14 +1246,14 @@ if (wp_get_current_user()->roles[0] == 'um_headmaster' || current_user_can('admi
                                         let imageId = attachment.id;
                                         let fileSize = attachment.filesizeInBytes || 0;
 
-                                        // Client-side validation: 400KB limit
-                                        const maxSize = 400 * 1024; // 400KB in bytes
+                                        // Client-side validation: 300KB limit
+                                        const maxSize = 300 * 1024; // 300KB in bytes
 
                                         $('#slider_upload_error').hide().text('');
-
+                                        
                                         if (fileSize > maxSize) {
                                             let sizeInKB = Math.round(fileSize / 1024);
-                                            let errorMsg = '❌ Image size (' + sizeInKB + 'KB) exceeds the 400KB limit. Please choose a smaller image.';
+                                            let errorMsg = '❌ Image size (' + sizeInKB + 'KB) exceeds the 300KB limit. Please choose a smaller image.';
                                             $('#slider_upload_error').text(errorMsg).show();
                                             $('#slider_image_preview').html('');
                                             return;
@@ -1280,7 +1280,7 @@ if (wp_get_current_user()->roles[0] == 'um_headmaster' || current_user_can('admi
                                                 }
                                             },
                                         });
-
+                                        
                                         $('#slider_image_preview').html('<img src="' + imageUrl + '" style="max-width:200px;"><p style="color: #2271b1; margin-top: 5px;">Upload Finished</p>');
                                     });
 
@@ -1364,7 +1364,7 @@ if (wp_get_current_user()->roles[0] == 'um_headmaster' || current_user_can('admi
                                 <?php endif; ?>
                             </fieldset>
                         </div>
-
+                        
                         <style>
                             #slider_images_list {
                                 display: flex;
@@ -3200,9 +3200,7 @@ if (wp_get_current_user()->roles[0] == 'um_headmaster' || current_user_can('admi
             };
 
             if (allowedTypes.length > 0) {
-                frameConfig.library = {
-                    type: allowedTypes
-                };
+                frameConfig.library = { type: allowedTypes };
             }
 
             var mediaFrame = wp.media(frameConfig);

@@ -86,7 +86,6 @@
 	}
 
 ?>
-
 <style>
 .compact-filter-form {
 	display: flex;
@@ -160,7 +159,6 @@
 	}
 }
 </style>
-
 <div class="panel panel-info">
 	<div class="panel-heading">
 		<h3>Delete Result</h3>
@@ -300,24 +298,24 @@ if(isset($_GET['exam'])):
 		}
 	}
 
-	// Religion subCode mapping
-	$religionMap = array(
-		'Muslim'    => 111,
-		'Hinduism'  => 112,
-		'Buddist'   => 113,
-		'Christian' => 114
-	);
-
-	$religionFilter = '';
-	if ($sub != '') {
-		$subject_info = $wpdb->get_row("SELECT subCode FROM ct_subject WHERE subjectid = $sub");
-		$subCode = $subject_info->subCode ?? null;
-		if ($subCode && in_array($subCode, array_values($religionMap))) {
-			$religion = array_search($subCode, $religionMap);
-			$religionFilter = " AND ct_student.stdReligion = '$religion'";
-		}
-	}
-
+	// ReligionId mapping
+    $religionMap = array(
+        'Muslim'    => 1,
+        'Hinduism'  => 2,
+        'Buddist'   => 3,
+        'Christian' => 4
+    );
+	
+    $subject_info = $wpdb->get_row("SELECT religionId FROM ct_subject WHERE subjectid = $sub");
+    $subCode = $subject_info->religionId ?? null;
+    $religionFilter = '';
+    if (isset($_GET['religion']) && !empty($_GET['religion'])) {
+      $religion = $_GET['religion'];
+      $religionFilter = " AND stdReligion = '$religion'";
+    } else if ($subCode && in_array($subCode, array_values($religionMap))) {
+        $religion = array_search($subCode, $religionMap);
+        $religionFilter = " AND stdReligion = '$religion'";
+    }
 
 	?>
 

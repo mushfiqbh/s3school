@@ -3094,7 +3094,6 @@ $collection_info_id = $info_id;;
 											vertical-align: middle !important;
 											font-size: 11px;
 											padding: 3px 2px !important;
-											print-color-adjust: exact;
 											-webkit-print-color-adjust: exact;
 										}
 					  			</style>
@@ -3663,7 +3662,6 @@ die();
 								<th style=" text-align: center;">No</th>
 								<th style=" text-align: center;">Class</th>
 								<th style=" text-align: center;">Amount</th>
-								<th style=" text-align: center;">Admission Status</th>
 								<th style=" text-align: center;">Action</th>
 							</tr>
 							<?php  
@@ -3674,10 +3672,7 @@ die();
 							  <td><?= $key + 1?></td>
 							  <td><?= $val->className?></td>
 							  <td><?= $val->amount?></td>
-							  <td><?php echo $val->is_active ? 'Open' : 'Closed'; ?></td>
-							  <td>
-							  	<a href="?page=studentFeeManagement&view=promoted&id=<?= $val->id?>" class="btn btn-primary">Edit</a>
-							  	<button type="button" class="btn btn-warning" onclick="toggleActive(<?= $val->id ?>, <?= $val->is_active ?>)"><?php echo $val->is_active ? 'Deactivate' : 'Activate'; ?></button>
+							  <td>			<a href="?page=studentFeeManagement&view=promoted&id=<?= $val->id?>" class="btn btn-primary pull-right">Edit </a>
 							  </td>
 							</tr>
 							<?php 
@@ -3865,7 +3860,6 @@ if($collectionInfo){
 				vertical-align: middle !important;
 				font-size: 11px;
 				padding: 3px 2px !important;
-				print-color-adjust: exact;
 				-webkit-print-color-adjust: exact;
 			}
 			.print-area-multiple{
@@ -4701,30 +4695,6 @@ var selectedActiveExam;
 
 		document.getElementById('sub-total').value = subTotal;
 		document.getElementById('grand-total').value = grandtotal;
-	}
-
-	function toggleActive(id, currentStatus) {
-		var newStatus = currentStatus ? 0 : 1;
-		jQuery.ajax({
-			url: '<?php echo get_template_directory_uri(); ?>/inc/ajaxAction.php',
-			type: 'POST',
-			data: {
-				type: 'togglePromotedFeeActive',
-				id: id,
-				is_active: newStatus
-			},
-			success: function(response) {
-				var data = JSON.parse(response);
-				if(data.success) {
-					location.reload();
-				} else {
-					alert('Error: ' + data.message);
-				}
-			},
-			error: function() {
-				alert('AJAX error');
-			}
-		});
 	}
 
 </script>

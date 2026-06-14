@@ -298,29 +298,14 @@ if (isset($_GET['roll'])) {
 							/*==================
 								For Combine mark
 							====================*/
-							$decodedOptionals = json_decode($student->infoOptionals, true);
-							if (is_array($decodedOptionals)) {
-								$optionals = implode(", ", $decodedOptionals);
-							} else {
-								$optionals = (string)$student->infoOptionals;
-							}
-
-							$fourth = '';
-							if (!empty($student->info4thSub)) {
-								$tmp = json_decode($student->info4thSub, true);
-								if (is_array($tmp)) {
-									$fourth = $tmp[0];
-								} elseif (!empty($tmp)) {
-									$fourth = (string)$tmp;
-								}
-							}				
-
+							$optionals = implode (", ",json_decode($student->infoOptionals));
+							$fourth = $student->info4thSub;
 							$optionals = ($optionals == 0) ? $optionals.",".$fourth : $optionals; 
 
 							$combines = $wpdb->get_results("SELECT * FROM `ct_subject`
 								LEFT JOIN ct_result ON resSubject = subjectid AND resExam = $exam AND resClass = $class AND resStudentId = $stdnt
 								LEFT JOIN ct_class ON $class = ct_class.classid
-								WHERE subjectClass = $class AND subOptinal = 0 AND sub4th = 0 AND subCombineMark = 1 ORDER BY sub4th,subOptinal,subCode ASC");
+								WHERE (subjectClass = $class AND subOptinal = 0 AND sub4th = 0 AND subCombineMark = 1) OR subjectid IN ($optionals) ORDER BY sub4th,subOptinal,subCode ASC");
 
 
 							$results2 = $wpdb->get_results( "SELECT * FROM `ct_subject`

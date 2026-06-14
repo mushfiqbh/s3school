@@ -58,22 +58,18 @@ if (!in_array($testimonial_border_type, $allowedBorderTypes, true)) {
 
                         <div class="panel panel-info">
                             <div class="panel-heading">
-                                <ul class="nav nav-tabs" id="concernTypeTabs" role="tablist" aria-label="Concern Letter types">
-                                    <li class="nav-item active">
-                                        <a class="nav-link active" href="#concern-form" role="tab" aria-controls="concern-form" aria-selected="true">Concern Letter</a>
-                                    </li>
-                                </ul>
+                                <h3 class="panel-title" style="margin: 0; font-weight: 600; letter-spacing: 0.4px;">Concern Letter</h3>
                             </div>
                             <div class="panel-body">
                                 <style>
-                                    #concern-form.form-inline {
+                                    #testimonial-form.form-inline {
                                         display: flex;
                                         flex-wrap: wrap;
                                         gap: 12px;
                                         align-items: flex-end;
                                     }
 
-                                    #concern-form .form-group {
+                                    #testimonial-form .form-group {
                                         display: flex;
                                         flex-direction: column;
                                         margin: 0;
@@ -81,7 +77,7 @@ if (!in_array($testimonial_border_type, $allowedBorderTypes, true)) {
                                         min-width: 160px;
                                     }
 
-                                    #concern-form .form-group label {
+                                    #testimonial-form .form-group label {
                                         font-weight: 600;
                                         font-size: 13px;
                                         letter-spacing: 0.3px;
@@ -90,7 +86,7 @@ if (!in_array($testimonial_border_type, $allowedBorderTypes, true)) {
                                         margin-bottom: 0;
                                     }
 
-                                    #concern-form .form-control {
+                                    #testimonial-form .form-control {
                                         height: 36px;
                                         padding: 4px 10px;
                                         font-size: 14px;
@@ -99,7 +95,7 @@ if (!in_array($testimonial_border_type, $allowedBorderTypes, true)) {
                                         box-shadow: inset 0 1px 2px rgba(12, 60, 96, 0.05);
                                     }
 
-                                    #concern-form .btn.btn-primary {
+                                    #testimonial-form .btn.btn-primary {
                                         height: 36px;
                                         padding: 0 18px;
                                         border-radius: 6px;
@@ -108,18 +104,18 @@ if (!in_array($testimonial_border_type, $allowedBorderTypes, true)) {
                                     }
 
                                     @media (max-width: 768px) {
-                                        #concern-form .form-group {
+                                        #testimonial-form .form-group {
                                             min-width: calc(50% - 12px);
                                         }
 
-                                        #concern-form .btn.btn-primary {
+                                        #testimonial-form .btn.btn-primary {
                                             width: 100%;
                                         }
                                     }
                                 </style>
                                 <div class="tab-content" id="myTabContent">
-                                    <div class="tab-pane fade active in" id="concern-form" role="tabpanel" aria-labelledby="concernTypeTabs">
-                                        <form id="concern-form" class="form-inline" action="" method="GET">
+                                    <div class="tab-pane fade active in" id="home" role="tabpanel" aria-labelledby="testimonialTypeTabs">
+                                        <form id="testimonial-form" class="form-inline" action="" method="GET">
                                             <input type="hidden" name="page" value="concern-letter">
 
                                             <div class="form-group">
@@ -188,33 +184,6 @@ if (!in_array($testimonial_border_type, $allowedBorderTypes, true)) {
                                             <style type="text/css">
                                                 @page {
                                                     size: A4;
-                                                    margin: 0;
-
-                                                    /* Remove browser print header/footer */
-                                                    /* Chrome/Edge/Safari: */
-                                                    @top-left {
-                                                        content: none;
-                                                    }
-
-                                                    @top-center {
-                                                        content: none;
-                                                    }
-
-                                                    @top-right {
-                                                        content: none;
-                                                    }
-
-                                                    @bottom-left {
-                                                        content: none;
-                                                    }
-
-                                                    @bottom-center {
-                                                        content: none;
-                                                    }
-
-                                                    @bottom-right {
-                                                        content: none;
-                                                    }
                                                 }
 
                                                 @media print {
@@ -228,52 +197,23 @@ if (!in_array($testimonial_border_type, $allowedBorderTypes, true)) {
                                                         height: auto;
                                                         display: block;
                                                     }
-
-                                                    /* Hide header/footer in Firefox */
-                                                    @page {
-                                                        margin: 0;
-                                                    }
-
-                                                    /* Remove forced header/footer for all browsers (where supported) */
-                                                    html,
-                                                    body {
-                                                        margin: 0 !important;
-                                                        padding: 0 !important;
-                                                    }
                                                 }
 
                                                 .itemMainBox {
                                                     max-width: 21cm;
-                                                    min-height: calc(29.7cm);
+                                                    min-height: calc(29.7cm - 40mm);
                                                     display: inline-block;
                                                     overflow: hidden;
+                                                    margin: 20px 0;
                                                     font-family: sans-serif;
                                                     width: 100%;
                                                     position: relative;
                                                     page-break-after: always;
-                                                    page-break-before: avoid;
                                                     box-sizing: border-box;
                                                 }
 
                                                 .itemMainBox-border {
                                                     border: 10px solid #005daa;
-                                                }
-
-                                                .itemMainBox-pad {
-                                                    border: none;
-                                                    margin: 0;
-                                                    padding: 0;
-                                                    background-position: center top;
-                                                    background-repeat: no-repeat;
-                                                    background-size: 100% 100%;
-                                                }
-
-                                                .testimonial-inner {
-                                                    padding: 32px;
-                                                }
-
-                                                .testimonial-inner-pad {
-                                                    padding: 40px 48px;
                                                 }
 
                                                 .itemMainBox p {
@@ -284,10 +224,9 @@ if (!in_array($testimonial_border_type, $allowedBorderTypes, true)) {
 
                                                 .itemMainBox .itemWaterMark {
                                                     position: absolute;
-                                                    top: 50%;
-                                                    left: 50%;
-                                                    transform: translate(-50%, -50%);
                                                     width: 100%;
+                                                    bottom: 0;
+                                                    left: 0;
                                                     z-index: -1;
                                                     text-align: center;
                                                 }
@@ -457,23 +396,6 @@ if (!in_array($testimonial_border_type, $allowedBorderTypes, true)) {
                                                 }
                                                 $refSerialCounter = $refSerialStart;
                                                 $generatedTestimonials = 0;
-                                                $staticFilePath = '';
-                                                $staticTestimonialUrl = '';
-                                                $staticWriteError = '';
-
-                                                ob_start();
-                                                $is_pad_layout = ($testimonial_border_type === 'Pad');
-
-                                                // Add print-specific CSS for pad background in snapshot
-                                                $pad_print_css = '';
-                                                if ($is_pad_layout && $testimonial_pad !== '') {
-                                                    $pad_print_css = '<style type="text/css">@media print { .itemMainBox-pad { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; background-image: url(\'' . esc_url($testimonial_pad) . '\') !important; background-size: 100% 100% !important; background-repeat: no-repeat !important; background-position: center top !important; } }</style>';
-                                                }
-
-                                                // Output print CSS for pad if needed
-                                                if (!empty($pad_print_css)) {
-                                                    echo $pad_print_css;
-                                                }
 
                                                 foreach ($groupsBy as $value) {
                                                     if ($useManualRef) {
@@ -483,28 +405,22 @@ if (!in_array($testimonial_border_type, $allowedBorderTypes, true)) {
                                                         $refSerialCounter++;
                                                     }
                                                     $generatedTestimonials++;
-                                                    $item_classes = 'itemMainBox';
-                                                    $item_style_attr = '';
-                                                    if ($is_pad_layout) {
-                                                        $item_classes .= ' itemMainBox-pad';
-                                                        if ($testimonial_pad !== '') {
-                                                            $pad_style = sprintf("background-image:url('%s');background-repeat:no-repeat;background-position:center top;background-size:100%% 100%%;", esc_url($testimonial_pad));
-                                                            $item_style_attr = ' style="' . esc_attr($pad_style) . '"';
-                                                        }
-                                                    } else {
-                                                        $item_classes .= ' itemMainBox-border';
-                                                    }
-
-                                                    $content_wrapper_classes = 'testimonial-inner';
-                                                    if ($is_pad_layout) {
-                                                        $content_wrapper_classes .= ' testimonial-inner-pad';
-                                                    }
-                                                ?>
-                                                    <div class="<?= esc_attr($item_classes); ?>" <?= $item_style_attr; ?>>
-                                                        <div id="<?= esc_attr($wrapper_id); ?>">
-                                                            <div class="<?= esc_attr($content_wrapper_classes); ?>">
+                                            ?>
+                                                    <div class="itemMainBox <?= $testimonial_border_type == 'Pad' ? '' : 'itemMainBox-border' ?>">
+                                                        <div id="<?= $testimonial_border_type == 'Pad' ? 'wrapper' : 'wrapper-border' ?>">
+                                                            <div style="padding: 32px;">
                                                                 <?php
-                                                                if (!$is_pad_layout) {
+
+                                                                if ($testimonial_border_type == 'Pad') {
+                                                                ?>
+                                                                    <script>
+                                                                        const itemMainBox = document.querySelector('.itemMainBox');
+                                                                        itemMainBox.style.backgroundImage = "url('<?= $testimonial_pad ?>')";
+                                                                        itemMainBox.style.backgroundSize = "cover";
+                                                                    </script>
+                                                                    <div style="margin-top:200px;"></div>
+                                                                <?php
+                                                                } else {
                                                                 ?>
                                                                     <table style="width: 100%;">
                                                                         <tr>
@@ -545,18 +461,8 @@ if (!in_array($testimonial_border_type, $allowedBorderTypes, true)) {
                                                                     </table>
                                                                 <?php } ?>
 
-                                                                <div class="section3" <?php if (!$is_pad_layout): ?> style="background: url(<?= $s3sRedux['instLogo'] ?>) no-repeat center; background-size: 400px;" <?php endif; ?>>
-                                                                    <div style="<?php if ($is_pad_layout) {
-                                                                                    echo 'background:transparent;margin-top:170px;';
-                                                                                } else {
-                                                                                    echo 'background: rgba(255,255,255,0.9);margin-top:80px;';
-                                                                                } ?>">
-
-                                                                        <?php if (!$is_pad_layout): ?>
-                                                                            <div class="itemWaterMark">
-                                                                                <img src="<?= $s3sRedux['instLogo'] ?>" alt="Logo Watermark">
-                                                                            </div>
-                                                                        <?php endif; ?>
+                                                                <div class="section3" style="background: url(<?= $s3sRedux['instLogo'] ?>) no-repeat center; background-size: 400px;">
+                                                                    <div style="background: rgba(255,255,255,0.9);margin-top:80px;">
                                                                         <div class="itemInfo">
                                                                             <h3 style="text-transform: uppercase;">Concern Letter</h3>
                                                                         </div>
@@ -589,27 +495,25 @@ if (!in_array($testimonial_border_type, $allowedBorderTypes, true)) {
                                                                                 We convey our best wishes for <?= ($value->stdGender == 0) ? 'her' : 'his' ?> continued success.
                                                                             </p>
 
-                                                                            <table style="width: 100%; <?php if ($is_pad_layout) { ?>margin-top: 300px;<?php } else { ?>margin-top: 250px;<?php } ?>">
-																				<tr>
-																					<td>
-																						<p style="line-height: 1.2;">Prepared by: <?= $testimonial_prepared_by ?></p>
-																						<p style="line-height: 1.2;">Date: <?= date('d-m-Y') ?></p>
-																					</td>
-																					<td style="width: 350px;">
-																						<div style="width: fit-content; float: right; text-align: center;">
-																							<div style="display: flex; flex-direction: column; align-items: center;">
-																								<?php if ($s3sRedux['principalSign']): ?>
-																									<img src="<?= $s3sRedux['principalSign'] ?>" alt="Signature" style="max-height: 50px; max-width: 150px;">
-																								<?php endif; ?>
-																							</div>
-																							<p style="margin: 0;line-height: 1.2;"><?= $instHeadName ?><br>
-																								<?= $s3sRedux['inst_head_title'] ?><br>
-																								<?= $s3sRedux['institute_name'] ?><br>
-																								<?= $s3sRedux['institute_address'] ?></p>
-																						</div>
-																					</td>
-																				</tr>
-																			</table>
+                                                                            <table style="width: 100%; margin-top: 120px;">
+                                                                                <tr>
+                                                                                    <td>
+                                                                                        <p style="line-height: 1.2;">Prepared by: <?= $testimonial_prepared_by ?></p>
+                                                                                        <p style="line-height: 1.2;">Date: <?= date('d-m-Y') ?></p>
+                                                                                    </td>
+                                                                                    <td style="width: 350px; text-align: center;">
+                                                                                        <div style="display: flex; flex-direction: column; align-items: center;">
+                                                                                            <?php if ($s3sRedux['principalSign']): ?>
+                                                                                                <img src="<?= $s3sRedux['principalSign'] ?>" alt="Signature" style="max-height: 50px; max-width: 150px;">
+                                                                                            <?php endif; ?>
+                                                                                        </div>
+                                                                                        <p style="margin: 0;line-height: 1.2;"><?= $instHeadName ?><br>
+                                                                                            <?= $s3sRedux['inst_head_title'] ?><br>
+                                                                                            <?= $s3sRedux['institute_name'] ?><br>
+                                                                                            <?= $s3sRedux['institute_address'] ?></p>
+                                                                                    </td>
+                                                                                </tr>
+                                                                            </table>
                                                                         </div>
                                                                     </div>
                                                                 </div>

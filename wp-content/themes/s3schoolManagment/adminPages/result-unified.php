@@ -11,11 +11,7 @@
      */
 
     global $wpdb;
-    
-    if(!wp_get_current_user()->user_login) {
-        wp_redirect(home_url('login'));
-        exit;
-    }
+    global $s3sRedux;
 
     // ==========================================
     // HANDLE AJAX ACTIONS LOCALLY
@@ -141,7 +137,6 @@
             $group = isset($_POST['group']) ? intval($_POST['group']) : 0;
             $year = sanitize_text_field($_POST['year']);
             $subject = intval($_POST['subject']);
-            $selectedReligion = isset($_POST['religion']) ? sanitize_text_field($_POST['religion']) : '';
 
             $subject_info = $wpdb->get_row($wpdb->prepare(
                 "SELECT subCode, subCQ, subMCQ, subPect, subCa, subOptinal, sub4th, subPaper, connecttedPaper FROM ct_subject WHERE subjectid = %d",
@@ -176,10 +171,6 @@
             if ($subCode && in_array($subCode, array_values($religionMap))) {
                 $religion = array_search($subCode, $religionMap);
                 $religionFilter = $wpdb->prepare(" AND ct_student.stdReligion = %s", $religion);
-            }
-
-            if (!empty($selectedReligion)) {
-                $religionFilter = $wpdb->prepare(" AND ct_student.stdReligion = %s", $selectedReligion);
             }
 
             if ($subOpt == 0 && $sub4th == 0) {
@@ -227,11 +218,6 @@
                     $student->studentid, $class, $exam, $subject, $year
                 ));
 
-                $withheldStatus = intval($wpdb->get_var($wpdb->prepare(
-                    "SELECT COALESCE(MAX(withheld), 0) FROM ct_result WHERE resStudentId = %d AND resClass = %d AND resExam = %d AND resultYear = %s",
-                    $student->studentid, $class, $exam, $year
-                )));
-
                 $marks = ['cq' => '', 'mcq' => '', 'prac' => '', 'ca' => ''];
                 $result_id = null;
 
@@ -254,7 +240,6 @@
                     'info_group' => $student->infoGroup,
                     'info_section' => $student->infoSection,
                     'result_id' => $result_id,
-                    'withheld' => $withheldStatus,
                     'marks' => $marks
                 ];
             }
@@ -348,46 +333,12 @@
             }
             exit;
         }
-
-        // ------------------------------------------
-        // Withheld Management
-        // ------------------------------------------
-        elseif ($_POST['type'] == 'set_withheld') {
-            $student_ids = isset($_POST['student_ids']) ? $_POST['student_ids'] : [];
-            $class = intval($_POST['class']);
-            $exam = intval($_POST['exam']);
-            $year = sanitize_text_field($_POST['year']);
-            $withheld = isset($_POST['withheld']) ? intval($_POST['withheld']) : 0;
-
-            if (!is_array($student_ids) || empty($student_ids)) {
-                echo json_encode(['success' => false, 'message' => 'No students selected']);
-                exit;
-            }
-
-            $student_ids = array_map('intval', $student_ids);
-            $withheld = ($withheld === 1) ? 1 : 0;
-
-            $updated = 0;
-            foreach ($student_ids as $sid) {
-                $res = $wpdb->update(
-                    'ct_result',
-                    ['withheld' => $withheld],
-                    ['resStudentId' => $sid, 'resClass' => $class, 'resExam' => $exam, 'resultYear' => $year]
-                );
-                if ($res !== false) {
-                    $updated++;
-                }
-            }
-
-            echo json_encode(['success' => true, 'data' => ['updated' => $updated, 'withheld' => $withheld]]);
-            exit;
-        }
     }
     ?>
 
     <?php if (!is_admin()) {
         get_header(); ?>
-        <div class="">
+        <div class="b-layer-main">
             <div class="container">
                 <div class="row">
                     <div class="col-md-12">
@@ -413,9 +364,6 @@
         border-radius: 12px;
         margin-bottom: 30px;
         box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
     }
 
     .page-header h2 {
@@ -429,34 +377,6 @@
         margin: 5px 0 0 0;
         opacity: 0.9;
         font-size: 14px;
-    }
-
-    .page-header .result-unified-nav {
-        margin-top: 14px;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-    }
-
-    .page-header .result-unified-nav a {
-        color: #fff;
-        text-decoration: none;
-        font-size: 13px;
-        font-weight: 600;
-        padding: 8px 12px;
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.14);
-        border: 1px solid rgba(255, 255, 255, 0.25);
-        transition: background 0.2s ease, transform 0.2s ease;
-        display: inline-flex;
-        align-items: center;
-        line-height: 1;
-    }
-
-    .page-header .result-unified-nav a:hover,
-    .page-header .result-unified-nav a:focus {
-        background: rgba(255, 255, 255, 0.22);
-        transform: translateY(-1px);
     }
 
     /* Filter Card */
@@ -727,12 +647,6 @@
     }
 
     .status-badge.badge-error {
-        background: #ef4444;
-        color: white;
-    }
-
-    .status-badge.badge-withheld {
-        margin-top: 4px;
         background: #ef4444;
         color: white;
     }
@@ -1101,7 +1015,9 @@
     }
 
     .result-entry-close {
+        background: transparent;
         border: none;
+        color: white;
         width: 32px;
         height: 32px;
         border-radius: 50%;
@@ -1120,7 +1036,7 @@
     }
 
     .result-entry-body {
-        padding: 0 10px;
+        padding: 32px 24px;
         overflow-y: auto;
         flex: 1;
         min-height: 0;
@@ -1133,9 +1049,14 @@
         padding: 24px;
         margin-bottom: 32px;
         display: flex;
+        flex-direction: column;
         gap: 12px;
         color: #2c3e50;
         border-bottom: 2px solid #e0e0e0;
+    }
+
+    .student-avatar {
+        display: none;
     }
 
     .student-info-details {
@@ -1144,21 +1065,15 @@
     }
 
     .student-roll {
-        height: 7rem;
-        width: 7rem;
-        font-size: 5rem;
-        font-weight: 800;
-        color: #fff;
-        background-color: #10b981;
-        border-radius: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
+        font-size: 28px;
+        font-weight: 700;
+        margin-bottom: 8px;
+        line-height: 1.2;
+        color: #2c3e50;
     }
 
     .student-name {
-        font-size: 22px;
+        font-size: 16px;
         font-weight: 500;
         margin-bottom: 12px;
         opacity: 0.8;
@@ -1170,7 +1085,7 @@
     .student-meta {
         display: flex;
         gap: 16px;
-        font-size: 16px;
+        font-size: 13px;
         opacity: 0.7;
         flex-wrap: wrap;
     }
@@ -1271,11 +1186,30 @@
 
     .total-display-modal {
         background: white;
-        color: #27ae60;
-        font-size: 20px;
-        opacity: 0.5;
-        padding-bottom: 10px;
-        font-weight: bold;
+        color: #2c3e50;
+        padding: 20px;
+        border-radius: 0;
+        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        border-top: 2px solid #e0e0e0;
+        margin-top: 32px;
+    }
+
+    .total-display-modal .label {
+        font-size: 14px;
+        font-weight: 500;
+        opacity: 0.7;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .total-display-modal .value {
+        font-size: 36px;
+        font-weight: 700;
+        color: #2c3e50;
     }
 
     .result-entry-footer {
@@ -1364,12 +1298,24 @@
             border-radius: 0;
         }
         
+        .result-entry-body {
+            padding: 24px 20px;
+        }
+        
+        .student-avatar {
+            display: none;
+        }
+        
+        .student-roll {
+            font-size: 24px;
+        }
+        
         .student-name {
-            font-size: 16px;
+            font-size: 15px;
         }
         
         .student-meta {
-            font-size: 13px;
+            font-size: 12px;
             gap: 12px;
         }
         
@@ -1388,6 +1334,14 @@
         
         .mark-input-label {
             font-size: 11px;
+        }
+        
+        .total-display-modal {
+            padding: 18px;
+        }
+        
+        .total-display-modal .value {
+            font-size: 32px;
         }
         
         .btn-modal {
@@ -1426,12 +1380,6 @@
         .btn-save-all, .btn-delete-selected {
             flex: 1;
         }
-
-        .page-header {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 15px;
-        }
         
         .page-header h2 {
             font-size: 22px;
@@ -1455,42 +1403,14 @@
     .hidden {
         display: none;
     }
-
-    .btn-toggle-columns {
-        padding: 10px 24px;
-        border: none;
-        border-radius: 8px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        font-size: 14px;
-        background: #6b7280;
-        color: white;
-    }
-
-    .btn-toggle-columns:hover:not(:disabled) {
-        background: #4b5563;
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(107, 114, 128, 0.4);
-    }
-
-    .results-table.hide-name-group th:nth-child(1), .results-table.hide-name-group td:nth-child(1),
-    .results-table.hide-name-group th:nth-child(3), .results-table.hide-name-group td:nth-child(3),
-    .results-table.hide-name-group th:nth-child(4), .results-table.hide-name-group td:nth-child(4) {
-        display: none;
-    }
     </style>
 
     <div class="result-unified-container">
         <div class="container-fluid maxAdminpages">
             <!-- Page Header -->
             <div class="page-header">
-                <h2>📊 Result Management</h2>
-                <div class="result-unified-nav">
-                    <a href="<?= home_url('admin-result') ?>?page=result&view=resultview" target="_blank">Check Entries</a>
-                    <a href="<?= home_url('admin-result') ?>?page=result&view=marksheet" target="_blank">Blank Mark Sheet</a>
-                    <a href="<?= home_url('admin-result') ?>?page=result&view=allresult" target="_blank">All Result</a>
-                </div>
+                <h2>📊 Unified Result Management</h2>
+                <p>Add, Edit, and Delete student results all in one place</p>
             </div>
 
             <!-- Filter Card -->
@@ -1526,15 +1446,11 @@
                                 <option value="">All Groups</option>
                             </select>
                         </div>
-                        
+
                         <div class="filter-group">
-                            <label>Religion</label>
-                            <select id="resultReligion" name="religion">
-                                <option value="">All Religions</option>
-                                <option value="Muslim">Muslim</option>
-                                <option value="Hinduism">Hinduism</option>
-                                <option value="Buddist">Buddist</option>
-                                <option value="Christian">Christian</option>
+                            <label>Year/Session *</label>
+                            <select id="resultYear" name="year" required disabled>
+                                <option value="">Select Class First</option>
                             </select>
                         </div>
                     </div>
@@ -1546,13 +1462,6 @@
                             <select id="resultExam" name="exam" required disabled>
                                 <option value="">Select Class First</option>
                             </select>
-                        </div>                        
-
-                        <div class="filter-group">
-                            <label>Year/Session *</label>
-                            <select id="resultYear" name="year" required disabled>
-                                <option value="">Select Class First</option>
-                            </select>
                         </div>
 
                         <div class="filter-group">
@@ -1561,7 +1470,7 @@
                                 <option value="">Select Exam First</option>
                             </select>
                         </div>
-
+                        
                         <div class="filter-group">
                             <label>Status Filter</label>
                             <select id="statusFilter" name="statusFilter">
@@ -1582,29 +1491,15 @@
 
             <!-- Action Bar (hidden initially) -->
             <div class="action-bar hidden" id="actionBar">
-                <div>
-                    <p class="students-count" id="studentsCount">
-                        <strong>0</strong> students loaded
-                    </p>
-                    <p id="bulkActionInfo">Select students to manage withhold or delete results</p>
+                <div class="students-count" id="studentsCount">
+                    <strong>0</strong> students loaded
                 </div>
-
-                <select id="bulkActionSelect" style="background-color: white;" disabled>
-                    <option value="">Bulk Action</option>
-                    <option value="withhold">Withhold Selected Results (For all subjects)</option>
-                    <option value="unwithhold">Unwithhold Selected Results (For all subjects)</option>
-                    <option value="delete">Delete Selected Results</option>
-                </select>
-                <button class="btn-delete-selected" id="btnApplyBulk" style="background-color: white;" disabled>
-                    Apply
-                </button>
-
                 <div class="action-buttons">
-                    <button type="button" class="btn-toggle-columns" id="btnToggleColumns">
-                        👁️ Hide Name/Group
-                    </button>
                     <button class="btn-save-all" id="btnOpenModal">
-                        ✏️ Enter Result 1 by 1 (Modal)
+                        ✏️ Enter Results (Mobile View)
+                    </button>
+                    <button class="btn-delete-selected" id="btnDeleteSelected" style="background-color: white;" disabled>
+                        🗑️ Delete Selected
                     </button>
                 </div>
             </div>
@@ -1672,18 +1567,26 @@
 
     <!-- Result Entry Modal -->
     <div class="result-entry-modal" id="resultEntryModal">
-        <div class="result-entry-content">            
+        <div class="result-entry-content">
+            <div class="result-entry-header">
+                <div>
+                    <h3>📝 Enter Result</h3>
+                    <div class="result-entry-progress" id="modalProgress">Student 1 of 0</div>
+                </div>
+                <button class="result-entry-close" id="btnCloseModal">×</button>
+            </div>
+            
             <div class="result-entry-body">
-                <div class="student-info-card">               
-                    <div class="student-roll" id="modalStudentRoll">Roll</div>
+                <div class="student-info-card">
+                    <div class="student-avatar" id="modalStudentAvatar">1</div>
                     <div class="student-info-details">
+                        <div class="student-roll" id="modalStudentRoll">Roll: -</div>
                         <div class="student-name" id="modalStudentName">-</div>
                         <div class="student-meta">
                             <span class="student-meta-item" id="modalStudentSection">-</span>
                             <span class="student-meta-item" id="modalStudentGroup">-</span>
                         </div>
-                    </div>                    
-                    <button class="result-entry-close" id="btnCloseModal">x</button>
+                    </div>
                 </div>
                 
                 <div class="marks-form" id="modalMarksForm">
@@ -1723,17 +1626,18 @@
                             <input type="text" class="mark-input-field" id="modalInputCa" data-field="ca" placeholder="0">
                             <div class="auto-save-indicator" id="autoSaveCa">✓ Saved</div>
                         </div>
-                    </div>
                     
-                    <div class="total-display-modal">
-                        <span id="modalTotalDisplay">Total: 0</span>
+                        <div class="total-display-modal">
+                            <span class="label">Total:</span>
+                            <span class="value" id="modalTotalDisplay">0</span>
+                        </div>
                     </div>
                 </div>
             </div>
             
             <div class="result-entry-footer">
                 <button class="btn-modal btn-previous" id="btnModalPrevious">← Previous</button>
-                <button class="btn-modal btn-save-next" id="btnModalSaveNext">Save & Next (Enter) →</button>
+                <button class="btn-modal btn-save-next" id="btnModalSaveNext">Save & Next →</button>
         </div>
         </div>
     </div>
@@ -1755,7 +1659,6 @@
         let autoSaveTimeouts = {};
         let currentModalIndex = 0;
         let modalStudentsData = [];
-        let hideNameGroup = false;
 
         const $siteUrl = $('#theSiteURL').text();
         const AUTO_SAVE_DELAY = 1500; // 1.5 seconds debounce
@@ -1849,7 +1752,6 @@
                 exam: $('#resultExam').val(),
                 section: $('#resultSection').val() || '',
                 group: $('#resultGroup').val() || '',
-                religion: $('#resultReligion').val() || '',
                 year: $('#resultYear').val(),
                 subject: $('#resultSubject').val(),
                 type: 'load_students'
@@ -1889,12 +1791,6 @@
         // ==========================================
 
         function renderStudentsTable() {
-            // Update table class for column visibility
-            $('#resultsTable').removeClass('hide-name-group');
-            if (hideNameGroup) {
-                $('#resultsTable').addClass('hide-name-group');
-            }
-
             const $tbody = $('#resultsTableBody');
             $tbody.empty();
 
@@ -1937,16 +1833,13 @@
                 const statusClass = `status-${mode}`;
                 const statusBadge = mode === 'add' ? 'badge-add' : 'badge-edit';
                 const statusText = mode === 'add' ? 'New' : 'Edit';
+                const showCheckbox = mode === 'edit';
                 const resultIdAttr = student.result_id ? student.result_id : '';
-
-                const withheldBadge = student.withheld && parseInt(student.withheld, 10) === 1
-                    ? ' <span class="status-badge badge-withheld">Withheld</span>'
-                    : '';
 
                 const row = `
                     <tr class="${statusClass}" data-student-id="${student.student_id}" data-result-id="${resultIdAttr}" data-mode="${mode}">
                         <td>
-                            <input type="checkbox" class="select-checkbox row-select" data-student-id="${student.student_id}">
+                            ${showCheckbox ? `<input type="checkbox" class="select-checkbox row-select" data-student-id="${student.student_id}">` : ''}
                         </td>
                         <td>
                             <strong>${student.roll}</strong> 
@@ -1954,7 +1847,7 @@
                         </td>
                         <td>${student.name}</td>
                         <td>${student.group || '-'}</td>
-                        <td><span class="status-badge ${statusBadge} row-status">${statusText}</span>${withheldBadge}</td>
+                        <td><span class="status-badge ${statusBadge} row-status">${statusText}</span></td>
                         <td class="mark-cq" style="display: ${subjectConfig.cq > 0 ? 'table-cell' : 'none'}">
                             <input type="text" class="mark-input mark-cq-input" data-max="${subjectConfig.cq}" value="${student.marks.cq || ''}" data-field="cq">
                         </td>
@@ -2076,24 +1969,7 @@
 
         function updateActionButtons() {
             $('#btnOpenModal').prop('disabled', selectedForDelete.size === 0);
-            $('#bulkActionSelect').prop('disabled', selectedForDelete.size === 0);
-
-            if (selectedForDelete.size === 0) {
-                $('#bulkActionInfo').removeClass('hidden');
-                $('#bulkActionSelect').addClass('hidden');
-                $('#btnApplyBulk').addClass('hidden');
-                $('#bulkActionSelect').val('');
-                $('#btnApplyBulk').prop('disabled', true);
-            } else {
-                $('#bulkActionInfo').addClass('hidden');
-                $('#bulkActionSelect').removeClass('hidden');
-                $('#btnApplyBulk').removeClass('hidden');
-                const hasAction = ($('#bulkActionSelect').val() || '') !== '';
-                $('#btnApplyBulk').prop('disabled', !hasAction);
-            }
             $('#btnDeleteSelected').prop('disabled', selectedForDelete.size === 0);
-            $('#btnWithholdSelected').prop('disabled', selectedForDelete.size === 0);
-            $('#btnUnwithholdSelected').prop('disabled', selectedForDelete.size === 0);
             
             // Update count
             let countText = `<strong>${studentsData.length}</strong> students loaded`;
@@ -2300,93 +2176,6 @@
             openModal();
         });
 
-        // Toggle Name/Group columns
-        $('#btnToggleColumns').click(function() {
-            hideNameGroup = !hideNameGroup;
-            $(this).text(hideNameGroup ? '👁️ Show Name/Group' : '👁️ Hide Name/Group');
-            renderStudentsTable();
-        });
-
-        function setWithheldForSelected(withheldValue) {
-            if (selectedForDelete.size === 0) return;
-
-            const studentIds = Array.from(selectedForDelete);
-
-            $('#loadingOverlay').addClass('active');
-
-            $.ajax({
-                url: window.location.href,
-                method: 'POST',
-                dataType: 'json',
-                data: {
-                    type: 'set_withheld',
-                    student_ids: studentIds,
-                    class: $('#resultClass').val(),
-                    exam: $('#resultExam').val(),
-                    year: $('#resultYear').val(),
-                    withheld: withheldValue
-                }
-            }).done(function(response) {
-                if (response && response.success) {
-                    studentsData = studentsData.map(s => {
-                        if (studentIds.includes(String(s.student_id)) || studentIds.includes(parseInt(s.student_id, 10)) || studentIds.includes(s.student_id)) {
-                            return Object.assign({}, s, { withheld: withheldValue });
-                        }
-                        return s;
-                    });
-
-                    const keepSelected = new Set(selectedForDelete);
-                    renderStudentsTable();
-
-                    keepSelected.forEach(sid => {
-                        $(`.row-select[data-student-id="${sid}"]`).prop('checked', true);
-                    });
-                    updateActionButtons();
-
-                    showToastMessage('success', withheldValue === 1 ? 'Selected students withheld' : 'Selected students unwithheld');
-                } else {
-                    showToastMessage('error', (response && response.message) ? response.message : 'Failed to update withheld');
-                }
-            }).fail(function() {
-                showToastMessage('error', 'Server error. Please try again.');
-            }).always(function() {
-                $('#loadingOverlay').removeClass('active');
-            });
-        }
-
-        $('#bulkActionSelect').change(function() {
-            updateActionButtons();
-        });
-
-        function openDeleteModal() {
-            if (selectedForDelete.size === 0) return;
-            $('#deleteCount').text(selectedForDelete.size);
-            $('#deleteModal').addClass('active');
-        }
-
-        $('#btnApplyBulk').click(function() {
-            if (selectedForDelete.size === 0) return;
-
-            const action = $('#bulkActionSelect').val() || '';
-            if (!action) return;
-
-            if (action === 'withhold') {
-                setWithheldForSelected(1);
-            } else if (action === 'unwithhold') {
-                setWithheldForSelected(0);
-            } else if (action === 'delete') {
-                openDeleteModal();
-            }
-        });
-        
-        $('#btnWithholdSelected').click(function() {
-            setWithheldForSelected(1);
-        });
-
-        $('#btnUnwithholdSelected').click(function() {
-            setWithheldForSelected(0);
-        });
-
         function openModal() {
             $('#resultEntryModal').addClass('active');
             loadModalStudent(currentModalIndex);
@@ -2409,7 +2198,7 @@
 
             // Update student info
             $('#modalStudentAvatar').text(student.roll);
-            $('#modalStudentRoll').text(student.roll);
+            $('#modalStudentRoll').text('Roll: ' + student.roll);
             $('#modalStudentName').text(student.name);
             $('#modalStudentSection').text('Section: ' + (student.section || 'N/A'));
             $('#modalStudentGroup').text('Group: ' + (student.group || 'N/A'));
@@ -2465,40 +2254,8 @@
                 ca: $('#modalInputCa').val()
             };
             const total = calculateTotal(marks);
-            $('#modalTotalDisplay').text(`Total: ${total}`);
+            $('#modalTotalDisplay').text(total);
         }
-
-        // Modal Keyboard Navigation
-        $('.mark-input-field').on('keydown', function(e) {
-            const $inputs = $('#modalMarksForm .mark-input-field:visible');
-            const currentIndex = $inputs.index(this);
-            
-            // Enter key (13)
-            if (e.which === 13) {
-                e.preventDefault();
-                if (currentIndex < $inputs.length - 1) {
-                    $inputs.eq(currentIndex + 1).focus().select();
-                } else {
-                    $('#btnModalSaveNext').click();
-                }
-            }
-            
-            // Right Arrow (39)
-            if (e.which === 39) {
-                e.preventDefault();
-                if (currentIndex < $inputs.length - 1) {
-                    $inputs.eq(currentIndex + 1).focus().select();
-                }
-            }
-            
-            // Left Arrow (37)
-            if (e.which === 37) {
-                e.preventDefault();
-                if (currentIndex > 0) {
-                    $inputs.eq(currentIndex - 1).focus().select();
-                }
-            }
-        });
 
         // Modal input change with auto-save
         $('.mark-input-field').on('input', function() {
@@ -2543,10 +2300,10 @@
             const student = modalStudentsData[currentModalIndex];
             
             const marks = {
-                cq: $('#modalInputCq').val().trim(),
-                mcq: $('#modalInputMcq').val().trim(),
-                prac: $('#modalInputPrac').val().trim(),
-                ca: $('#modalInputCa').val().trim()
+                cq: $('#modalInputCq').val(),
+                mcq: $('#modalInputMcq').val(),
+                prac: $('#modalInputPrac').val(),
+                ca: $('#modalInputCa').val()
             };
 
             const saveData = {
@@ -2568,7 +2325,7 @@
             }
 
             $.ajax({
-                url: window.location.href, // Use current page for AJAX
+                url: $siteUrl + '/inc/ajaxAction.php',
                 method: 'POST',
                 data: saveData,
                 dataType: 'json'
@@ -2634,6 +2391,13 @@
         // ==========================================
         // DELETE OPERATIONS
         // ==========================================
+
+        $('#btnDeleteSelected').click(function() {
+            if (selectedForDelete.size === 0) return;
+
+            $('#deleteCount').text(selectedForDelete.size);
+            $('#deleteModal').addClass('active');
+        });
 
         $('#btnCancelDelete').click(function() {
             $('#deleteModal').removeClass('active');

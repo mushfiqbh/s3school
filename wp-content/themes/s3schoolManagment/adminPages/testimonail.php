@@ -303,248 +303,208 @@ require_once __DIR__ . '/functions/html-utils.php';
 												$staticWriteError = '';
 
 												ob_start();
-												$is_pad_layout = ($testimonial_border_type === 'Pad');
+						$is_pad_layout = ($testimonial_border_type === 'Pad');
 
-												// Add print-specific CSS for pad background in snapshot
-												$pad_print_css = '';
-												if ($is_pad_layout && $testimonial_pad_url !== '') {
-													$pad_print_css = '<style type="text/css">@media print { .itemMainBox-pad { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; background-image: url(\'' . esc_url($testimonial_pad_url) . '\') !important; background-size: 100% 100% !important; background-repeat: no-repeat !important; background-position: center top !important; } }</style>';
-												}
 											?>
 												<link href="https://fonts.googleapis.com/css?family=Satisfy" rel="stylesheet">
-												<link href="https://fonts.googleapis.com/css?family=Quicksand" rel="stylesheet">
-												<style type="text/css">
-													@page {
-														size: A4;
-														margin: 0;
-
-														/* Remove browser print header/footer */
-														/* Chrome/Edge/Safari: */
-														@top-left {
-															content: none;
-														}
-
-														@top-center {
-															content: none;
-														}
-
-														@top-right {
-															content: none;
-														}
-
-														@bottom-left {
-															content: none;
-														}
-
-														@bottom-center {
-															content: none;
-														}
-
-														@bottom-right {
-															content: none;
-														}
-													}
-
-													@media print {
-														body {
-															-webkit-print-color-adjust: exact;
-															print-color-adjust: exact;
-														}
-
-														img {
-															max-width: 100%;
-															height: auto;
-															display: block;
-														}
-
-														/* Hide header/footer in Firefox */
-														@page {
-															margin: 0;
-														}
-
-														/* Remove forced header/footer for all browsers (where supported) */
-														html,
-														body {
-															margin: 0 !important;
-															padding: 0 !important;
-														}
-													}
-
-													.itemMainBox {
-														max-width: 21cm;
-														min-height: calc(29.7cm);
-														display: inline-block;
-														overflow: hidden;
-														font-family: sans-serif;
-														width: 100%;
-														position: relative;
-														page-break-after: always;
-														box-sizing: border-box;
-													}
-
-													.itemMainBox-border {
-														border: 10px solid #005daa;
-													}
-
-													.itemMainBox-pad {
-														border: none;
-														margin: 0;
-														padding: 0;
-														background-position: center top;
-														background-repeat: no-repeat;
-														background-size: 100% 100%;
-													}
-
-													.testimonial-inner {
-														padding: 32px;
-													}
-
-													.testimonial-inner-pad {
-														padding: 40px 48px;
-													}
-
-													.itemMainBox p {
-														font-size: 16px;
-														font-family: 'Quicksand', sans-serif;
-														line-height: 2;
-													}
-
-													.itemMainBox .itemWaterMark {
-														position: absolute;
-														top: 50%;
-														left: 50%;
-														transform: translate(-50%, -50%);
-														width: 100%;
-														z-index: -1;
-														text-align: center;
-													}
-
-													.itemMainBox .itemWaterMark img {
-														opacity: .12;
-														width: 250px;
-													}
-
-													.itemMainBox .instLogo {
-														width: 90px;
-														position: absolute;
-														left: 0;
-														top: 0;
-													}
-
-													.itemMainBox .instName {
-														margin: 0 0 5px 0;
-														color: #337ab7;
-														font-weight: bold;
-														font-size: 30px;
-													}
-
-													.itemMainBox .instAddrs {
-														margin: 0 0 10px 0;
-														color: #000;
-														font-weight: normal;
-														font-size: 18px;
-													}
-
-													.itemMainBox .examName {
-														margin: 0 auto 7px;
-														text-align: center;
-														font-size: 25px;
-													}
-
-													.itemMainBox .examName h3 {
-														margin: 0;
-														font-size: 20px;
-													}
-
-													.itemMainBox .itemInfo {
-														text-align: center;
-														margin: 20px 0;
-														clear: both;
-													}
-
-													.itemMainBox .admitCard {
-														margin: 0 0 10px 0;
-														color: #f7740c;
-														font-weight: bold;
-														background: #f0f0f0;
-														print-color-adjust: exact;
-														-webkit-print-color-adjust: exact;
-														padding: 10px;
-														border-radius: 5px;
-														font-size: 25px;
-														border: 2px solid #f0f0f0;
-													}
-
-													.itemMainBox .admitNote {
-														float: left;
-													}
-
-													.itemMainBox .admitNote p {
-														margin: 0;
-														padding-left: 15px;
-													}
-
-													.itemMainBox hr {
-														clear: both;
-													}
-
-													.itemMainBox .princSign {
-														float: right;
-													}
-
-													b u {
-														font-family: 'Rechtman', sans-serif;
-														text-decoration: none;
-														padding: 0 5px;
-													}
-
-													.editable {
-														position: relative;
-													}
-
-													.editable .closeEdit {
-														position: absolute;
-														z-index: 5;
-														cursor: pointer;
-														right: 0px;
-														top: -6px;
-														width: 15px;
-														text-indent: 0;
-														margin: 0;
-														padding: 0;
-														background: rgba(255, 0, 0, .8);
-														border-radius: 3px;
-														text-align: center;
-														line-height: 15px;
-														color: #fff;
-														font-family: arial;
-														-webkit-touch-callout: none;
-														-webkit-user-select: none;
-														-khtml-user-select: none;
-														-moz-user-select: none;
-														-ms-user-select: none;
-														user-select: none;
-													}
-
-													#wrapper {
-														position: absolute;
-														overflow: auto;
-														left: 0;
-														right: 0;
-														top: 0;
-														bottom: 0;
-													}
-
-													#wrapper-border {
-														border: 15px solid #d0bf9e;
-													}
-												</style>
-												<?php
-
-												// Output print CSS for pad if needed
-												if (!empty($pad_print_css)) {
-													echo $pad_print_css;
+											<link href="https://fonts.googleapis.com/css?family=Quicksand" rel="stylesheet">
+											<style type="text/css">
+												@page {
+													size: A4;
 												}
+
+												@media print {
+													body {
+														-webkit-print-color-adjust: exact;
+														print-color-adjust: exact;
+													}
+
+													img {
+														max-width: 100%;
+														height: auto;
+														display: block;
+													}
+												}
+
+												.itemMainBox {
+													max-width: 21cm;
+													min-height: calc(29.7cm - 40mm);
+													display: inline-block;
+													overflow: hidden;
+													margin: 20px 0;
+													font-family: sans-serif;
+													width: 100%;
+													position: relative;
+													page-break-after: always;
+													box-sizing: border-box;
+												}
+
+												.itemMainBox-border {
+													border: 10px solid #005daa;
+												}
+
+												.itemMainBox-pad {
+													border: none;
+													margin: 0;
+													padding: 0;
+												}
+
+												.itemMainBox-pad .testimonial-pad-banner {
+													text-align: center;
+													margin-bottom: 40px;
+												}
+
+												.itemMainBox-pad .testimonial-pad-banner img {
+													max-width: 100%;
+													height: auto;
+													display: block;
+													margin: 0 auto;
+												}
+
+												.testimonial-inner {
+													padding: 32px;
+												}
+
+												.testimonial-inner-pad {
+													padding: 40px 48px;
+												}
+
+												.itemMainBox p {
+													font-size: 16px;
+													font-family: 'Quicksand', sans-serif;
+													line-height: 2;
+												}
+
+												.itemMainBox .itemWaterMark {
+													position: absolute;
+													width: 100%;
+													bottom: 0;
+													left: 0;
+													z-index: -1;
+													text-align: center;
+												}
+
+												.itemMainBox .itemWaterMark img {
+													opacity: .12;
+													width: 250px;
+												}
+
+												.itemMainBox .instLogo {
+													width: 90px;
+													position: absolute;
+													left: 0;
+													top: 0;
+												}
+
+												.itemMainBox .instName {
+													margin: 0 0 5px 0;
+													color: #337ab7;
+													font-weight: bold;
+													font-size: 30px;
+												}
+
+												.itemMainBox .instAddrs {
+													margin: 0 0 10px 0;
+													color: #000;
+													font-weight: normal;
+													font-size: 18px;
+												}
+
+												.itemMainBox .examName {
+													margin: 0 auto 7px;
+													text-align: center;
+													font-size: 25px;
+												}
+
+												.itemMainBox .examName h3 {
+													margin: 0;
+													font-size: 20px;
+												}
+
+												.itemMainBox .itemInfo {
+													text-align: center;
+													margin: 20px 0;
+													clear: both;
+												}
+
+												.itemMainBox .admitCard {
+													margin: 0 0 10px 0;
+													color: #f7740c;
+													font-weight: bold;
+													background: #f0f0f0;
+													print-color-adjust: exact;
+													-webkit-print-color-adjust: exact;
+													padding: 10px;
+													border-radius: 5px;
+													font-size: 25px;
+													border: 2px solid #f0f0f0;
+												}
+
+												.itemMainBox .admitNote {
+													float: left;
+												}
+
+												.itemMainBox .admitNote p {
+													margin: 0;
+													padding-left: 15px;
+												}
+
+												.itemMainBox hr {
+													clear: both;
+												}
+
+												.itemMainBox .princSign {
+													float: right;
+												}
+
+												b u {
+													font-family: 'Rechtman', sans-serif;
+													text-decoration: none;
+													padding: 0 5px;
+												}
+
+												.editable {
+													position: relative;
+												}
+
+												.editable .closeEdit {
+													position: absolute;
+													z-index: 5;
+													cursor: pointer;
+													right: 0px;
+													top: -6px;
+													width: 15px;
+													text-indent: 0;
+													margin: 0;
+													padding: 0;
+													background: rgba(255, 0, 0, .8);
+													border-radius: 3px;
+													text-align: center;
+													line-height: 15px;
+													color: #fff;
+													font-family: arial;
+													-webkit-touch-callout: none;
+													-webkit-user-select: none;
+													-khtml-user-select: none;
+													-moz-user-select: none;
+													-ms-user-select: none;
+													user-select: none;
+												}
+
+												#wrapper {
+													position: absolute;
+													overflow: auto;
+													left: 0;
+													right: 0;
+													top: 0;
+													bottom: 0;
+												}
+
+												#wrapper-border {
+													border: 15px solid #d0bf9e;
+												}
+											</style>
+											<?php
 
 												foreach ($groupsBy as $value) {
 													if ($useManualRef) {
@@ -554,14 +514,11 @@ require_once __DIR__ . '/functions/html-utils.php';
 														$refSerialCounter++;
 													}
 													$generatedTestimonials++;
+											?>
+												<?php
 													$item_classes = 'itemMainBox';
-													$item_style_attr = '';
 													if ($is_pad_layout) {
 														$item_classes .= ' itemMainBox-pad';
-														if ($testimonial_pad_url !== '') {
-															$pad_style = sprintf("background-image:url('%s');background-repeat:no-repeat;background-position:center top;background-size:100%% 100%%;", esc_url($testimonial_pad_url));
-															$item_style_attr = ' style="' . esc_attr($pad_style) . '"';
-														}
 													} else {
 														$item_classes .= ' itemMainBox-border';
 													}
@@ -572,11 +529,20 @@ require_once __DIR__ . '/functions/html-utils.php';
 														$content_wrapper_classes .= ' testimonial-inner-pad';
 													}
 												?>
-													<div class="<?= esc_attr($item_classes); ?>" <?= $item_style_attr; ?>>
-														<div id="<?= esc_attr($wrapper_id); ?>">
-															<div class="<?= esc_attr($content_wrapper_classes); ?>">
+											<div class="<?= esc_attr($item_classes); ?>">
+												<div id="<?= esc_attr($wrapper_id); ?>">
+													<div class="<?= esc_attr($content_wrapper_classes); ?>">
 																<?php
-																if (!$is_pad_layout) {
+
+																if ($is_pad_layout) {
+																?>
+																	<div class="testimonial-pad-banner">
+																		<?php if ($testimonial_pad_url !== '') : ?>
+																			<img src="<?= esc_url($testimonial_pad_url); ?>" alt="Testimonial pad banner" width="1200" height="185">
+																		<?php endif; ?>
+																	</div>
+																<?php
+																} else {
 																?>
 																	<table style="width: 100%;">
 																		<tr>
@@ -617,18 +583,8 @@ require_once __DIR__ . '/functions/html-utils.php';
 																	</table>
 																<?php } ?>
 
-																<div class="section3" <?php if (!$is_pad_layout): ?> style="background: url(<?= $s3sRedux['instLogo'] ?>) no-repeat center; background-size: 400px;" <?php endif; ?>>
-																	<div style="<?php if ($is_pad_layout) {
-																					echo 'background:transparent;margin-top:170px;';
-																				} else {
-																					echo 'background: rgba(255,255,255,0.9);margin-top:60px;';
-																				} ?>">
-
-																		<?php if (!$is_pad_layout): ?>
-																			<div class="itemWaterMark">
-																				<img src="<?= $s3sRedux['instLogo'] ?>" alt="Logo Watermark">
-																			</div>
-																		<?php endif; ?>
+																<div class="section3" style="background: url(<?= $s3sRedux['instLogo'] ?>) no-repeat center; background-size: 400px;">
+																	<div style="background: rgba(255,255,255,0.9);margin-top:80px;">
 																		<div class="itemInfo">
 																			<h3 style="text-transform: uppercase;">Testimonial</h3>
 																		</div>
@@ -708,24 +664,22 @@ require_once __DIR__ . '/functions/html-utils.php';
 																			<p></p>
 																			<p style="<?= ($testimonial_type == 'board') ? 'text-indent: 30px' : 'padding-left: 20px' ?>">I wish <?= ($value->stdGender == 0) ? 'her' : 'him' ?> every success in life.</p>
 
-																			<table style="width: 100%; <?php if ($is_pad_layout) { ?>margin-top: 400px;<?php } else { ?>margin-top: 297px;<?php } ?>">
+																			<table style="width: 100%; margin-top: 120px;">
 																				<tr>
 																					<td>
 																						<p style="line-height: 1.2;">Prepared by: <?= $testimonial_prepared_by ?></p>
 																						<p style="line-height: 1.2;">Date: <?= date('d-m-Y') ?></p>
 																					</td>
-																					<td style="width: 350px;">
-																						<div style="width: fit-content; float: right; text-align: center;">
-																							<div style="display: flex; flex-direction: column; align-items: center;">
-																								<?php if ($s3sRedux['principalSign']): ?>
-																									<img src="<?= $s3sRedux['principalSign'] ?>" alt="Signature" style="max-height: 50px; max-width: 150px;">
-																								<?php endif; ?>
-																							</div>
-																							<p style="margin: 0;line-height: 1.2;"><?= $instHeadName ?><br>
-																								<?= $s3sRedux['inst_head_title'] ?><br>
-																								<?= $s3sRedux['institute_name'] ?><br>
-																								<?= $s3sRedux['institute_address'] ?></p>
+																					<td style="width: 350px; text-align: center;">
+																						<div style="display: flex; flex-direction: column; align-items: center;">
+																							<?php if ($s3sRedux['principalSign']): ?>
+																								<img src="<?= $s3sRedux['principalSign'] ?>" alt="Signature" style="max-height: 50px; max-width: 150px;">
+																							<?php endif; ?>
 																						</div>
+																						<p style="margin: 0;line-height: 1.2;"><?= $instHeadName ?><br>
+																							<?= $s3sRedux['inst_head_title'] ?><br>
+																							<?= $s3sRedux['institute_name'] ?><br>
+																							<?= $s3sRedux['institute_address'] ?></p>
 																					</td>
 																				</tr>
 																			</table>
@@ -737,7 +691,7 @@ require_once __DIR__ . '/functions/html-utils.php';
 														</div>
 													</div>
 
-													<?php
+												<?php
 													// Increment roll/reg for board type
 													if ($testimonial_type == 'board') {
 														$rollStart++;
@@ -809,7 +763,7 @@ require_once __DIR__ . '/functions/html-utils.php';
 												}
 
 												if ($staticTestimonialUrl !== '') {
-													?>
+												?>
 													<script type="text/javascript">
 														(function() {
 															var area = document.getElementById('printArea');
@@ -818,163 +772,161 @@ require_once __DIR__ . '/functions/html-utils.php';
 															}
 														})();
 													</script>
-											<?php
+												<?php
 												}
 											} else {
 												echo "<h3 class='text-center'>No Student Found</h3>";
 											}
-											?>
+												?>
 
+													</div>
 										</div>
+										<div id="editor"></div>
+									<?php } ?>
 									</div>
-									<div id="editor"></div>
-								<?php } ?>
 							</div>
-						</div>
 
-						<?php if (! is_admin()) { ?>
+							<?php if (! is_admin()) { ?>
+						</div>
 					</div>
 					</div>
 				</div>
 			</div>
-		</div>
-	<?php get_footer();
-						} ?>
+		<?php get_footer();
+							} ?>
 
-	<script type="text/javascript">
-		(function($) {
+		<script type="text/javascript">
+			(function($) {
 
-			$('.resultClass').on('change', function() {
-				var $form = $(this).closest('form');
-				var siteUrl = $('#theSiteURL').text();
-				var loadingOption = '<option disabled selected>Loading...</option>';
+				$('.resultClass').on('change', function() {
+					var $form = $(this).closest('form');
+					var siteUrl = $('#theSiteURL').text();
+					var loadingOption = '<option disabled selected>Loading...</option>';
 
-				$form.find('.resultExam').html(loadingOption).prop('disabled', true);
-				$form.find('.resultSection').html(loadingOption).prop('disabled', true);
-				$form.find('.resultYear').html(loadingOption).prop('disabled', true);
+					$form.find('.resultExam').html(loadingOption).prop('disabled', true);
+					$form.find('.resultSection').html(loadingOption).prop('disabled', true);
+					$form.find('.resultYear').html(loadingOption).prop('disabled', true);
 
-				$.ajax({
-					url: siteUrl + "/inc/ajaxAction.php",
-					method: "POST",
-					data: {
-						class: $(this).val(),
-						type: 'getExams'
-					},
-					dataType: "html"
-				}).done(function(msg) {
-					var content = msg && msg.trim() ? msg : '<option disabled selected>No exam found</option>';
-					$form.find('.resultExam').html(content).prop('disabled', false);
-				}).fail(function() {
-					$form.find('.resultExam').html('<option disabled selected>Failed to load</option>').prop('disabled', true);
-				});
-
-				$.ajax({
-					url: siteUrl + "/inc/ajaxAction.php",
-					method: "POST",
-					data: {
-						class: $(this).val(),
-						type: 'getYears'
-					},
-					dataType: "html"
-				}).done(function(msg) {
-					var content = msg && msg.trim() ? msg : '<option disabled selected>No year found</option>';
-					$form.find('.resultYear').html(content).prop('disabled', false);
-				}).fail(function() {
-					$form.find('.resultYear').html('<option disabled selected>Failed to load</option>').prop('disabled', true);
-				});
-
-				$.ajax({
-					url: siteUrl + "/inc/ajaxAction.php",
-					method: "POST",
-					data: {
-						class: $(this).val(),
-						type: 'getSection'
-					},
-					dataType: "html"
-				}).done(function(msg) {
-					var content = msg && msg.trim() ? msg : '<option disabled selected>No section found</option>';
-					$form.find('.resultSection').html(content).prop('disabled', false);
-				}).fail(function() {
-					$form.find('.resultSection').html('<option disabled selected>Failed to load</option>').prop('disabled', true);
-				});
-			});
-		})(jQuery);
-
-		function printTestimonial(divId) {
-			var container = document.getElementById(divId);
-			var staticUrl = '';
-			if (container && typeof container.getAttribute === 'function') {
-				staticUrl = container.getAttribute('data-static-url') || '';
-			}
-
-			var buildHeadContent = function() {
-				var safeBaseHref = document.location.href.replace(/"/g, '&quot;');
-				var headContent = '<meta charset="utf-8"><title>Testimonial</title><base href="' + safeBaseHref + '">';
-				document.querySelectorAll('head link[rel="stylesheet"], head style').forEach(function(node) {
-					if (node.tagName && node.tagName.toLowerCase() === 'link' && node.href) {
-						headContent += '<link rel="stylesheet" href="' + node.href + '">';
-					} else if (node.outerHTML) {
-						headContent += node.outerHTML;
-					}
-				});
-				return headContent;
-			};
-
-			var openPrintWindow = function(html) {
-				if (!html) {
-					return false;
-				}
-
-				var printWindow = window.open('', '_blank', 'width=1024,height=768');
-				if (!printWindow) {
-					return false;
-				}
-
-				var doc = printWindow.document;
-				var headContent = buildHeadContent();
-				doc.open();
-				doc.write('<!doctype html><html><head>' + headContent + '</head><body>' + html + '<script>window.addEventListener("load", function() { window.focus(); window.print(); setTimeout(function() { window.close(); }, 250); });<\/script></body></html>');
-				doc.close();
-
-				return true;
-			};
-
-			var fallbackToContainer = function() {
-				if (container) {
-					openPrintWindow(container.innerHTML);
-				}
-			};
-
-			if (staticUrl && window.fetch) {
-				fetch(staticUrl, {
-						cache: 'reload'
-					})
-					.then(function(response) {
-						if (!response.ok) {
-							throw new Error('Failed to load static testimonial');
-						}
-						return response.text();
-					})
-					.then(function(html) {
-						if (!openPrintWindow(html)) {
-							fallbackToContainer();
-						}
-					})
-					.catch(function() {
-						fallbackToContainer();
+					$.ajax({
+						url: siteUrl + "/inc/ajaxAction.php",
+						method: "POST",
+						data: {
+							class: $(this).val(),
+							type: 'getExams'
+						},
+						dataType: "html"
+					}).done(function(msg) {
+						var content = msg && msg.trim() ? msg : '<option disabled selected>No exam found</option>';
+						$form.find('.resultExam').html(content).prop('disabled', false);
+					}).fail(function() {
+						$form.find('.resultExam').html('<option disabled selected>Failed to load</option>').prop('disabled', true);
 					});
-				return true;
-			}
 
-			if (staticUrl && !window.fetch) {
-				fallbackToContainer();
-				return true;
-			}
+					$.ajax({
+						url: siteUrl + "/inc/ajaxAction.php",
+						method: "POST",
+						data: {
+							class: $(this).val(),
+							type: 'getYears'
+						},
+						dataType: "html"
+					}).done(function(msg) {
+						var content = msg && msg.trim() ? msg : '<option disabled selected>No year found</option>';
+						$form.find('.resultYear').html(content).prop('disabled', false);
+					}).fail(function() {
+						$form.find('.resultYear').html('<option disabled selected>Failed to load</option>').prop('disabled', true);
+					});
 
-			if (container) {
-				return openPrintWindow(container.innerHTML);
-			}
+					$.ajax({
+						url: siteUrl + "/inc/ajaxAction.php",
+						method: "POST",
+						data: {
+							class: $(this).val(),
+							type: 'getSection'
+						},
+						dataType: "html"
+					}).done(function(msg) {
+						var content = msg && msg.trim() ? msg : '<option disabled selected>No section found</option>';
+						$form.find('.resultSection').html(content).prop('disabled', false);
+					}).fail(function() {
+						$form.find('.resultSection').html('<option disabled selected>Failed to load</option>').prop('disabled', true);
+					});
+				});
+			})(jQuery);
 
-			return false;
-		}
-	</script>
+			function printTestimonial(divId) {
+				var container = document.getElementById(divId);
+				var staticUrl = '';
+				if (container && typeof container.getAttribute === 'function') {
+					staticUrl = container.getAttribute('data-static-url') || '';
+				}
+
+				var buildHeadContent = function() {
+					var safeBaseHref = document.location.href.replace(/"/g, '&quot;');
+					var headContent = '<meta charset="utf-8"><title>Testimonial</title><base href="' + safeBaseHref + '">';
+					document.querySelectorAll('head link[rel="stylesheet"], head style').forEach(function(node) {
+						if (node.tagName && node.tagName.toLowerCase() === 'link' && node.href) {
+							headContent += '<link rel="stylesheet" href="' + node.href + '">';
+						} else if (node.outerHTML) {
+							headContent += node.outerHTML;
+						}
+					});
+					return headContent;
+				};
+
+				var openPrintWindow = function(html) {
+					if (!html) {
+						return false;
+					}
+
+					var printWindow = window.open('', '_blank', 'width=1024,height=768');
+					if (!printWindow) {
+						return false;
+					}
+
+					var doc = printWindow.document;
+					var headContent = buildHeadContent();
+					doc.open();
+					doc.write('<!doctype html><html><head>' + headContent + '</head><body>' + html + '<script>window.addEventListener("load", function() { window.focus(); window.print(); setTimeout(function() { window.close(); }, 250); });<\/script></body></html>');
+					doc.close();
+
+					return true;
+				};
+
+				var fallbackToContainer = function() {
+					if (container) {
+						openPrintWindow(container.innerHTML);
+					}
+				};
+
+				if (staticUrl && window.fetch) {
+					fetch(staticUrl, { cache: 'reload' })
+						.then(function(response) {
+							if (!response.ok) {
+								throw new Error('Failed to load static testimonial');
+							}
+							return response.text();
+						})
+						.then(function(html) {
+							if (!openPrintWindow(html)) {
+								fallbackToContainer();
+							}
+						})
+						.catch(function() {
+							fallbackToContainer();
+						});
+					return true;
+				}
+
+				if (staticUrl && !window.fetch) {
+					fallbackToContainer();
+					return true;
+				}
+
+				if (container) {
+					return openPrintWindow(container.innerHTML);
+				}
+
+				return false;
+			}
+		</script>

@@ -267,7 +267,7 @@ if (isset($_POST['deleteSubject'])) {
             </div>
             <div class="form-group col-md-3">
               <label>Short Name</label>
-              <input class="form-control shortName" type="text" name="shortName" value="">
+              <input class="form-control shortName" type="text" name="shortName" value="" required>
             </div>
             <div class="form-group col-md-4">
               <label>For Class</label>
@@ -493,21 +493,32 @@ if (isset($_POST['deleteSubject'])) {
 
 
     $(".optionalCk, .sub4thCk").change(function() {
-      var $clickedCheckbox = $(this);
-
-      // Make Optional and 4th Subject mutually exclusive
-      if ($clickedCheckbox.hasClass('optionalCk') && $clickedCheckbox.is(':checked')) {
-        $('.sub4thCk').prop('checked', false);
-      } else if ($clickedCheckbox.hasClass('sub4thCk') && $clickedCheckbox.is(':checked')) {
-        $('.optionalCk').prop('checked', false);
-      }
-
-      // Show/hide forGroup section instantly
       var shouldShowGroup = $('.optionalCk').is(':checked') || $('.sub4thCk').is(':checked');
+
       if (shouldShowGroup) {
         $('.forGroup').show();
+        $("#forGroup").attr('required', 'required');
+
+        var $siteUrl = $('#theSiteURL').text();
+        var currentClass = $('#stdClass').val();
+
+        if (currentClass) {
+          var $classdata = { class: currentClass, type: 'hasGroup' };
+          $.ajax({
+            url: $siteUrl + "/inc/ajaxAction.php",
+            method: "POST",
+            data: $classdata,
+            dataType: "html"
+          }).done(function(msg) {
+            if (msg !== 'true') {
+              $('.forGroup').hide();
+              $("#forGroup").removeAttr('required');
+            }
+          });
+        }
       } else {
         $('.forGroup').hide();
+        $("#forGroup").removeAttr('required');
       }
     });
     
@@ -535,12 +546,6 @@ if (isset($_POST['deleteSubject'])) {
       $modal.find('.modal-title').text("Add Subject");
       $modal.find('.btn-primary').text("Add Subject");
       $modal.find('.btn-primary').attr('name', 'addSubject');
-      
-      // Reset checkboxes and hide group section
-      $modal.find('.optionalCk, .sub4thCk, .assessmentCk, .religionck').prop('checked', false);
-      $modal.find('.forGroup').hide();
-      $modal.find('#religionContainer').hide();
-      
       $modal.modal('show');
     });
 

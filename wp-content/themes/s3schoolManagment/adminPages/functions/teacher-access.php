@@ -13,7 +13,14 @@ if (!function_exists('s3s_teacher_restrictions_enabled')) {
      */
     function s3s_teacher_restrictions_enabled()
     {
-        $enabled = defined('S3S_TEACHER_RESTRICTIONS_ENABLED') ? S3S_TEACHER_RESTRICTIONS_ENABLED : true;
+        global $wpdb;
+        $db_enabled = $wpdb->get_var("SELECT option_value FROM sm_options WHERE option_name = 's3s_teacher_restrictions_enabled'");
+
+        if ($db_enabled !== null) {
+            $enabled = ($db_enabled === '1' || $db_enabled === 'true' || intval($db_enabled) === 1);
+        } else {
+            $enabled = defined('S3S_TEACHER_RESTRICTIONS_ENABLED') ? S3S_TEACHER_RESTRICTIONS_ENABLED : true;
+        }
 
         if (function_exists('apply_filters')) {
             return apply_filters('s3s_teacher_restrictions_enabled', $enabled);
@@ -46,6 +53,7 @@ if (!function_exists('s3s_get_teacher_access_context')) {
         $context = [
             'is_teacher' => false,
             'teacher' => null,
+            'has_subject_assignment' => false,
             'has_assignment' => false,
             'restrictions' => null,
             'unrestricted' => false,
@@ -71,7 +79,10 @@ if (!function_exists('s3s_get_teacher_access_context')) {
             if (s3s_teacher_restrictions_enabled()) {
                 $hasClass = !empty($teacher->teacherOfClass);
                 $hasSection = !empty($teacher->teacherOfSection);
+                $hasSubject = sizeof(json_decode($teacher->tecAssignSub, true)) > 0 ? true : false;
+
                 $context['has_assignment'] = $hasClass && $hasSection;
+                $context['has_subject_assignment'] = $hasSubject;
 
                 if ($context['has_assignment']) {
                     $context['restrictions'] = $teacher;
@@ -80,11 +91,12 @@ if (!function_exists('s3s_get_teacher_access_context')) {
         }
 
         if (!s3s_teacher_restrictions_enabled()) {
+            $context['has_subject_assignment'] = false;
             $context['has_assignment'] = false;
             $context['restrictions'] = null;
             $context['unrestricted'] = true;
-        } elseif (!$context['has_assignment']) {
-            $context['unrestricted'] = true;
+        } else {
+            $context['unrestricted'] = false;
         }
 
         $cache = $context;

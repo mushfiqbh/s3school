@@ -41,36 +41,31 @@ $layout_visibility = isset($s3sRedux['layout_visibility']) ? json_decode($s3sRed
 get_header();
 ?>
 
-<style>
-  @import url('https://cdn.msar.me/fonts/kalpurush/font.css');
-
-  body {
-    font-family: 'Kalpurush', Arial, sans-serif !important;
-  }
-</style>
 
 <!-- Latest News -->
 <div class="latestNewsMarque">
   <div class="container latest-news-container">
     <div class="title latest-news-label">সাম্প্রতিক:</div>
-    <div class="marque latest-news-ticker" style="color: black;">
+    <div class="marque latest-news-ticker">
       <marquee onmouseover="this.stop();" onmouseout="this.start();">
         <?php
         $args = [
           'post_status' => 'publish',
           'category_name' => 'latest-news',
-          'posts_per_page' => 10
+          'posts_per_page' => '4'
         ];
-        $news_query = new WP_Query($args);
-        if ($news_query->have_posts()) {
-          while ($news_query->have_posts()) {
-            $news_query->the_post();
-        ?>
-            <span style="margin-right: 20px;">
-              <i class="fa fa-bell" aria-hidden="true" style="color: #d32f2f;"></i>
-              <a href="<?= get_permalink(); ?>" style="color: #333;"><?php the_title(); ?></a>
-            </span>
-        <?php
+
+        $the_query = new WP_Query($args);
+
+        if ($the_query->have_posts()) {
+          while ($the_query->have_posts()) {
+            $the_query->the_post();
+            echo '<a href="' . esc_url(get_permalink()) . '">';
+            echo wp_strip_all_tags(get_the_title());
+            echo '</a>';
+            if ($the_query->current_post + 1 < $the_query->post_count) {
+              echo ' &nbsp; | &nbsp; ';
+            }
           }
         }
         wp_reset_postdata();
@@ -86,6 +81,9 @@ get_header();
       <div class="col-md-12">
         <div id="myCarousel" class="col-md-12 carousel slide" data-ride="carousel">
           <div class="carousel-inner">
+
+            <?php  // foreach ($s3sRedux['home_text_slides'] as $key => $value) {
+            ?>
             <?php foreach ($slider_images as $key => $value) { ?>
               <div class="item <?php echo ($key == 0) ? 'active' : ''; ?>">
                 <img class="img-responsive" src="<?= $value->image_url ?>" alt="">
@@ -249,30 +247,34 @@ get_header();
   </div>
 
 
-  <section class="modern-about-section">
+  <div class="modern-speech-section">
     <div class="container">
-      <!-- Main About Card -->
+      <!-- About Us Card -->
       <div class="row">
-        <div class="col-md-12 wow fadeInUp">
-          <div class="about-main-card">
-            <div class="about-content-wrapper">
-              <div class="about-header-flex">
-                <div class="about-icon-container">
-                  <img src="<?= $s3sRedux['home_about_img']['url']; ?>" alt="About Us">
-                </div>
-                <div class="about-title-container">
-                  <div class="section-badge">About Us</div>
-                  <h2 class="about-title"><?= $s3sRedux['aboutTitelText']; ?></h2>
-                </div>
-              </div>
-              <div class="about-text">
-                <?php
-                $content = preg_replace("/(\r\n|\n|\r){2,}/", "\n", $s3sRedux['aboutUsText']);
-                s3LimitText(wp_kses_post(trim($content)), $s3sRedux['aboutUsTextLimit']);
-                ?>
-              </div>
+        <div class="col-md-12 wow slideInUp">
+          <div class="modern-feature-card">
+            <div class="feature-avatar">
+              <img src="<?= $s3sRedux['home_about_img']['url']; ?>" alt="About Us">
+            </div>
+
+            <!-- Section Title -->
+            <div class="section-title-modern wow fadeInDown">
+              <div class="title-line"></div>
+              <h3 class="inherit-title"><b><?= $s3sRedux['aboutTitelText']; ?></b></h3>
+            </div>
+
+            <div class="feature-content-modern">
+              <?php
+              $content = preg_replace("/(\r\n|\n|\r){2,}/", "\n", $s3sRedux['aboutUsText']);
+              s3LimitText(wp_kses_post(trim($content)), $s3sRedux['aboutUsTextLimit']);
+              ?>
+            </div>
+
+            <br>
+
+            <div class="text-center">
               <?php if (!empty($s3sRedux['aboutUsMoreBtn'])) { ?>
-                <a href="<?= home_url() ?>/speech?cont=about" class="modern-btn-primary">
+                <a href="<?= home_url() ?>/speech?cont=about" class="feature-btn-modern">
                   <?= $s3sRedux['aboutUsMoreBtn'] ?>
                   <i class="fa fa-arrow-right"></i>
                 </a>
@@ -283,32 +285,30 @@ get_header();
       </div>
 
       <!-- Leadership Cards -->
-      <div class="row speech-cards-row">
+      <div class="row" style="margin-top: 30px;">
         <!-- Headmaster -->
-        <div class="col-md-6 col-sm-6 wow fadeInLeft" data-wow-delay="0.2s">
-          <div class="speech-card">
-            <div class="speech-card-header">
-              <div class="speech-avatar">
-                <img src="<?= $s3sRedux['homeHeadmasterImg']['url']; ?>" alt="<?= $s3sRedux['homeHeadmasterTitle']; ?>">
-              </div>
-              <div class="speech-meta">
-                <h4 class="speech-name"><?= $s3sRedux['homeHeadmasterTitle']; ?></h4>
-                <span class="speech-role">Headmaster</span>
-              </div>
+        <div class="col-md-6 col-sm-6 wow slideInLeft">
+          <div class="modern-feature-card">
+            <div class="feature-avatar">
+              <img src="<?= $s3sRedux['homeHeadmasterImg']['url']; ?>" alt="<?= $s3sRedux['homeHeadmasterTitle']; ?>">
             </div>
-            <div class="speech-body">
-              <h3 class="speech-title"><?= $s3sRedux['headmasterSpeechTitle'] ?></h3>
-              <div class="speech-text">
-                <?php
-                $content = preg_replace("/(\r\n|\n|\r){2,}/", "\n", $s3sRedux['homeHeadmaster']);
-                s3LimitText(wp_kses_post(nl2br(trim($content))), $s3sRedux['headmasterTextLimit']);
-                ?>
-              </div>
+            <h3 class="feature-title-modern">
+              <?= $s3sRedux['headmasterSpeechTitle'] ?>
+            </h3>
+            <div class="feature-content-modern">
+              <?php
+              $content = preg_replace("/(\r\n|\n|\r){2,}/", "\n", $s3sRedux['homeHeadmaster']);
+              s3LimitText(wp_kses_post(nl2br(trim($content))), $s3sRedux['headmasterTextLimit']);
+              ?>
             </div>
-            <div class="speech-footer">
+            <p style="padding:10px 0;float:right;">- <?= $s3sRedux['homeHeadmasterTitle']; ?></p>
+
+            <br>
+            <div class="text-center" style="clear:both;">
               <?php if (!empty($s3sRedux['headmasterMoreBtn'])) { ?>
-                <a href="<?= home_url() ?>/speech?cont=headmaster" class="read-more-link">
-                  <?= $s3sRedux['headmasterMoreBtn'] ?> <i class="fa fa-long-arrow-right"></i>
+                <a href="<?= home_url() ?>/speech?cont=headmaster" class="feature-btn-modern">
+                  <?= $s3sRedux['headmasterMoreBtn'] ?>
+                  <i class="fa fa-arrow-right"></i>
                 </a>
               <?php } ?>
             </div>
@@ -316,29 +316,27 @@ get_header();
         </div>
 
         <!-- Chairman -->
-        <div class="col-md-6 col-sm-6 wow fadeInRight" data-wow-delay="0.2s">
-          <div class="speech-card">
-            <div class="speech-card-header">
-              <div class="speech-avatar">
-                <img src="<?= $s3sRedux['homeChairmanImg']['url']; ?>" alt="<?= $s3sRedux['homeChairmanTitle']; ?>">
-              </div>
-              <div class="speech-meta">
-                <h4 class="speech-name"><?= $s3sRedux['homeChairmanTitle']; ?></h4>
-                <span class="speech-role">Chairman</span>
-              </div>
+        <div class="col-md-6 col-sm-6 wow slideInRight">
+          <div class="modern-feature-card">
+            <div class="feature-avatar">
+              <img src="<?= $s3sRedux['homeChairmanImg']['url']; ?>" alt="<?= $s3sRedux['homeChairmanTitle']; ?>">
             </div>
-            <div class="speech-body">
-              <h3 class="speech-title"><?= $s3sRedux['chairmanSpeechTitle'] ?></h3>
-              <div class="speech-text">
-                <?php
-                s3LimitText(wp_kses_post(nl2br($s3sRedux['homeChairman'])), $s3sRedux['chairmanTextLimit']);
-                ?>
-              </div>
+            <h3 class="feature-title-modern">
+              <?= $s3sRedux['chairmanSpeechTitle'] ?>
+            </h3>
+            <div class="feature-content-modern">
+              <?php
+              s3LimitText(wp_kses_post(nl2br($s3sRedux['homeChairman'])), $s3sRedux['chairmanTextLimit']);
+              ?>
             </div>
-            <div class="speech-footer">
+            <p style="padding:10px 0;float:right;">- <?= $s3sRedux['homeChairmanTitle']; ?></p>
+
+            <br>
+            <div class="text-center" style="clear:both;">
               <?php if (!empty($s3sRedux['chairmanMoreBtn'])) { ?>
-                <a href="<?= home_url() ?>/speech?cont=chairman" class="read-more-link">
+                <a href="<?= home_url() ?>/speech?cont=chairman" class="feature-btn-modern">
                   <?= $s3sRedux['chairmanMoreBtn'] ?>
+                  <i class="fa fa-arrow-right"></i>
                 </a>
               <?php } ?>
             </div>
@@ -346,225 +344,7 @@ get_header();
         </div>
       </div>
     </div>
-  </section>
-
-  <style>
-    .modern-about-section {
-      padding: 80px 0;
-      background: #f8fafc;
-    }
-
-    .about-main-card {
-      background: #fff;
-      border-radius: 24px;
-      overflow: hidden;
-      box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.08);
-      margin-bottom: 40px;
-    }
-
-    .about-header-flex {
-      display: flex;
-      align-items: center;
-      gap: 24px;
-      margin-bottom: 24px;
-    }
-
-    .about-icon-container {
-      width: 80px;
-      height: 80px;
-      flex-shrink: 0;
-      background: #f1f5f9;
-      border-radius: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 12px;
-    }
-
-    .about-icon-container img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-    }
-
-    .about-title-container {
-      flex: 1;
-    }
-
-    .about-content-wrapper {
-      padding: 40px;
-    }
-
-    .section-badge {
-      display: inline-block;
-      padding: 6px 16px;
-      background: rgba(99, 102, 241, 0.1);
-      color: #6366f1;
-      border-radius: 50px;
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 16px;
-      width: fit-content;
-    }
-
-    .about-title {
-      font-size: 32px;
-      font-weight: 800;
-      color: #0f172a;
-      margin-bottom: 0;
-      line-height: 1.3;
-    }
-
-    .about-text {
-      color: #64748b;
-      font-size: 16px;
-      line-height: 1.7;
-      margin-bottom: 30px;
-    }
-
-    .modern-btn-primary {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      background: linear-gradient(135deg, #6366f1, #8b5cf6);
-      color: #fff;
-      padding: 12px 28px;
-      border-radius: 50px;
-      font-weight: 600;
-      text-decoration: none;
-      transition: all 0.3s ease;
-      width: fit-content;
-      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
-    }
-
-    .modern-btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(99, 102, 241, 0.35);
-      color: #fff;
-    }
-
-    /* Speech Cards */
-    .speech-cards-row {
-      display: flex;
-      flex-wrap: wrap;
-    }
-
-    .speech-card {
-      background: #fff;
-      border-radius: 20px;
-      padding: 30px;
-      height: 100%;
-      border: 1px solid #e2e8f0;
-      transition: all 0.3s ease;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .speech-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.08);
-      border-color: transparent;
-    }
-
-    .speech-card-header {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      margin-bottom: 24px;
-      padding-bottom: 20px;
-      border-bottom: 1px solid #f1f5f9;
-    }
-
-    .speech-avatar {
-      width: 64px;
-      height: 64px;
-      border-radius: 50%;
-      overflow: hidden;
-      border: 3px solid #eef2ff;
-    }
-
-    .speech-avatar img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .speech-meta {
-      flex: 1;
-    }
-
-    .speech-name {
-      font-size: 18px;
-      font-weight: 700;
-      color: #0f172a;
-      margin: 0 0 4px 0;
-    }
-
-    .speech-role {
-      font-size: 13px;
-      color: #6366f1;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .speech-body {
-      flex: 1;
-    }
-
-    .speech-title {
-      font-size: 20px;
-      font-weight: 700;
-      color: #1e293b;
-      margin-bottom: 12px;
-    }
-
-    .speech-text {
-      color: #64748b;
-      font-size: 15px;
-      line-height: 1.6;
-      margin-bottom: 20px;
-    }
-
-    .speech-footer {
-      margin-top: auto;
-    }
-
-    .read-more-link {
-      color: #6366f1;
-      font-weight: 600;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      transition: gap 0.3s ease;
-    }
-
-    .read-more-link:hover {
-      gap: 10px;
-      color: #4f46e5;
-    }
-
-    @media (max-width: 767px) {
-      .display-flex {
-        flex-direction: column;
-      }
-
-      .about-img-wrapper {
-        min-height: 250px;
-      }
-
-      .about-content-wrapper {
-        padding: 24px;
-      }
-
-      .speech-card {
-        margin-bottom: 20px;
-      }
-    }
-  </style>
+  </div>
 
 
   <!-- Statistics Section -->
@@ -604,48 +384,48 @@ get_header();
           <div class="statistics-item">
             <img src="img/class.svg" alt="">
             <h3>
-              <strong>
-                <span class="stat-count" data-count="<?= (int) get_option('totalClasses', '0'); ?>">0</span>+
-              </strong>
-              <br>
-              Classes
+                    <strong>
+                      <span class="stat-count" data-count="<?= (int) get_option('totalClasses', '0'); ?>">0</span>+
+                    </strong>
+                    <br>
+                    Classes
             </h3>
           </div>
         </div>
         <div class="col-md-3 col-xs-6 col-sm-6 text-center wow fadeInUp stat-col" data-wow-delay=".2s">
-          <div class="statistics-item">
-            <img src="img/student.png" alt="">
-            <h3>
-              <strong>
-                <span class="stat-count" data-count="<?= (int) get_option('totalStudents', '0'); ?>">0</span>+
-              </strong>
-              <br>
-              Students
-            </h3>
-          </div>
+                <div class="statistics-item">
+                  <img src="img/student.png" alt="">
+                  <h3>
+                    <strong>
+                      <span class="stat-count" data-count="<?= (int) get_option('totalStudents', '0'); ?>">0</span>+
+                    </strong>
+                    <br>
+                    Students
+                  </h3>
+                </div>
         </div>
         <div class="col-md-3 col-xs-6 col-sm-6 text-center wow fadeInUp stat-col" data-wow-delay=".3s">
-          <div class="statistics-item">
-            <img src="img/teacher.png" alt="">
-            <h3>
-              <strong>
-                <span class="stat-count" data-count="<?= (int) get_option('totalTeachers', '0'); ?>">0</span>+
-              </strong>
-              <br>
-              Teachers
-            </h3>
-          </div>
+                <div class="statistics-item">
+                  <img src="img/teacher.png" alt="">
+                  <h3>
+                    <strong>
+                      <span class="stat-count" data-count="<?= (int) get_option('totalTeachers', '0'); ?>">0</span>+
+                    </strong>
+                    <br>
+                    Teachers
+                  </h3>
+                </div>
         </div>
         <div class="col-md-3 col-xs-6 col-sm-6 text-center wow fadeInUp stat-col" data-wow-delay=".4s">
           <div class="statistics-item">
-            <img src="img/staff.png" alt="">
-            <h3>
-              <strong>
-                <span class="stat-count" data-count="<?= (int) get_option('totalStaffs', '0'); ?>">0</span>+
-              </strong>
-              <br>
-              Staffs
-            </h3>
+                  <img src="img/staff.png" alt="">
+                  <h3>
+                    <strong>
+                      <span class="stat-count" data-count="<?= (int) get_option('totalStaffs', '0'); ?>">0</span>+
+                    </strong>
+                    <br>
+                    Staffs
+                  </h3>
           </div>
         </div>
       </div>
@@ -688,151 +468,179 @@ get_header();
 
 
 
-  <?php
-  $quick_links = [
-    [
-      'title' => 'Students',
-      'url' => home_url('student-search'),
-      'icon' => 'users',
-      'tagline' => 'Find student profiles instantly',
-      'gradient' => 'linear-gradient(135deg,#5efce8,#736efe)'
-    ],
-    [
-      'title' => 'Teachers',
-      'url' => home_url('teachers'),
-      'icon' => 'male',
-      'tagline' => 'Meet our dedicated faculty',
-      'gradient' => 'linear-gradient(135deg,#ffb347,#ffcc33)'
-    ],
-    [
-      'title' => 'Attendance',
-      'url' => '#',
-      'icon' => 'check',
-      'tagline' => 'Monitor daily presence data',
-      'gradient' => 'linear-gradient(135deg,#43cea2,#185a9d)'
-    ],
-    [
-      'title' => 'Result',
-      'url' => home_url('result'),
-      'icon' => 'bolt',
-      'tagline' => 'Review published exam results',
-      'gradient' => 'linear-gradient(135deg,#ff0844,#ffb199)'
-    ],
-    [
-      'title' => 'Routine',
-      'url' => home_url('routine'),
-      'icon' => 'bell',
-      'tagline' => 'Stay aligned with routines',
-      'gradient' => 'linear-gradient(135deg,#11998e,#38ef7d)'
-    ],
-    [
-      'title' => 'Photo Gallery',
-      'url' => home_url('gallery'),
-      'icon' => 'camera',
-      'tagline' => 'Relive memorable moments',
-      'gradient' => 'linear-gradient(135deg,#f7971e,#ffd200)'
-    ],
-    [
-      'title' => 'News',
-      'url' => home_url('latest-news'),
-      'icon' => 'bell',
-      'tagline' => 'Catch up on announcements',
-      'gradient' => 'linear-gradient(135deg,#ff9a9e,#fecfef)'
-    ],
-    [
-      'title' => 'Notice',
-      'url' => home_url('latest-notice'),
-      'icon' => 'quote-left',
-      'tagline' => 'Important school notices',
-      'gradient' => 'linear-gradient(135deg,#f8ffae,#43c6ac)'
-    ],
-  ];
-  ?>
-
-  <section class="quick-links-modern animated fadeInUpBig" data-wow-duration="1000ms" data-wow-delay="500ms">
+  <!-- result student teacher links starts-->
+  <div style="background: #473399; padding:50px 0;" class="animated fadeInUpBig" data-wow-duration="1000ms" data-wow-delay="500ms">
     <div class="container">
       <div class="row quick-links-row" style="margin-top: 20px;">
-        <div class="col-md-8 quick-links-wrapper">
-          <div class="quick-links-grid">
-            <?php foreach ($quick_links as $link) : ?>
-              <a class="quick-link-card" href="<?= esc_url($link['url']); ?>" style="--card-accent: <?= esc_attr($link['gradient']); ?>" aria-label="<?= esc_attr($link['title']); ?> shortcut">
-                <span class="quick-link-glow"></span>
-                <div class="quick-link-top">
-                  <div class="quick-link-icon">
-                    <i class="fa fa-<?= esc_attr($link['icon']); ?>" aria-hidden="true"></i>
-                  </div>
-                  <span class="quick-link-arrow">
-                    <i class="fa fa-arrow-right" aria-hidden="true"></i>
-                  </span>
+        <div class="col-md-8 quick-links-wrapper" style="padding: 0;">
+          <div class="col-md-3 col-xs-6 quick-link-col">
+            <div class="colorBox">
+              <a href="<?= home_url('student-search'); ?>" class="colorBoxLink bgGreen">
+                <div align="center">
+                  <span><i class="fa fa-users" aria-hidden="true"></i></span>
+                  <p> Students </p>
                 </div>
-
-                <span class="quick-link-meta">
-                  <strong><?= esc_html($link['title']); ?></strong>
-                </span>
-              </a>
-            <?php endforeach; ?>
-          </div>
-        </div>
-
-        <style>
-          @media (max-width: 991px) {
-            .responsive-fix {
-              margin-top: 40px !important;
-            }
-          }
-        </style>
-
-        <div class="col-md-4 sliderRight latest-news-panel responsive-fix">
-          <div class="latest-news-box modern-news-box">
-            <div class="latest-news-header">
-              <div>
-                <p class="quick-links-eyebrow">সর্বশেষ সংবাদ</p>
-              </div>
-              <a href="<?= home_url('latest-news'); ?>" class="news-view-all">
-                View all
-                <i class="fa fa-arrow-right" aria-hidden="true"></i>
               </a>
             </div>
-            <div class="latest-news-stream">
-              <?php
-              $args = [
-                'post_status' => 'publish',
-                'category_name' => 'latest-news',
-                'posts_per_page' => 10
-              ];
+          </div>
 
-              $the_query = new WP_Query($args);
-              if ($the_query->have_posts()) {
-                while ($the_query->have_posts()) {
-                  $the_query->the_post();
-                  $day = get_the_date('d');
-                  $month = get_the_date('M');
-              ?>
-                  <a href="<?= get_permalink(); ?>" class="news-scroll-item">
-                    <div class="news-date-box">
-                      <span class="news-date-day"><?= esc_html($day); ?></span>
-                      <span class="news-date-month"><?= esc_html($month); ?></span>
-                    </div>
-                    <div class="news-item-content">
-                      <h4><?php the_title(); ?></h4>
-                      <div class="news-item-meta">
-                        <i class="fa fa-clock-o" aria-hidden="true"></i>
-                        <?= esc_html(get_post_time('h:i a', true)); ?>
-                      </div>
-                    </div>
-                  </a>
-                <?php
-                }
-              } else {
-                ?>
-                <div class="news-empty-state">
-                  <p><?= esc_html__('No news published yet.', 's3school'); ?></p>
+          <div class="col-md-3 col-xs-6 quick-link-col">
+            <div class="colorBox">
+              <a href="<?= home_url('teachers'); ?>" class="colorBoxLink bgOrange">
+                <div align="center">
+                  <span><i class="fa fa-male" aria-hidden="true"></i></span>
+                  <p> Teachers </p>
                 </div>
-              <?php
-              }
+              </a>
+            </div>
+          </div>
 
-              wp_reset_postdata();
-              ?>
+          <div class="col-md-3 col-xs-6 quick-link-col">
+            <div class="colorBox">
+              <a href="#" class="colorBoxLink bgBlue">
+                <div align="center">
+                  <span><i class="fa fa-check" aria-hidden="true"></i></span>
+                  <p> Attendance </p>
+                </div>
+              </a>
+            </div>
+          </div>
+
+          <div class="col-md-3 col-xs-6 quick-link-col">
+            <div class="colorBox">
+              <a href="<?= home_url('result'); ?>" class="colorBoxLink bgRed exam_overall_showing">
+                <div align="center">
+                  <span><i class="fa fa-bolt" aria-hidden="true"></i></span>
+                  <p> Result </p>
+                </div>
+              </a>
+            </div>
+          </div>
+
+          <div class="div_separator"> </div>
+
+          <div class="col-md-3 col-xs-6 quick-link-col">
+            <div class="colorBox">
+              <a href="<?= home_url('routine'); ?>" class="colorBoxLink bgGreen">
+                <div align="center">
+                  <span><i class="fa fa-bell"></i></span>
+                  <p> Routine </p>
+                </div>
+              </a>
+            </div>
+          </div>
+
+          <div class="col-md-3 col-xs-6 quick-link-col">
+            <div class="colorBox">
+              <a href="#" class="colorBoxLink bgOrange">
+                <div align="center">
+                  <span><i class="fa fa-book"></i></span>
+                  <p> Syllabus </p>
+                </div>
+              </a>
+            </div>
+          </div>
+
+          <div class="col-md-3 col-xs-6 quick-link-col">
+            <div class="colorBox">
+              <a href="<?= home_url('academic-calender'); ?>" class="colorBoxLink bgBlue">
+                <div align="center">
+                  <span><i class="fa fa-calendar"></i></span>
+                  <p> Academic Calendar </p>
+                </div>
+              </a>
+            </div>
+          </div>
+
+          <div class="col-md-3 col-xs-6 quick-link-col">
+            <div class="colorBox">
+              <a href="<?= home_url('gallery'); ?>" class="colorBoxLink bgRed">
+                <div align="center">
+                  <span><i class="fa fa-camera"></i></span>
+                  <p> Photo Gallery </p>
+                </div>
+              </a>
+            </div>
+          </div>
+
+          <div class="div_separator"> </div>
+
+          <div class="col-md-3 col-xs-6 quick-link-col">
+            <div class="colorBox">
+              <a href="#" class="colorBoxLink bgGreen">
+                <div align="center">
+                  <span><i class="fa fa-download"></i></span>
+                  <p> Download </p>
+                </div>
+              </a>
+            </div>
+          </div>
+
+          <div class="col-md-3 col-xs-6 quick-link-col">
+            <div class="colorBox">
+              <a href="<?= home_url('latest-news'); ?>" class="colorBoxLink bgOrange">
+                <div align="center">
+                  <span><i class="fa fa-bell"></i></span>
+                  <p> News </p>
+                </div>
+              </a>
+            </div>
+          </div>
+
+          <div class="col-md-3 col-xs-6 quick-link-col">
+            <div class="colorBox">
+              <a href="<?= home_url('latest-notice'); ?>" class="colorBoxLink bgBlue">
+                <div align="center">
+                  <span><i class="fa fa-quote-left"></i></span>
+                  <p> Notice </p>
+                </div>
+              </a>
+            </div>
+          </div>
+
+          <div class="col-md-3 col-xs-6 quick-link-col">
+            <div class="colorBox">
+              <a href="#" class="colorBoxLink bgRed">
+                <div align="center">
+                  <span><i class="fa fa-bell"></i></span>
+                  <p> Career Opportunity </p>
+                </div>
+              </a>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4 sliderRight latest-news-panel">
+          <div class="latest-news-box">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <h4 class="features-column-title news-header">সর্বশেষ সংবাদ</h4>
+            </div>
+            <div class="letestNewsDiv">
+              <div class="news-scroll-content">
+                <?php
+                $args = [
+                  'post_status' => 'publish',
+                  'category_name' => 'latest-news',
+                  'posts_per_page' => '5'
+                ];
+
+                $the_query = new WP_Query($args);
+                if ($the_query->have_posts()) {
+                  while ($the_query->have_posts()) {
+                    $the_query->the_post();
+                    ?>
+                    <a href="<?= get_permalink(); ?>">
+                      <div class="blog-item-content newsItem">
+                        <h4><?php the_title(); ?></h4>
+                        <p><?= get_post_time('j M Y. h:i a', true) ?></p>
+                      </div>
+                    </a>
+                <?php
+                  }
+                }
+
+                wp_reset_postdata();
+                ?>
+              </div>
             </div>
           </div>
         </div>
@@ -848,6 +656,13 @@ get_header();
 
             <div class="panel-body" style="padding: 5px;">
               <ul class="demo1" style="overflow-y: hidden; height: 204px; min-height: 200px;">
+
+
+
+
+
+
+
                 <li class="news-item-list_bar2">
                   <a style="border-left: 3px solid red; padding-left: 10px;" href="#">
                     <span class="counterSpan" style="display: none;"> <i class="fa fa-check"></i> </span>
@@ -925,30 +740,7 @@ get_header();
         </div>
       </div> <!-------  END OF DIV ROW ------>
     </div> <!-------  END OF DIV CONTAINER ------>
-  </section>
-
-  <script>
-    (function() {
-      var grid = document.querySelector('.quick-links-grid');
-      if (grid) {
-        var cols = grid.querySelectorAll('.quick-link-col');
-        if (cols.length) {
-          cols.forEach(function(col) {
-            col.style.padding = '0';
-          });
-        }
-      }
-      var items = document.querySelectorAll('.quick-link-card');
-      items.forEach(function(el) {
-        el.addEventListener('mouseenter', function() {
-          el.classList.add('hovered');
-        });
-        el.addEventListener('mouseleave', function() {
-          el.classList.remove('hovered');
-        });
-      });
-    })();
-  </script>
+  </div>
   <!--result, student, teacher links ends-->
 
 
@@ -977,127 +769,43 @@ get_header();
   }
   ?>
 
-  <section class="important-links-modern">
+  <section class="important-links-section" style='background: #dbb937; padding:50px 0;'>
     <div class="container">
-      <div class="section-header text-center">
-        <h2 class="section-title">Important Links</h2>
-        <div class="section-underline" style="margin: 0 auto 15px;"></div>
-      </div>
+      <div class="row">
+        <div class="col-md-12">
+          <h1 class='large_heading' style='color: #624183;'> Important Links </h1>
+          <!--<p class='headingPara'> Some important links </p>-->
+        </div>
 
-      <div class="important-links-grid">
         <?php
         if (!empty($important_links)) {
           foreach ($important_links as $link) {
             if (!empty($link['title']) && !empty($link['url'])) {
-        ?>
-              <a class="resource-card" href="<?= esc_url($link['url']); ?>" target="_blank">
-                <div class="resource-icon">
-                  <i class="fa fa-link"></i>
-                </div>
-                <span class="resource-title"><?= esc_html($link['title']); ?></span>
-                <div class="resource-arrow">
-                  <i class="fa fa-arrow-right"></i>
-                </div>
-              </a>
+              ?>
+              <div class="col-md-3 col-sm-4 col-xs-6 important-link-col">
+                <a class='imp_links' href='<?= esc_url($link['url']); ?>' target='_blank'>
+                  <?= esc_html($link['title']); ?>
+                </a>
+              </div>
         <?php
             }
           }
         } else {
-          echo '<div class="col-md-12 text-center"><p class="text-muted">No important links available.</p></div>';
+          echo '<div class="col-md-12 text-center"><p style="color: #624183;">No important links available.</p></div>';
         }
         ?>
+
       </div>
-    </div>
+    </div> <!-------- END OF CLASS CONTAINER ---------->
   </section>
 
   <style>
-    .important-links-modern {
-      padding: 80px 0;
-      background: #DBB937;
-      position: relative;
-    }
-
-    .important-links-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 20px;
-      margin-top: 40px;
-    }
-
-    .resource-card {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      background: #fff;
-      padding: 5px;
-      border-radius: 16px;
-      text-decoration: none;
-      color: #334155;
-      border: 1px solid #e2e8f0;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .resource-card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.08);
-      border-color: #cbd5e1;
-      color: #0f172a;
-    }
-
-    .resource-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      background: #f1f5f9;
-      color: #64748b;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-      transition: all 0.3s ease;
-      flex-shrink: 0;
-    }
-
-    .resource-card:hover .resource-icon {
-      background: #6366f1;
-      color: #fff;
-      transform: scale(1.1) rotate(-5deg);
-    }
-
-    .resource-title {
-      font-size: 16px;
-      font-weight: 600;
-      flex: 1;
-      line-height: 1.4;
-    }
-
-    .resource-arrow {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #cbd5e1;
-      transition: all 0.3s ease;
-      opacity: 0;
-      transform: translateX(-10px);
-    }
-
-    .resource-card:hover .resource-arrow {
-      opacity: 1;
-      transform: translateX(0);
-      color: #6366f1;
-      background: #eef2ff;
-    }
-
     /* --- Teachers Grid Layout --- */
     .teachers-grid {
       display: flex;
       flex-wrap: wrap;
-      gap: 1rem;
+      gap: 3rem;
+      justify-content: center;
     }
 
     /* --- Teacher Card --- */
@@ -1222,7 +930,7 @@ get_header();
 
     if ($teacherTable === 'ct_teacher') {
       $teacherRows = $wpdb->get_results(
-        "SELECT teacherid, teacherName, teacherImg, teacherDesignation, teacherPhone, teacher_serial FROM ct_teacher WHERE status='Present' AND teacherDesignation NOT LIKE '%Lecturer%' ORDER BY teacher_serial, teacherName ASC LIMIT 12"
+        "SELECT teacherid, teacherName, teacherImg, teacherDesignation, teacherPhone, teacher_serial FROM ct_teacher WHERE status='Present' AND teacherDesignation NOT LIKE '%Lecturer%' ORDER BY teacher_serial, teacherName ASC LIMIT 10"
       );
     }
 
@@ -1290,7 +998,7 @@ get_header();
 
   <?php
   if ($layout_visibility['committees'] === 1 && !empty($committees)) {
-  ?>
+    ?>
     <section class="committee-section">
       <div class="container">
         <div class="section-header">
@@ -1326,7 +1034,7 @@ get_header();
               if (empty($name) && empty($role)) {
                 continue;  // Skip empty entries
               }
-          ?>
+              ?>
               <a href="<?= home_url('committee/') ?>">
                 <div class="committee-card" data-aos="fade-up">
                   <div class="committee-card-inner">
@@ -1363,7 +1071,7 @@ get_header();
   }
 
   if ($layout_visibility['classwise_students'] === 1 || $layout_visibility['student_demographics'] === 1) {
-  ?>
+    ?>
 
     <section class="demographics-section">
       <div class="section-header">
@@ -1374,17 +1082,17 @@ get_header();
 
 
       <style>
-        .classes-grid-five {
-          display: grid;
-          grid-template-columns: repeat(5, 1fr);
+        .classes-grid-five{
+          display:grid;
+          grid-template-columns:repeat(5, 1fr);
         }
 
-        .classes-grid-four {
-          grid-template-columns: repeat(4, 1fr);
+        .classes-grid-four{
+          grid-template-columns:repeat(4, 1fr);
         }
 
-        .classes-grid-three {
-          grid-template-columns: repeat(3, 1fr);
+        .classes-grid-three{
+          grid-template-columns:repeat(3, 1fr);
         }
       </style>
 
@@ -1408,7 +1116,7 @@ get_header();
           } elseif ($class_count > 0 && $class_count < 7) {
             $classes_grid_class = 'classes-grid-three';
           }
-        ?>
+          ?>
           <!-- No of students in classes -->
           <div class="classes-container">
             <div class="<?= esc_attr($classes_grid_class); ?>" style="display: grid;">
@@ -1425,7 +1133,7 @@ get_header();
                   ];
                   $idx = abs(crc32($name)) % count($palette);
                   [$c1, $c2] = $palette[$idx];
-              ?>
+                  ?>
                   <div class="modern-class-card" style="--gradient-start: <?= esc_attr($c1) ?>; --gradient-end: <?= esc_attr($c2) ?>;">
                     <div class="class-count-circle">
                       <span class="class-count-number class-counter" data-count="<?= (int) $count ?>">0</span>
@@ -1522,7 +1230,7 @@ get_header();
           {
             return $total > 0 ? round(($value / $total) * 100, 1) : 0;
           }
-        ?>
+          ?>
           <div class="demographics-container">
             <div class="demographics-content">
               <!-- Gender Distribution -->
@@ -1617,7 +1325,7 @@ get_header();
 
   // Gallery Section
   if ($layout_visibility['gallery'] === 1) {
-  ?>
+    ?>
     <!-- Gallery Section -->
     <div class="gallerySection" style="background:#211c3c">
       <div class="container">
@@ -1641,7 +1349,7 @@ get_header();
           while ($gallery->have_posts()) {
             $gallery->the_post();
             if (has_post_thumbnail()) {
-        ?>
+              ?>
               <div class="item" title="<?= the_title() ?>">
                 <?= the_post_thumbnail(); ?>
               </div>
@@ -1665,460 +1373,84 @@ get_header();
   <?php
   }
   ?>
-</div>
+  </div>
 
 
-<script>
-  (function($) {
-    var demographicsAnimated = false;
+  <script>
+    (function($) {
+      var demographicsAnimated = false;
 
-    // Animate demographics section on scroll
-    function animateDemographics() {
-      if (demographicsAnimated) return;
+      // Animate demographics section on scroll
+      function animateDemographics() {
+        if (demographicsAnimated) return;
 
-      var $section = $('.demographics-section');
-      if (!$section.length) return;
+        var $section = $('.demographics-section');
+        if (!$section.length) return;
 
-      var trigger = $(window).scrollTop() + $(window).height() > $section.offset().top + 100;
-      if (!trigger) return;
+        var trigger = $(window).scrollTop() + $(window).height() > $section.offset().top + 100;
+        if (!trigger) return;
 
-      demographicsAnimated = true;
+        demographicsAnimated = true;
 
-      // Animate all counters
-      $('.demo-counter').each(function() {
-        var $counter = $(this);
-        var target = parseInt($counter.data('count'), 10) || 0;
+        // Animate all counters
+        $('.demo-counter').each(function() {
+          var $counter = $(this);
+          var target = parseInt($counter.data('count'), 10) || 0;
 
-        $({
-          n: 0
-        }).animate({
-          n: target
-        }, {
-          duration: 1500,
-          easing: 'swing',
-          step: function(now) {
-            $counter.text(Math.ceil(now));
-          },
-          complete: function() {
-            $counter.text(target);
-          }
+          $({
+            n: 0
+          }).animate({
+            n: target
+          }, {
+            duration: 1500,
+            easing: 'swing',
+            step: function(now) {
+              $counter.text(Math.ceil(now));
+            },
+            complete: function() {
+              $counter.text(target);
+            }
+          });
         });
-      });
 
-      // Animate list items with staggered delay
-      $('.demo-item').each(function() {
-        var $item = $(this);
-        var delay = $item.data('delay') || 0;
+        // Animate list items with staggered delay
+        $('.demo-item').each(function() {
+          var $item = $(this);
+          var delay = $item.data('delay') || 0;
 
-        setTimeout(function() {
-          $item.addClass('animate-in');
-        }, delay);
-      });
-    }
-
-    $(window).on('load scroll', animateDemographics);
-
-    // Hover effect on list items - re-animate count
-    $('.demo-item').on('mouseenter', function() {
-      var $item = $(this);
-      var $counter = $item.find('.demo-counter');
-
-      if ($counter.length) {
-        var target = parseInt($counter.data('count'), 10) || 0;
-
-        $({
-          n: 0
-        }).animate({
-          n: target
-        }, {
-          duration: 600,
-          easing: 'swing',
-          step: function(now) {
-            $counter.text(Math.ceil(now));
-          },
-          complete: function() {
-            $counter.text(target);
-          }
+          setTimeout(function() {
+            $item.addClass('animate-in');
+          }, delay);
         });
       }
-    });
-  })(jQuery);
-</script>
 
-<style>
-  .quick-links-modern {
-    position: relative;
-    background: #473399;
-    overflow: hidden;
-    padding: 60px 0;
-  }
+      $(window).on('load scroll', animateDemographics);
 
-  .quick-links-modern::before {
-    content: '';
-    position: absolute;
-    width: 600px;
-    height: 600px;
-    background: radial-gradient(circle at center, rgba(99, 102, 241, 0.08), transparent 70%);
-    top: -100px;
-    right: -100px;
-    pointer-events: none;
-  }
+      // Hover effect on list items - re-animate count
+      $('.demo-item').on('mouseenter', function() {
+        var $item = $(this);
+        var $counter = $item.find('.demo-counter');
 
-  .quick-links-wrapper {
-    margin-bottom: 30px;
-  }
+        if ($counter.length) {
+          var target = parseInt($counter.data('count'), 10) || 0;
 
-  .quick-links-intro {
-    margin-bottom: 30px;
-  }
+          $({
+            n: 0
+          }).animate({
+            n: target
+          }, {
+            duration: 600,
+            easing: 'swing',
+            step: function(now) {
+              $counter.text(Math.ceil(now));
+            },
+            complete: function() {
+              $counter.text(target);
+            }
+          });
+        }
+      });
+    })(jQuery);
+  </script>
 
-  .quick-links-intro h2 {
-    font-weight: 800;
-    margin-bottom: 10px;
-    color: #0f172a;
-    font-size: 32px;
-    letter-spacing: -0.5px;
-  }
-
-  .quick-links-eyebrow {
-    text-transform: uppercase;
-    font-size: 12px;
-    letter-spacing: 2px;
-    font-weight: 700;
-    color: #6366f1;
-    margin-bottom: 8px;
-    display: inline-block;
-    background: rgba(99, 102, 241, 0.1);
-    padding: 4px 12px;
-    border-radius: 99px;
-  }
-
-  .quick-links-subtitle {
-    color: #64748b;
-    max-width: 540px;
-    font-size: 16px;
-    line-height: 1.6;
-  }
-
-  .quick-links-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 20px;
-  }
-
-  .quick-link-card {
-    position: relative;
-    background: #ffffff;
-    border-radius: 24px;
-    padding: 24px;
-    min-height: 130px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    gap: 24px;
-    color: #0f172a;
-    text-decoration: none;
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
-    overflow: hidden;
-    border: 1px solid #f1f5f9;
-  }
-
-  .quick-link-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: var(--card-accent);
-    opacity: 0.04;
-    pointer-events: none;
-  }
-
-  .quick-link-card:hover {
-    transform: translateY(-8px) scale(1.02);
-    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.1);
-    z-index: 1;
-    border-color: rgba(99, 102, 241, 0.2);
-  }
-
-  .quick-link-glow {
-    position: absolute;
-    width: 150px;
-    height: 150px;
-    background: var(--card-accent);
-    filter: blur(40px);
-    top: -50px;
-    right: -50px;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    pointer-events: none;
-  }
-
-  .quick-link-card:hover .quick-link-glow {
-    opacity: 0.15;
-  }
-
-  .quick-link-top {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .quick-link-icon {
-    width: 54px;
-    height: 54px;
-    border-radius: 16px;
-    background: var(--card-accent);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
-    color: #fff;
-    margin-bottom: 0;
-    box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.15);
-    position: relative;
-    z-index: 1;
-  }
-
-  .quick-link-meta {
-    width: 100%;
-    z-index: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .quick-link-meta strong {
-    font-size: 18px;
-    font-weight: 700;
-    color: #1e293b;
-    letter-spacing: -0.3px;
-  }
-
-  .quick-link-meta small {
-    color: #64748b;
-    font-size: 13px;
-    line-height: 1.4;
-    font-weight: 500;
-  }
-
-  .quick-link-arrow {
-    position: absolute;
-    top: 24px;
-    right: 24px;
-    color: #cbd5e1;
-    font-size: 16px;
-    transition: transform 0.3s ease, color 0.3s ease;
-    z-index: 1;
-  }
-
-  .quick-link-card:hover .quick-link-arrow {
-    transform: translateX(4px);
-    color: #6366f1;
-  }
-
-  .modern-news-box {
-    border-radius: 24px;
-    background: #fff;
-    color: #0f172a;
-    padding: 30px;
-    box-shadow: 0 20px 40px -5px rgba(0, 0, 0, 0.05);
-    position: relative;
-    overflow: hidden;
-    border: 1px solid #e2e8f0;
-    height: 100%;
-  }
-
-  .modern-news-box::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 6px;
-    background: linear-gradient(90deg, #6366f1, #8b5cf6);
-  }
-
-  .latest-news-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    margin-bottom: 24px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid #f1f5f9;
-  }
-
-  .latest-news-header h4 {
-    color: #0f172a;
-    margin: 0;
-    font-weight: 700;
-    font-size: 20px;
-  }
-
-  .news-view-all {
-    color: #fff;
-    text-decoration: none;
-    font-size: 13px;
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
-    padding: 8px 20px;
-    border-radius: 99px;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
-  }
-
-  .news-view-all:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 16px rgba(99, 102, 241, 0.3);
-    color: #fff;
-  }
-
-  .latest-news-stream {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    position: relative;
-    z-index: 1;
-    height: 400px;
-    overflow-y: auto;
-    padding-right: 5px;
-  }
-
-  .latest-news-stream::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  .latest-news-stream::-webkit-scrollbar-track {
-    background: #f1f5f9;
-    border-radius: 4px;
-  }
-
-  .latest-news-stream::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 4px;
-  }
-
-  .latest-news-stream::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
-  }
-
-  .news-scroll-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 16px;
-    padding: 16px 0;
-    border-bottom: 1px solid #f1f5f9;
-    text-decoration: none;
-    color: #334155;
-    transition: all 0.2s ease;
-  }
-
-  .news-scroll-item:last-child {
-    border-bottom: none;
-  }
-
-  .news-scroll-item:hover {
-    background: #f8fafc;
-    padding-left: 10px;
-    padding-right: 10px;
-    border-radius: 12px;
-    border-bottom-color: transparent;
-  }
-
-  .news-date-box {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    width: 50px;
-    height: 50px;
-    background: #eef2ff;
-    color: #6366f1;
-    border-radius: 12px;
-    flex-shrink: 0;
-    line-height: 1;
-    border: 1px solid rgba(99, 102, 241, 0.1);
-  }
-
-  .news-date-day {
-    font-size: 18px;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-  }
-
-  .news-date-month {
-    font-size: 10px;
-    text-transform: uppercase;
-    font-weight: 700;
-    margin-top: 2px;
-  }
-
-  .news-item-content {
-    flex: 1;
-  }
-
-  .news-item-content h4 {
-    font-size: 15px;
-    font-weight: 600;
-    margin: 0 0 6px 0;
-    color: #0f172a;
-    line-height: 1.4;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    transition: color 0.2s ease;
-  }
-
-  .news-scroll-item:hover .news-item-content h4 {
-    color: #6366f1;
-  }
-
-  .news-item-meta {
-    font-size: 12px;
-    color: #94a3b8;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-weight: 500;
-  }
-
-  .news-empty-state {
-    text-align: center;
-    padding: 40px 0;
-    color: #94a3b8;
-  }
-
-  @media (max-width: 991px) {
-    .quick-links-grid {
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    }
-
-    .modern-news-box {
-      margin-top: 40px;
-    }
-  }
-
-  @media (max-width: 767px) {
-    .quick-link-card {
-      min-height: 140px;
-    }
-
-    .modern-news-box {
-      margin-top: 30px;
-      padding: 20px;
-    }
-
-    .latest-news-stream {
-      height: 300px;
-    }
-  }
-</style>
-
-<?php get_footer(); ?>
+  <?php get_footer(); ?>

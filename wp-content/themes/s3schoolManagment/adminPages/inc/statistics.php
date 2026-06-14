@@ -97,7 +97,7 @@ $yer = $_GET['syear'] ??  date('Y');
 					  				<?php
 					  				
 					  					$secID = $section->sectionid;
-					  					$secTot = $wpdb->get_results( "SELECT count(*) AS total, sum(case when stdGender = 1 then 1 else 0 end) AS boys, sum(case when stdGender = 0 then 1 else 0 end) AS girls FROM ct_student LEFT JOIN ct_studentinfo ON infoStdid = studentid AND stdCurntYear = infoYear AND stdCurrentClass = infoClass WHERE stdCurntYear = '$yer' AND stdCurrentClass = $classid AND infoSection = $secID")[0];
+					  					$secTot = $wpdb->get_results( "SELECT count(*) AS total,sum(case when stdGender = 1 then 1 else 0 end) AS boys, sum(case when stdGender = 0 then 1 else 0 end) AS girls FROM ct_student LEFT JOIN ct_studentinfo ON infoStdid = studentid AND stdCurntYear = infoYear AND stdCurrentClass = infoClass WHERE stdCurntYear = '$yer' AND stdCurrentClass = $classid AND infoSection = $secID")[0];
 					  				?>
 						  			<td>Boy <?= $secTot->boys ?></td>
 						  			<td>Girl <?= $secTot->girls ?></td>

@@ -1,109 +1,71 @@
 <?php global $s3sRedux;
-    // ==========================================
-    // HANDLE AJAX ACTIONS LOCALLY
-    // ==========================================
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['type'])) {
-        // Clean output buffer to ensure JSON/HTML response is valid
-        while (ob_get_level()) {
-            ob_end_clean();
-        }
 
-        // Get Exams
-        if ($_POST['type'] == 'getExams') {
-            $class = $_POST['class'];
-            $exams = $wpdb->get_results("SELECT examid,examName FROM ct_exam WHERE examClass = '$class'");
-            if (empty($exams)) {
-                echo "<option value=''>No Exam for this Class</option>";
-            } else {
-                echo "<option value=''>Select An Exam</option>";
-            }
-            foreach ($exams as $exam) {
-                echo "<option value='{$exam->examid}'>{$exam->examName}</option>";
-            }
-            exit;
-        }
+require_once dirname(__DIR__) . '/functions/teacher-access.php';
 
-        // Get Years
-        elseif ($_POST['type'] == 'getYears') {
-            $class = $_POST['class'];
-            $years = $wpdb->get_results("SELECT infoYear FROM ct_studentinfo WHERE infoClass = $class GROUP BY infoYear ORDER BY infoYear ASC");
-            if (empty($years)) {
-                echo "<option value=''>No Student In this class</option>";
-            } else {
-                echo "<option value=''>Year</option>";
-            }
-            foreach ($years as $year) {
-                echo "<option value='{$year->infoYear}'>{$year->infoYear}</option>";
-            }
-            exit;
-        }
+$teacherAccess = s3s_get_teacher_access_context();
+$current_user = wp_get_current_user();
+$is_teacher = $teacherAccess['is_teacher'];
+$teacher_record = $teacherAccess['teacher'];
+$restrictions_enabled = s3s_teacher_restrictions_enabled();
 
-        // Get Section
-        elseif ($_POST['type'] == 'getSection') {
-            $class = $_POST['class'];
-            $sections_query = "SELECT sectionid,sectionName FROM ct_section WHERE forClass = '$class' ORDER BY sectionName";
-            $sections = $wpdb->get_results($sections_query);
-            if (!empty($sections)) {
-                echo "<option value=''>Section</option>";
-                foreach ($sections as $section) {
-                    echo "<option value='{$section->sectionid}'>{$section->sectionName}</option>";
-                }
-            } else {
-                echo "<option value=''>No sections available</option>";
-            }
-            exit;
-        }
+$teacher_assignments = array(
+    'subjects' => array(),
+    'sections' => array(),
+    'classes' => array(),
+    'class_teacher_class' => null,
+    'class_teacher_section' => null
+);
+$teacher_has_assigned_classes = false;
+$teacher_has_any_assignment = false;
 
-        // Get Groups
-        elseif ($_POST['type'] == 'getGroupsByClass') {
-            $class = $_POST['class'];
-            $groups_query = "SELECT DISTINCT ct_group.groupId, ct_group.groupName 
-                FROM ct_group 
-                INNER JOIN ct_studentinfo ON ct_studentinfo.infoGroup = ct_group.groupId 
-                WHERE ct_studentinfo.infoClass = '$class' ORDER BY ct_group.groupName ASC";
-            $groups = $wpdb->get_results($groups_query);
-            echo "<option value=''>All Groups</option>";
-            foreach ($groups as $group) {
-                echo "<option value='{$group->groupId}'>{$group->groupName}</option>";
-            }
-            exit;
-        }
+if ($restrictions_enabled && $is_teacher && $teacher_record) {
+    $assigned_subjects = json_decode($teacher_record->tecAssignSub, true);
+    $assigned_subjects = is_array($assigned_subjects) ? array_filter(array_map('intval', $assigned_subjects)) : array();
 
-        // Get Exam Subjects
-        elseif ($_POST['type'] == 'getExamSubject') {
-            $exam = intval($_POST['exam']);
-            $group = isset($_POST['group']) ? $_POST['group'] : '';
-            $subjects = [];
+    $assigned_sections = json_decode($teacher_record->assignSection, true);
+    $assigned_sections = is_array($assigned_sections) ? array_filter($assigned_sections) : array();
 
-            $subs = $wpdb->get_results("SELECT examSubjects FROM ct_exam WHERE examid = $exam");
-            if (!empty($subs[0]->examSubjects)) {
-                $subs = json_decode($subs[0]->examSubjects, true);
-            } else {
-                $subs = [];
-            }
-
-            if (!empty($subs)) {
-                $subs_escaped = array_map('intval', $subs);
-                $subjectQuery = "SELECT subjectid,subjectName FROM ct_subject 
-                    WHERE subjectid IN (" . implode(',', $subs_escaped) . ")";
-                if (!empty($group)) {
-                    $subjectQuery .= " AND (forGroup = 'all' OR forGroup = '$group' OR forGroup LIKE '%\"$group\"%')";
-                }
-                $subjectQuery .= " ORDER BY subjectName ASC";
-                $subjects = $wpdb->get_results($subjectQuery);
-            }
-
-            if (empty($subjects)) {
-                echo "<option value=''>No subject!</option>";
-            } else {
-                echo "<option value=''>Select Subject</option>";
-                foreach ($subjects as $subject) {
-                    echo '<option value="' . $subject->subjectid . '">' . $subject->subjectName . '</option>';
-                }
-            }
-            exit;
+    // Determine unique classes linked to assigned subjects
+    $assigned_classes = array();
+    if (!empty($assigned_subjects)) {
+        $subjects_data = $wpdb->get_results(
+            "SELECT DISTINCT subjectClass FROM ct_subject WHERE subjectid IN (" . implode(',', $assigned_subjects) . ")"
+        );
+        if ($subjects_data) {
+            $assigned_classes = array_map('intval', array_column($subjects_data, 'subjectClass'));
         }
     }
+
+    // Include class teacher assignment
+    if (!empty($teacher_record->teacherOfClass)) {
+        $assigned_classes[] = (int) $teacher_record->teacherOfClass;
+    }
+
+    $assigned_classes = array_values(array_unique($assigned_classes));
+
+    $teacher_assignments = array(
+        'subjects' => $assigned_subjects,
+        'sections' => $assigned_sections,
+        'classes' => $assigned_classes,
+        'class_teacher_class' => !empty($teacher_record->teacherOfClass) ? (int) $teacher_record->teacherOfClass : null,
+        'class_teacher_section' => !empty($teacher_record->teacherOfSection) ? (int) $teacher_record->teacherOfSection : null
+    );
+
+    $teacher_has_assigned_classes = !empty($assigned_classes);
+    $teacher_has_any_assignment = $teacher_has_assigned_classes || !empty($assigned_sections) || !empty($assigned_subjects);
+}
+
+if (!$restrictions_enabled) {
+    $teacher_assignments = array(
+        'subjects' => array(),
+        'sections' => array(),
+        'classes' => array(),
+        'class_teacher_class' => null,
+        'class_teacher_section' => null
+    );
+    $teacher_has_assigned_classes = false;
+    $teacher_has_any_assignment = false;
+}
 ?>
 
 <style>
@@ -213,9 +175,27 @@
                     <select id='resultClass' class="form-control input-sm" name="class" required>
                             <?php
                             $classQuery = $wpdb->get_results("SELECT classid,className FROM ct_class WHERE classid IN (SELECT examClass FROM ct_exam GROUP BY examClass ORDER BY className ASC)");
+
+                            // Filter classes only when the teacher has explicit assignments
+                            if ($is_teacher && $teacher_has_any_assignment) {
+                                if (!empty($teacher_assignments['classes'])) {
+                                    $allowed_classes = array_map('intval', $teacher_assignments['classes']);
+                                    $classQuery = array_filter($classQuery, function ($class) use ($allowed_classes) {
+                                        return in_array((int) $class->classid, $allowed_classes, true);
+                                    });
+                                } else {
+                                    $classQuery = array();
+                                }
+                            }
+
                             echo "<option value=''>Select Class</option>";
+
                             foreach ($classQuery as $class) {
                                 echo "<option value='" . $class->classid . "'>" . $class->className . "</option>";
+                            }
+
+                            if ($is_teacher && $teacher_has_any_assignment && !$teacher_has_assigned_classes) {
+                                echo "<option value='' disabled>No classes assigned to you</option>";
                             }
                             ?>
                         </select>
@@ -271,15 +251,15 @@
                 <div class="filter-field row-break"></div>
 
                 <div class="filter-field">
-                    <label>Year/Session *</label>
-                    <select id='resultYear' class="form-control input-sm" name="syear" required disabled>
+                    <label>Exam *</label>
+                    <select id="resultExam" class="form-control input-sm" name="exam" required disabled>
                         <option disabled selected>Select Class First</option>
                     </select>
                 </div>
 
                 <div class="filter-field">
-                    <label>Exam *</label>
-                    <select id="resultExam" class="form-control input-sm" name="exam" required disabled>
+                    <label>Year/Session *</label>
+                    <select id='resultYear' class="form-control input-sm" name="syear" required disabled>
                         <option disabled selected>Select Class First</option>
                     </select>
                 </div>
@@ -311,23 +291,33 @@ if (isset($_GET['exam'])):
     $sec     = isset($_GET['sec']) ? $_GET['sec'] : '';
     $group   = isset($_GET['group']) ? $_GET['group'] : ''; // Get selected group
 
-    // Religion subCode mapping
+    // ReligionId mapping
     $religionMap = array(
-        'Muslim'    => 111,
-        'Hinduism'  => 112,
-        'Buddist'   => 113,
-        'Christian' => 114
+        'Muslim'    => 1,
+        'Hinduism'  => 2,
+        'Buddist'   => 3,
+        'Christian' => 4
     );
 
-    $subject_info = $wpdb->get_row("SELECT subCode FROM ct_subject WHERE subjectid = $sub");
-    $subCode = $subject_info->subCode ?? null;
+    $subject_info = $wpdb->get_row("SELECT religionId FROM ct_subject WHERE subjectid = $sub");
+    $subCode = $subject_info->religionId ?? null;
     $religionFilter = '';
-    if ($subCode && in_array($subCode, array_values($religionMap))) {
+    if (isset($_GET['religion']) && !empty($_GET['religion'])) {
+      $religion = $_GET['religion'];
+      $religionFilter = " AND stdReligion = '$religion'";
+    } else if ($subCode && in_array($subCode, array_values($religionMap))) {
         $religion = array_search($subCode, $religionMap);
         $religionFilter = " AND stdReligion = '$religion'";
     }
 
-
+    // Prevent teachers with specific assignments from accessing unauthorized classes
+    if ($is_teacher && $teacher_has_any_assignment) {
+        $teacher_classes = !empty($teacher_assignments['classes']) ? array_map('intval', $teacher_assignments['classes']) : array();
+        if (empty($teacher_classes) || !in_array((int) $class, $teacher_classes, true)) {
+            echo "<div class='panel panel-danger'><div class='panel-body'><h4 class='text-danger'>You do not have access to this class.</h4></div></div>";
+            return;
+        }
+    }
 
     $info = $wpdb->get_results("SELECT examName,className,subjectName,combineMark,connecttedPaper,subPaper,subOptinal,sub4th,subMCQ,subCQ,subPect,subCa FROM ct_subject
         LEFT JOIN ct_exam ON examid = $exam
@@ -347,6 +337,17 @@ if (isset($_GET['exam'])):
 
     $user = wp_get_current_user();
     $canAdd = true;
+    if (!in_array('editor', (array) $user->roles) && !in_array('administrator', (array) $user->roles) && $is_teacher) {
+        $assigned_subjects = $teacher_assignments['subjects'];
+        $has_subject_access = in_array((int) $sub, $assigned_subjects, true);
+
+        $subject_class = (int) $wpdb->get_var($wpdb->prepare("SELECT subjectClass FROM ct_subject WHERE subjectid = %d", $sub));
+        $has_class_teacher_access = ($teacher_assignments['class_teacher_class'] !== null && $teacher_assignments['class_teacher_class'] === $subject_class);
+
+        if ($teacher_has_any_assignment && !$has_subject_access && !$has_class_teacher_access) {
+            $canAdd = false;
+        }
+    }
 ?>
 
     <div class="panel panel-info">
@@ -450,13 +451,13 @@ if (isset($_GET['exam'])):
 														(SELECT resStudentId FROM `ct_result` WHERE resClass = $class AND resultYear = '$year' AND resSubject = $sub AND resExam = $exam)
 														AND stdCurntYear = '$year' AND stdCurrentClass = $class" . $religionFilter;
                                             if ($subOpt == 1 && $sub4th == 1) {
-                                                $stdQuery .= " AND (infoOptionals LIKE '%\"$sub\"%' OR info4thSub = $sub)";
+                                                $stdQuery .= " AND (infoOptionals LIKE '%\"$sub\"%' OR info4thSub = $sub OR info4thSub LIKE '%\"$sub\"%') ";
                                             }
                                             if ($subOpt == 1 && $sub4th == 0) {
                                                 $stdQuery .= " AND infoOptionals LIKE '%\"$sub\"%' ";
                                             }
                                             if ($subOpt == 0 && $sub4th == 1) {
-                                                $stdQuery .= " AND info4thSub = $sub ";
+                                                $stdQuery .= " AND (info4thSub = $sub OR info4thSub LIKE '%\"$sub\"%') ";
                                             }
                                             if ($sec != "" && $sec != 'all') {
                                                 $stdQuery .= " AND infoSection = $sec";
@@ -551,6 +552,175 @@ if (isset($_GET['exam'])):
 
 <?php
 endif; ?>
+
+<?php
+// ==========================================
+    // HANDLE AJAX ACTIONS LOCALLY
+    // ==========================================
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['type'])) {
+        
+        // Clean output buffer to ensure JSON/HTML response is valid
+        while (ob_get_level()) {
+            ob_end_clean();
+        }
+
+        // ------------------------------------------
+        // Get Exams
+        // ------------------------------------------
+        if ($_POST['type'] == 'getExams') {
+            $class = $_POST['class'];
+            $exams = $wpdb->get_results("SELECT examid,examName FROM ct_exam WHERE examClass = '$class'");
+            if (empty($exams)) {
+                echo "<option value=''>No Exam for this Class</option>";
+            } else {
+                echo "<option value=''>Select An Exam</option>";
+            }
+            foreach ($exams as $exam) {
+                echo "<option value='{$exam->examid}'>{$exam->examName}</option>";
+            }
+            exit;
+        }
+
+        // ------------------------------------------
+        // Get Years
+        // ------------------------------------------
+        elseif ($_POST['type'] == 'getYears') {
+            $class = $_POST['class'];
+            $years = $wpdb->get_results("SELECT infoYear FROM ct_studentinfo WHERE infoClass = $class GROUP BY infoYear ORDER BY infoYear ASC");
+            if (empty($years)) {
+                echo "<option value=''>No Student In this class</option>";
+            } else {
+                echo "<option value=''>Year</option>";
+            }
+            foreach ($years as $year) {
+                echo "<option value='{$year->infoYear}'>{$year->infoYear}</option>";
+            }
+            exit;
+        }
+
+        // ------------------------------------------
+        // Get Section
+        // ------------------------------------------
+        elseif ($_POST['type'] == 'getSection') {
+            $class = $_POST['class'];
+            $sections_query = "SELECT sectionid,sectionName FROM ct_section WHERE forClass = '$class'";
+
+            if ($restrictions_enabled && $is_teacher) {
+                $allowed_sections = $teacher_assignments['sections'];
+                
+                // Add class teacher section if applicable
+                if ($teacher_assignments['class_teacher_class'] == $class && !empty($teacher_assignments['class_teacher_section'])) {
+                    $allowed_sections[] = $teacher_assignments['class_teacher_section'];
+                }
+
+                if (!empty($allowed_sections)) {
+                    $has_all = in_array('all', $allowed_sections);
+                    if (!$has_all) {
+                         $sections_query .= " AND sectionid IN (" . implode(',', array_map('intval', $allowed_sections)) . ")";
+                    }
+                } elseif (!$teacher_has_assigned_classes) { 
+                     // Logic gap: if teacher has no section assigned but has class assigned? 
+                     // Assuming sections list follows restrictions
+                }
+            }
+            
+            $sections_query .= " ORDER BY sectionName";
+            $sections = $wpdb->get_results($sections_query);
+
+            if (!empty($sections)) {
+                echo "<option value=''>Section</option>";
+                foreach ($sections as $section) {
+                    echo "<option value='{$section->sectionid}'>{$section->sectionName}</option>";
+                }
+            } else {
+                echo "<option value=''>No sections available</option>";
+            }
+            exit;
+        }
+
+        // ------------------------------------------
+        // Get Groups
+        // ------------------------------------------
+        elseif ($_POST['type'] == 'getGroupsByClass') {
+            $class = $_POST['class'];
+            $groups_query = "SELECT DISTINCT ct_group.groupId, ct_group.groupName 
+                FROM ct_group 
+                INNER JOIN ct_studentinfo ON ct_studentinfo.infoGroup = ct_group.groupId 
+                WHERE ct_studentinfo.infoClass = '$class'";
+            
+             // Apply teacher restrictions if enabled
+            if ($restrictions_enabled && $is_teacher && !empty($teacher_assignments['subjects'])) {
+                 $groups_query .= " AND ct_studentinfo.infoGroup IN (
+                    SELECT DISTINCT forGroup 
+                    FROM ct_subject 
+                    WHERE subjectid IN (" . implode(',', $teacher_assignments['subjects']) . ") 
+                    AND subjectClass = '$class'
+                    AND forGroup != 'all'
+                )";
+            }
+
+            $groups_query .= " ORDER BY ct_group.groupName ASC";
+            $groups = $wpdb->get_results($groups_query);
+            
+            echo "<option value=''>All Groups</option>";
+            foreach ($groups as $group) {
+                echo "<option value='{$group->groupId}'>{$group->groupName}</option>";
+            }
+            exit;
+        }
+
+        // ------------------------------------------
+        // Get Exam Subjects
+        // ------------------------------------------
+        elseif ($_POST['type'] == 'getExamSubject') {
+            $exam = intval($_POST['exam']);
+            $group = isset($_POST['group']) ? $_POST['group'] : '';
+            $subjects = [];
+
+            $subs = $wpdb->get_results("SELECT examSubjects FROM ct_exam WHERE examid = $exam");
+            
+            if (!empty($subs[0]->examSubjects)) {
+                $subs = json_decode($subs[0]->examSubjects, true);
+            } else {
+                $subs = [];
+            }
+
+            // Teacher Restrictions
+            if ($restrictions_enabled && $is_teacher) {
+                 $exam_class = $wpdb->get_var($wpdb->prepare("SELECT examClass FROM ct_exam WHERE examid = %d", $exam));
+                 $is_class_teacher = ($teacher_assignments['class_teacher_class'] == $exam_class);
+                 
+                 // If not class teacher, restrict subjects
+                 if (!$is_class_teacher && !empty($teacher_assignments['subjects'])) {
+                     $subs = array_intersect($subs, $teacher_assignments['subjects']);
+                 }
+            }
+
+            if (!empty($subs)) {
+                $subs_escaped = array_map('intval', $subs);
+                $subjectQuery = "SELECT subjectid,subjectName FROM ct_subject 
+                    WHERE subjectid IN (" . implode(',', $subs_escaped) . ")";
+                
+                if (!empty($group)) {
+                    $subjectQuery .= " AND (forGroup = 'all' OR forGroup = '$group' OR forGroup LIKE '%\"$group\"%')";
+                }
+                
+                $subjectQuery .= " ORDER BY subjectName ASC";
+                $subjects = $wpdb->get_results($subjectQuery);
+            }
+
+            if (empty($subjects)) {
+                echo "<option value=''>No subject!</option>";
+            } else {
+                echo "<option value=''>Select Subject</option>";
+                foreach ($subjects as $subject) {
+                    echo '<option value="' . $subject->subjectid . '">' . $subject->subjectName . '</option>';
+                }
+            }
+            exit;
+        }
+    }
+?>
 
 
 <script type="text/javascript">

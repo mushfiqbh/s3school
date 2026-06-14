@@ -5,788 +5,217 @@
  */
 get_header();
 
-$haveAccess = false;
-$acgpaGenarate = false;
-$acgpapromotion = false;
-$aprogressReport = false;
-if (isset(wp_get_current_user()->roles[0]) || current_user_can('administrator')) {
-	if (wp_get_current_user()->roles[0] == 'um_headmaster'  || wp_get_current_user()->roles[0] == 'um_accounts' || wp_get_current_user()->roles[0] == 'um_accounts-user'  || current_user_can('administrator')) {
-		$haveAccess = true;
-	}
+global $wpdb;
+
+if (wp_get_current_user()->user_login == 'teacher'){
+  wp_redirect(home_url('admin-result'));
+  exit;
 }
 
-$access = $wpdb->get_results("SELECT * FROM ct_access WHERE acid = 1");
-if (sizeof($access) > 0) {
-	$access = $access[0];
-	foreach ($access as $key => $value) {
-		$$key = $value;
-	}
+require_once get_template_directory() . '/adminPages/functions/teacher-access.php';
+
+$accessContext = s3s_get_teacher_access_context();
+$teacher = $accessContext['teacher'];
+$hasSubjectAssignment = $accessContext['has_subject_assignment'];
+$hasAssignment = $accessContext['has_assignment'];
+$isUnrestricted = $accessContext['unrestricted'];
+
+// Allow full dashboard when either a class/section is assigned or the teacher is unrestricted
+$isClassTeacher = $hasAssignment || $isUnrestricted;
+$isSubjectTeacher = $hasSubjectAssignment || $isUnrestricted;
+
+// 1️⃣ Define current user role
+$user = wp_get_current_user();
+$wpRole = $user->roles[0] ?? '';
+
+// Mapping WP roles to abstract roles: admin | headmaster | teacher | accountant
+$currentRole = 'student';
+if (current_user_can('administrator') || $wpRole == 'admin') {
+	$currentRole = 'admin';
+} else if ($wpRole == 'um_headmaster') {
+	$currentRole = 'headmaster';
+} else if ($wpRole == 'um_teachers' && $isClassTeacher) {
+	$currentRole = 'teacher';
+} else if ($wpRole == 'um_teachers' && $isSubjectTeacher) {
+	$currentRole = 'subject_teacher';
+} else if ($wpRole == 'um_accounts' || $wpRole == 'um_accounts-user') {
+	$currentRole = 'accountant';
 }
+
+// 2️⃣ Role permission helper
+function canAccess(array $allowedRoles, string $currentRole): bool
+{
+	// admin and headmaster see everything
+	if ($currentRole === 'admin' || $currentRole === 'headmaster') {
+		return true;
+	}
+
+	return in_array($currentRole, $allowedRoles, true);
+}
+
 
 if (isset($_POST['downloadDatabase'])) {
 	EXPORT_DATABASE();
 }
+
+
+$dashboardPanels = [
+	[
+		'title' => $wpRole === 'um_teachers' ? 'Students' : 'Student & Teacher',
+		'items' => [
+			['title' => 'Teachers', 'url' => 'admin-teacher', 'roles' => ['admin']],
+			['title' => 'Applicants', 'url' => 'admin-applicants', 'roles' => ['admin']],
+			['title' => 'Student', 'url' => 'admin-student', 'roles' => ['admin', 'teacher']],
+			['title' => 'Attendance', 'url' => 'admin-attendance', 'roles' => ['admin', 'teacher']],
+			['title' => 'Class', 'url' => 'admin-class', 'roles' => ['admin']],
+			['title' => 'Section', 'url' => 'admin-section', 'roles' => ['admin']],
+			['title' => 'Group', 'url' => 'admin-group', 'roles' => ['admin']],
+			['title' => 'Staff', 'url' => 'admin-staff', 'roles' => ['admin']],
+			['title' => 'Committee', 'url' => 'admin-committee', 'roles' => ['admin']],
+		],
+	],
+
+	[
+		'title' => 'Exam management',
+		'items' => [
+			['title' => 'Add Subject', 'url' => 'admin-subject', 'roles' => ['admin']],
+			['title' => 'Create Exam', 'url' => 'admin-exam', 'roles' => ['admin']],
+			['title' => 'Exam attendance', 'url' => 'admin-examattendance', 'roles' => ['admin']],
+			['title' => 'Exam Schedule', 'url' => 'admin-exam-schedule', 'roles' => ['admin']],
+			['title' => 'Admit Card', 'url' => 'admin-admitcard', 'roles' => ['admin']],
+			['title' => 'Seat Card', 'url' => 'admin-seatcard', 'roles' => ['admin']],
+		],
+	],
+
+	[
+		'title' => 'Result Management',
+		'items' => [
+			['title' => 'Marks Entry', 'url' => 'admin-result', 'roles' => ['admin', 'teacher', 'subject_teacher']],
+			['title' => 'Result Publish', 'url' => 'admin-resultpublish', 'roles' => ['admin']],
+			['title' => 'Result Summery', 'url' => 'result-summery', 'roles' => ['admin', 'teacher']],
+			['title' => 'Merit List', 'url' => 'admin-meritlist', 'roles' => ['admin', 'teacher',]],
+			['title' => 'Fail List', 'url' => 'admin-faillist', 'roles' => ['admin', 'teacher',]],
+			['title' => 'Tabulation Sheet', 'url' => 'admin-tabulation', 'roles' => ['admin', 'teacher',]],
+			['title' => 'Tabulation Sheet2', 'url' => 'admin-tabulation2', 'roles' => ['admin', 'teacher',]],
+			['title' => 'All MarkSheet', 'url' => 'all-marksheet', 'roles' => ['admin', 'teacher',]],
+			['title' => 'CGPA Genarate', 'url' => 'cgpa-genarate', 'roles' => ['admin']],
+			['title' => 'Progress Report', 'url' => 'progress-report', 'roles' => ['admin', 'teacher']],
+			['title' => 'Promotion', 'url' => 'admin-promotion', 'roles' => ['admin', 'teacher']],
+			['title' => 'Auto Promotion', 'url' => 'auto-promotion', 'roles' => ['admin', 'teacher']],
+			['title' => 'CGPA Promotion', 'url' => 'cgpa-promotion', 'roles' => ['admin', 'teacher']],
+			['title' => 'Demotion', 'url' => 'demotion', 'roles' => ['admin', 'teacher']],
+		],
+	],
+
+	[
+		'title' => 'Ready Template',
+		'items' => [
+			['title' => 'ID Card', 'url' => 'admin-idcard', 'roles' => ['admin']],
+			['title' => 'Testimonial', 'url' => 'admin-testimonial', 'roles' => ['admin']],
+			['title' => 'Concern Letter', 'url' => 'admin-concern-letter', 'roles' => ['admin']],
+			['title' => 'TC', 'url' => 'admin-tc', 'roles' => ['admin']],
+		],
+	],
+
+	[
+		'title' => 'Student fee & Accounts',
+		'items' => [
+			['title' => 'Accounts', 'url' => 'admin-revenue', 'roles' => ['admin', 'accountant']],
+			['title' => 'Student Fee', 'url' => 'student-fee-management?page=studentFeeManagement&view=addFee', 'roles' => ['admin', 'accountant']],
+			['title' => 'Fee Reports', 'url' => 'datewise-fees-information', 'roles' => ['admin', 'accountant']],
+			['title' => 'Coaching Fee etc', 'url' => 'coaching', 'roles' => ['admin', 'accountant']],
+		],
+	],
+	[
+		'title' => 'SMS System',
+		'items' => [
+			['title' => 'SMS', 'url' => 'admin-sms', 'roles' => ['admin', 'staff']],
+		],
+	],
+];
+
 ?>
-
 <style type="text/css">
-	#user-submitted-title,
-	#user-submitted-category,
-	.usp-clone {
-		width: 100%;
-		margin-bottom: 15px;
-		border-radius: 3px;
-		border: 2px solid #ccc;
-		padding: 5px;
-	}
-
-	#usp-submit {
-		text-align: right;
-	}
-
-	#user-submitted-post {
-		padding: 8px 25px;
-		font-weight: bold;
-		border-radius: 5px;
-		border: 0;
-		background: #337ab7;
-		color: #fff;
-	}
+	#user-submitted-title,#user-submitted-category, .usp-clone {
+	width: 100%;
+	margin-bottom: 15px;
+	border-radius: 3px;
+	border: 2px solid #ccc;
+	padding: 5px;
+}
+#usp-submit{
+	text-align: right;
+}
+#user-submitted-post {
+	padding: 8px 25px;
+	font-weight: bold;
+	border-radius: 5px;
+	border: 0;
+	background: #337ab7;
+	color: #fff;
+}
 </style>
-
 
 <div class="b-layer-main">
 	<div class="">
 		<div class="container">
+			<?php if($wpRole === 'um_teachers') @include 'inc/teacher-profile.php'; ?>
+
 			<div class="wow slideInLeft fronendAdmin">
 				<style>
-					.btn-primary {
-						z-index: 1;
-					}
+				.btn-primary {
+					z-index: 1;
+				}
 				</style>
-		<?php if (wp_get_current_user()->roles[0] == 'um_teachers') {
-			@include 'inc/teacher-dashboard.php';
+				<!-- Action Buttons -->
+				<div style="margin-bottom:10px;">
+					<form action="" method="POST">
+						<?php if ($currentRole === 'admin' || $currentRole === 'headmaster'): ?>
+							<button type="submit" class="btn btn-primary" name="downloadDatabase">Download A Database Backup</button>
+							<a class="btn btn-primary text-center" href="<?= home_url('update-institute-information'); ?>">Update Institution Information</a>
+						<?php endif; ?>
+						
+						<a class="btn btn-primary" href="<?= home_url('change-password'); ?>">Change Password</a>								
+						
+						<?php if ($currentRole === 'admin' || $currentRole === 'headmaster'): ?>
+							<a class="btn btn-primary pull-right" href="<?= home_url('add-post'); ?>">Add Post</a>
+						<?php endif; ?>
+					</form>
+				</div>
 
-		 } else { ?>
-			<div style="margin-bottom:20px;">
-				<form action="" method="POST">
-					<button type="submit" class="btn btn-primary" name="downloadDatabase">Download A Database Backup</button>
-					<a class="btn btn-primary text-center" href="<?= home_url('update-institute-information'); ?>">Update Institution Information</a>
-					<a class="btn btn-danger text-center" href="<?= home_url('change-password'); ?>">Change Password </a>
-					<a class="btn btn-primary pull-right" href="<?= home_url('add-post'); ?>">Add Post</a>
-				</form>
+				<!-- Dynamic Content Panels Loop -->
+				<?php foreach ($dashboardPanels as $panel): ?>
+					<?php 
+						$allowedItems = array_filter($panel['items'], function($item) use ($currentRole) {
+							return canAccess($item['roles'], $currentRole);
+						});
+						if (empty($allowedItems)) continue;
+					?>
+					<div class="panel panel-default">
+						<div class="panel-heading"><?= esc_html($panel['title']); ?></div>
+						<div class="panel-body">
+							<div class="row">
+								<?php foreach ($allowedItems as $item): ?>
+									<div class="col-md-3 col-sm-4">
+										<a class="managmentItem" href="<?= (strpos($item['url'], 'http') === 0) ? $item['url'] : home_url($item['url']); ?>">
+											<div class="media">
+												<div class="media-left">
+													<span class="dashicons dashicons-networking"></span>
+												</div>
+												<div class="media-body">
+													<h3 class="media-heading"><?= esc_html($item['title']); ?></h3><hr>
+												</div>
+											</div>
+										</a>
+									</div>
+								<?php endforeach; ?>
+							</div>
+						</div>
+					</div>
+				<?php endforeach; ?>
 			</div>
-
-
-
-			<?php if (wp_get_current_user()->roles[0] == 'um_accounts'  || wp_get_current_user()->roles[0] == 'um_accounts-user') { ?>
-
-				<div class="panel panel-default">
-					<div class="panel-heading">Student fee & Accounts </div>
-					<div class="panel-body">
-						<div class="row">
-
-							<?php if ($haveAccess || $arevenue) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-revenue'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Accounts</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-							<?php if ($haveAccess || $astdfee) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('student-fee-management?page=studentFeeManagement&view=addFee'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Student Fee</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-							<?php if ($haveAccess || $astdcoaching) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('coaching'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Coaching Fee etc</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-						</div>
-					</div>
-				</div>
-			<?php } else { ?>
-				<div class="panel panel-default">
-					<div class="panel-heading"><?= $haveAccess ? "Student & Teacher" : "Student"; ?></div>
-					<div class="panel-body">
-						<div class="row">
-							<?php if ($haveAccess) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-teacher'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Teachers</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-
-
-							<?php if ($haveAccess) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-applicants'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Applicants</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-							<?php if ($haveAccess || $astudent) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-student'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Student</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-							<?php if ($haveAccess || $aattendance) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-attendance'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Attendance</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-							<?php if ($haveAccess || $aclass) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-class'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Class</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-							<?php if ($haveAccess || $asection) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-section'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Section</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-							<?php if ($haveAccess || $agroup) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-group'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Group</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-							<?php if ($haveAccess) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-staff'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Staff</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-							<?php if ($haveAccess) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-committee'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Committee</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-						</div>
-					</div>
-				</div>
-
-				<div class="panel panel-default">
-					<div class="panel-heading">Exam management</div>
-					<div class="panel-body">
-						<div class="row">
-							<?php if ($haveAccess || $asubject) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-subject'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Add Subject</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-							<?php if ($haveAccess || $aexam) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-exam'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Create Exam</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-							<?php if ($haveAccess || $aexamatten) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-examattendance'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Exam attendance</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-							<?php if ($haveAccess) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-exam-schedule'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Exam Schedule</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-							<?php if ($haveAccess || $aadmit) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-admitcard'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Admit Card</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-							<?php if ($haveAccess || $aseat) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-seatcard'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Seat Card</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-						</div>
-					</div>
-				</div>
-
-				<div class="panel panel-default">
-					<div class="panel-heading">Result Management</div>
-
-					<div class="panel-body">
-						<div class="row">
-							<?php if ($haveAccess || $aresult) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-result'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading"> Marks Entry</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-							<?php if ($haveAccess || $aresultpublis) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-resultpublish'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Result Publish</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-							<?php if ($haveAccess || $aresultsummery) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('result-summery'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Result Summery</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-							<?php if ($haveAccess || $ameritlist) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-meritlist'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Merit List</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-							<?php if ($haveAccess || $afaillist) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-faillist'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Fail List</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-							<!--	<?php if ($haveAccess || $atabulation1) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-tabulation'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Tabulation Sheet</h3><hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>-->
-
-							<?php if ($haveAccess || $atabulation2) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-tabulation2'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Tabulation Sheet</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-							<?php if ($haveAccess || $allmarksheet) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('all-marksheet'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">All MarkSheet</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-							<?php if ($haveAccess || $acgpaGenarate) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('cgpa-genarate'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">CGPA Genarate</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-							<?php if ($haveAccess || $aprogressReport) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('progress-report'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Progress Report</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-							<?php if ($haveAccess || $apromotion) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-promotion'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Promotion</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-							<?php if ($haveAccess || $apromotion) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('auto-promotion'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Auto Promotion</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-							<?php if ($haveAccess || $acgpapromotion) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('cgpa-promotion'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">CGPA Promotion</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-							<?php if ($haveAccess || $apromotion) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('demotion'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Demotion</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-						</div>
-					</div>
-				</div>
-
-				<div class="panel panel-default">
-					<div class="panel-heading">Ready Template</div>
-					<div class="panel-body">
-						<div class="row">
-
-							<?php if ($haveAccess || $aidcard) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-idcard'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">ID Card</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-							<?php if ($haveAccess || $atestimonial) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-testimonial'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Testimonial</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-							<?php if ($haveAccess) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-concern-letter'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Concern Letter</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-							<?php if ($haveAccess || $atc) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-tc'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">TC</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-						</div>
-					</div>
-				</div>
-
-				<div class="panel panel-default">
-					<div class="panel-heading">Student fee & Accounts </div>
-					<div class="panel-body">
-						<div class="row">
-
-							<?php if ($haveAccess || $arevenue) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-revenue'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Accounts</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-							<?php if ($haveAccess || $astdfee) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('student-fee-management?page=studentFeeManagement&view=addFee'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Student Fee</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-							<?php if ($haveAccess || $astdcoaching) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('coaching'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">Coaching Fee etc</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-
-
-						</div>
-					</div>
-				</div>
-
-				<div class="panel panel-default">
-					<div class="panel-heading">SMS System</div>
-					<div class="panel-body">
-						<div class="row">
-
-							<?php if ($haveAccess || $asms) { ?>
-								<div class="col-md-3 col-sm-4">
-									<a class="managmentItem" href="<?= home_url('admin-sms'); ?>">
-										<div class="media">
-											<div class="media-left">
-												<span class="dashicons dashicons-networking"></span>
-											</div>
-											<div class="media-body">
-												<h3 class="media-heading">SMS</h3>
-												<hr>
-											</div>
-										</div>
-									</a>
-								</div>
-							<?php } ?>
-
-						</div>
-					</div>
-				</div>
-		<?php }
-				} ?>
 		</div>
-
 	</div>
-</div>
 </div>
 
 

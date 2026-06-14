@@ -156,10 +156,6 @@ function maxAdminMenu(){
   add_submenu_page('managements', 'Student', 'Student', 'manage_options', 'student', 'studentManagement');
   function studentManagement(){  require_once ('adminPages/student.php'); }
 
-  /*Student Image Upload*/
-  add_submenu_page('managements', 'Upload Student Photos', 'Upload Student Photos', 'manage_options', 'upload_student_image', 'uploadStudentImage');
-  function uploadStudentImage(){  require_once ('adminPages/upload-student-image.php'); }
-
   /*Exam*/
   add_submenu_page('managements', 'Exam', 'Exam', 'manage_options', 'exam', 'examManagement');
   function examManagement(){  require_once ('adminPages/exam.php'); }
@@ -493,7 +489,7 @@ function EXPORT_DATABASE($tables=false, $backup_name=false){
 
   $tablToDownload = array('ct_access','ct_attendance','ct_cgpa','ct_class','ct_exam','ct_group','ct_result','ct_revenue','ct_revenue_cat','ct_section','ct_student','ct_studentinfo','ct_studentPoint','ct_subject','ct_teacher');
   set_time_limit(3000); $mysqli = new mysqli($host,$user,$pass,$name); $mysqli->select_db($name); $mysqli->query("SET NAMES 'utf8'");
-  $queryTables = $mysqli->query('SHOW TABLES'); while($row = $queryTables->fetch_row()) { $target_tables[] = $row[0]; } if($tables !== false && is_array($tables)) { $target_tables = array_intersect( $target_tables, $tables); } 
+  $queryTables = $mysqli->query('SHOW TABLES'); while($row = $queryTables->fetch_row()) { $target_tables[] = $row[0]; } if($tables !== false) { $target_tables = array_intersect( $target_tables, $tables); } 
   $content = "SET SQL_MODE = \"NO_AUTO_VALUE_ON_ZERO\";\r\nSET time_zone = \"+00:00\";\r\n\r\n\r\n/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;\r\n/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;\r\n/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;\r\n/*!40101 SET NAMES utf8 */;\r\n--\r\n-- Database: `".$name."`\r\n--\r\n\r\n\r\n";
   foreach($target_tables as $table){
 
