@@ -254,6 +254,14 @@ select.form-control option {
     box-shadow: 0 10px 30px rgba(40, 167, 69, 0.4);
 }
 
+.btn-pay:disabled,
+.btn-pay[disabled] {
+    background: #94d3a2;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
 .btn-back {
     background: #6c757d;
     border: none;
@@ -964,6 +972,7 @@ select.form-control option {
         $('#paid-amount').text( '- ' + parseFloat(data.paid_amount).toFixed(2) + ' BDT');
         $('#total-amount').text(parseFloat(data.total_amount).toFixed(2) + ' BDT');
         $('#pay-button-amount').text(parseFloat(data.total_amount).toFixed(2));
+        $('#pay-now-btn').prop('disabled', data.total_amount <= 0);
         
         // Update step indicators
         $('#step1-indicator').removeClass('active').addClass('completed');
