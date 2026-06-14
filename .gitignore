@@ -16,11 +16,8 @@ Thumbs.db
 wp-config.php
 
 # (Optional) Ignore WP Core files if you are only versioning wp-content
-# wp-admin/
-# wp-includes/
-# *.php
-# !wp-config-sample.php
-# !index.php
+wp-admin/
+wp-includes/
 
 # ----------------------------------------------------------------------
 # WordPress Content & Caching
@@ -48,8 +45,6 @@ node_modules/
 npm-debug.log
 yarn-error.log
 vendor/
-wp-admin/
-wp-includes/
 .env
 
 # ----------------------------------------------------------------------
