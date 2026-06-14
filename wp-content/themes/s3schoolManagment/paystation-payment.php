@@ -684,13 +684,6 @@ select.form-control option {
                                 <!-- Populated by JavaScript -->
                             </tbody>
                             <tfoot>
-                                <tr style="background: #f8f9fa; font-weight: 600; color: #333;">
-                                    <td><strong>
-                                        Already Paid
-                                    </strong></td>
-                                    <td class="text-right"><strong id="paid-amount">- 0.00 BDT</strong></td>
-                                </tr>
-
                                 <tr class="total-row">
                                                             <td><strong>Total Amount</strong></td>
                                     <td class="text-right"><strong id="total-amount">0.00 BDT</strong></td>
@@ -969,7 +962,6 @@ select.form-control option {
         }
         
         $('#fee-breakdown-body').html(tbody);
-        $('#paid-amount').text( '- ' + parseFloat(data.paid_amount).toFixed(2) + ' BDT');
         $('#total-amount').text(parseFloat(data.total_amount).toFixed(2) + ' BDT');
         $('#pay-button-amount').text(parseFloat(data.total_amount).toFixed(2));
         $('#pay-now-btn').prop('disabled', data.total_amount <= 0);
