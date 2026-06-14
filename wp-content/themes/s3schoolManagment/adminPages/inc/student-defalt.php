@@ -1,68 +1,16 @@
-<?php
-global $wpdb, $s3sRedux;
-?>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.3.4/jspdf.min.js"></script>
 <script src="https://unpkg.com/jspdf-autotable@3.5.22/dist/jspdf.plugin.autotable.js"></script>
 
-<style>
-.std-img-upload-container {
-    position: relative;
-    width: 50px;
-    height: 50px;
-    cursor: pointer;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    overflow: hidden;
-    background: #f9f9f9;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.std-img-upload-container img {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: cover;
-}
-.std-img-upload-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0,0,0,0.4);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-}
-.std-img-upload-container:hover .std-img-upload-overlay {
-    display: flex;
-}
-.std-img-upload-overlay span {
-    font-size: 20px;
-}
-.std-img-uploading {
-    opacity: 0.5;
-    pointer-events: none;
-}
-/* Spinner for uploading state */
-.std-img-uploading::after {
-    content: "";
-    position: absolute;
-    width: 20px;
-    height: 20px;
-    border: 3px solid #ccc;
-    border-top-color: #333;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-</style>
-
 <?php
+global $wpdb, $s3sRedux;
+
+require_once dirname(__DIR__) . '/functions/teacher-access.php';
+
+$teacherAccess = s3s_get_teacher_access_context();
+$isTeacher = $teacherAccess['is_teacher'];
+$teacherRestrictions = $teacherAccess['restrictions'];
+$hasAssignedClass = $teacherAccess['has_assignment'];
+
 $yearGroup = $wpdb->get_results("SELECT stdCurntYear FROM ct_student GROUP BY stdCurntYear");
 $classGroup = $wpdb->get_results("SELECT classid,className FROM ct_student
     LEFT JOIN ct_class ON ct_class.classid = ct_student.stdAdmitClass
@@ -70,7 +18,6 @@ $classGroup = $wpdb->get_results("SELECT classid,className FROM ct_student
 
 $admitYear = isset($_POST['filter']) ? $_POST['filter'] : date("Y");
 ?>
-
 <div class="panel panel-info">
   <div class="panel-heading">
     <?php $class =  (isset($_POST['stdclass'])) ? $_POST['stdclass'] : '' ?>
@@ -89,7 +36,15 @@ $admitYear = isset($_POST['filter']) ? $_POST['filter'] : date("Y");
           <select id='resultClass' class="form-control" name="stdclass" required>
             <?php
 
-            $classQuery = $wpdb->get_results("SELECT classid,className FROM ct_class  ORDER BY className ASC");
+            // If teacher, only show their assigned class
+            if ($isTeacher && $hasAssignedClass && $teacherRestrictions) {
+              $classQuery = $wpdb->get_results( $wpdb->prepare(
+                "SELECT classid,className FROM ct_class WHERE classid = %d ORDER BY className ASC",
+                $teacherRestrictions->teacherOfClass
+              ));
+            } else {
+              $classQuery = $wpdb->get_results("SELECT classid,className FROM ct_class  ORDER BY className ASC");
+            }
             
             echo "<option value=''>Select Class</option>";
 
@@ -153,6 +108,14 @@ $admitYear = isset($_POST['filter']) ? $_POST['filter'] : date("Y");
               LEFT JOIN ct_class ON ct_class.classid = $class
               WHERE infoClass = $class AND infoYear = '$year'";
 
+    // Add teacher restrictions if user is a teacher
+    if ($isTeacher && $hasAssignedClass && $teacherRestrictions) {
+      $stSql .= $wpdb->prepare(
+        " AND infoClass = %d AND infoSection = %d",
+        $teacherRestrictions->teacherOfClass,
+        $teacherRestrictions->teacherOfSection
+      );
+    }
 
         if ($sec != '' && $sec != 'all') {
           $stSql .= " AND infoSection = $sec";
@@ -307,13 +270,9 @@ $admitYear = isset($_POST['filter']) ? $_POST['filter'] : date("Y");
                   <td><?= $stdGender; ?> <?= $student->stdReligion ?></td>
                   <td><?= $student->stdPresent; ?></td>
                   <td>
-                    <div class="std-img-upload-container" data-id="<?= $student->studentid ?>">
-                        <img src="<?= !empty($student->stdImg) ? $student->stdImg : get_template_directory_uri() . '/img/image.png' ?>" class="std-img-preview">
-                        <div class="std-img-upload-overlay">
-                            <span class="dashicons dashicons-upload"></span>
-                        </div>
-                        <input type="file" class="std-img-input" style="display:none;" accept="image/*">
-                    </div>
+                    <?php if (!empty($student->stdImg)): ?>
+                      <img width="40" src="<?= $student->stdImg; ?>">
+                    <?php endif; ?>
                   </td>
                   <td>
 
@@ -437,6 +396,10 @@ $admitYear = isset($_POST['filter']) ? $_POST['filter'] : date("Y");
   </div>
 </div>
 
+
+<!-- <script src="https://unpkg.com/jspdf"></script> -->
+
+
 <script type="text/javascript">
   (function($) {
     $('#resultClass').change(function() {
@@ -467,51 +430,6 @@ $admitYear = isset($_POST['filter']) ? $_POST['filter'] : date("Y");
         $("#resultSection").html(msg);
         $("#resultSection").prop('disabled', false);
       });
-    });
-
-    // Student Image Upload
-    $(document).on('click', '.std-img-upload-container', function(e) {
-        if (e.target.classList.contains('std-img-input')) {
-            return;
-        }
-        $(this).find('.std-img-input').click();
-    });
-
-    $(document).on('change', '.std-img-input', function(e) {
-        var file = e.target.files[0];
-        if (!file) return;
-
-        var container = $(this).closest('.std-img-upload-container');
-        var studentId = container.data('id');
-        var preview = container.find('.std-img-preview');
-        var formData = new FormData();
-
-        formData.append('student_image', file);
-        formData.append('student_id', studentId);
-        formData.append('type', 'uploadStudentImage');
-
-        container.addClass('std-img-uploading');
-
-        $.ajax({
-            url: window.location.href, // Send to current page
-            type: 'POST',
-            data: formData,
-            dataType: 'json',
-            contentType: false,
-            processData: false,
-            success: function(response) {
-                container.removeClass('std-img-uploading');
-                if (response.success) {
-                    preview.attr('src', response.data.url);
-                } else {
-                    alert('Error: ' + response.data);
-                }
-            },
-            error: function() {
-                container.removeClass('std-img-uploading');
-                alert('Upload failed. Please try again.');
-            }
-        });
     });
   })(jQuery);
 

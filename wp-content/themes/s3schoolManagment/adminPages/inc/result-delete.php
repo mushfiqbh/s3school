@@ -86,194 +86,80 @@
 	}
 
 ?>
-
-<style>
-.compact-filter-form {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 10px;
-	align-items: flex-end;
-	margin-bottom: 20px;
-}
-
-.filter-row {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 10px;
-	align-items: flex-end;
-	width: 100%;
-}
-
-.filter-field {
-	flex: 1 1 auto;
-	min-width: 140px;
-	max-width: 200px;
-	display: flex;
-	flex-direction: column;
-}
-
-.filter-field label {
-	margin-bottom: 3px;
-	font-size: 13px;
-	font-weight: 500;
-	white-space: nowrap;
-}
-
-.filter-field .form-control {
-	height: 32px;
-	padding: 4px 8px;
-	font-size: 13px;
-	width: 100%;
-}
-
-.filter-field.row-break {
-	flex-basis: 100%;
-	height: 0;
-	min-width: 100%;
-	max-width: 100%;
-	width: 100%;
-	margin: 0;
-	padding: 0;
-}
-
-.filter-btn {
-	max-width: 100px;
-	min-width: 80px;
-}
-
-@media (max-width: 768px) {
-	.filter-field {
-		flex: 1 1 calc(50% - 5px);
-		min-width: calc(50% - 5px);
-		max-width: calc(50% - 5px);
-	}
-	.filter-field.row-break {
-		display: none;
-	}
-}
-
-@media (max-width: 480px) {
-	.filter-field {
-		flex: 1 1 100%;
-		min-width: 100%;
-		max-width: 100%;
-	}
-}
-</style>
-
 <div class="panel panel-info">
-	<div class="panel-heading">
-		<h3>Delete Result</h3>
-	</div>
+	<div class="panel-heading"><h3>Delete Result</h3></div>
 	<div class="panel-body">
-		<form action="" method="GET" class="compact-filter-form">
-			<div class="filter-row">
+		<form action="" method="GET" class="form-inline">
+
+			<div class="form-group">
 				<input type="hidden" name="page" value="result">
 				<input type="hidden" name="view" value="delete">
-				<div class="filter-field">
-					<label>Class *</label>
-					<select id='resultClass' class="form-control" name="class" required>
+				<label>Class</label>
+				<select id='resultClass' class="form-control" name="class" required>
 					<?php
 
-					$classQuery = $wpdb->get_results("SELECT classid,className FROM ct_class WHERE classid IN (SELECT examClass FROM ct_exam GROUP BY examClass ORDER BY className ASC)");
+						$classQuery = $wpdb->get_results( "SELECT classid,className FROM ct_class WHERE classid IN (SELECT examClass FROM ct_exam GROUP BY examClass ORDER BY className ASC)" );
 
-					if ($is_teacher && $teacher_has_any_assignment) {
-						if (!empty($teacher_assignments['classes'])) {
-							$allowed_classes = array_map('intval', $teacher_assignments['classes']);
-							$classQuery = array_filter($classQuery, function ($class) use ($allowed_classes) {
-								return in_array((int) $class->classid, $allowed_classes, true);
-							});
-						} else {
-							$classQuery = array();
+						if ($is_teacher && $teacher_has_any_assignment) {
+							if (!empty($teacher_assignments['classes'])) {
+								$allowed_classes = array_map('intval', $teacher_assignments['classes']);
+								$classQuery = array_filter($classQuery, function($class) use ($allowed_classes) {
+									return in_array((int) $class->classid, $allowed_classes, true);
+								});
+							} else {
+								$classQuery = array();
+							}
 						}
-					}
 
-					echo "<option value=''>Select Class</option>";
+						echo "<option value=''>Select Class</option>";
 
-					foreach ($classQuery as $class) {
-						echo "<option value='" . $class->classid . "'>" . $class->className . "</option>";
-					}
-
-					if ($restrictions_enabled && $is_teacher && $teacher_has_any_assignment && !$teacher_has_assigned_classes) {
-						echo "<option value='' disabled>No classes assigned to you</option>";
-					}
-							?>
-					</select>
-				</div>
-
-				<div class="filter-field">
-					<label>Section</label>
-					<select id="resultSection" class="form-control" name="sec" disabled>
-						<option disabled selected>Select Class First</option>
-					</select>
-				</div>
-
-				<div class="filter-field">
-					<label>Religion</label>
-					<select class="form-control" name="religion">
-						<option value="">All Religions</option>
-						<option value="Muslim">Muslim</option>
-						<option value="Hinduism">Hinduism</option>
-						<option value="Buddist">Buddist</option>
-						<option value="Christian">Christian</option>
-					</select>
-				</div>
-
-				<div class="filter-field">
-					<label>Group</label>
-					<select id="resultGroup" class="form-control" name="grou">
-						<option value="">Select Group</option>
-						<?php
-						$groups = $wpdb->get_results("SELECT * FROM ct_group");
-						foreach ($groups as $groups) {
-							$selected = ($edit->infoGroup == $groups->groupId) ? 'selected' : '';
-						?>
-							<option value='<?= $groups->groupId ?>' <?= $selected ?>>
-								<?= $groups->groupName ?>
-							</option>
-						<?php
+						foreach ($classQuery as $class) {
+							echo "<option value='".$class->classid."'>".$class->className."</option>";
 						}
-						?>
-					</select>
-				</div>
 
-				<div class="filter-field">
-					<label>Gender</label>
-					<select class="form-control" name="gender">
-						<option value="">All Genders</option>
-						<option value="1">Male</option>
-						<option value="0">Female</option>
-						<option value="2">Other</option>
-					</select>
-				</div>
+						if ($restrictions_enabled && $is_teacher && $teacher_has_any_assignment && !$teacher_has_assigned_classes) {
+							echo "<option value='' disabled>No classes assigned to you</option>";
+						}
+					?>
+				</select>	
+			</div>
 
-				<!-- Row Break for Desktop -->
-				<div class="filter-field row-break"></div>
+			<div class="form-group ">
+				<label>Exam</label>
+				<select id="resultExam" class="form-control" name="exam" required disabled>
+					<option disabled selected>Select Class First</option>
+				</select>
+			</div>
 
-				<div class="filter-field">
-					<label>Year/Session *</label>
-					<select id='resultYear' class="form-control" name="syear" required disabled>
-						<option disabled selected>Select Class First</option>
-					</select>
-				</div>
+		<div class="form-group ">
+			<label>Section</label>
+			<select id="resultSection" class="form-control" name="sec" disabled>
+				<option disabled selected>Select Class First</option>
+			</select>
+		</div>
 
-				<div class="filter-field">
-					<label>Exam *</label>
-					<select id="resultExam" class="form-control" name="exam" required disabled>
-						<option disabled selected>Select Class First</option>
-					</select>
-				</div>
+		<div class="form-group ">
+			<label>Group</label>
+			<select id="resultGroup" class="form-control" name="group" disabled>
+				<option value="">Select Class First</option>
+			</select>
+		</div>
 
-				<div class="filter-field">
-					<label>Subject</label>
-					<select id='resultSubject' class="form-control" name="subject" disabled>
-						<option disabled selected>Select exam First</option>
-					</select>
-				</div>
+		<div class="form-group">
+			<label>Year</label>
+			<select id='resultYear' class="form-control" name="syear" required disabled>
+				<option disabled selected>Select Class First</option>
+			</select>
+		</div>
+			<div class="form-group">
+				<label>Subject</label>
+				<select id='resultSubject' class="form-control" name="subject" disabled>
+					<option disabled selected>Select exam First</option>
+				</select>
+			</div>
 
-				<div class="filter-field filter-btn">
-					<input class="form-control btn-success" type="submit" name="" value="Go">
-				</div>
+			<div class="form-group">
+				<input class="form-control btn-success" type="submit" name="" value="Go">
 			</div>
 		</form>
 	</div>

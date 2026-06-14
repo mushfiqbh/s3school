@@ -4,26 +4,6 @@
 */
 global $wpdb,$s3sRedux; 
 $convertPercent = 70;
-
-// Check if current user is a teacher and get their restrictions
-$current_user = wp_get_current_user();
-$isTeacher = (isset($current_user->roles[0]) && $current_user->roles[0] == 'um_teachers');
-$teacherRestrictions = null;
-
-if ($isTeacher) {
-    global $wpdb;
-    // Determine table name (try prefixed first, fallback to ct_teacher)
-    $prefixed = $wpdb->prefix . 'ct_teacher';
-    $exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $prefixed));
-    $table = ($exists === $prefixed) ? $prefixed : 'ct_teacher';
-    
-    $user_id = $current_user->ID;
-    $teacher = $wpdb->get_row($wpdb->prepare("SELECT teacherOfClass, teacherOfSection FROM $table WHERE tecUserId = %d", $user_id));
-    
-    if ($teacher && !empty($teacher->teacherOfClass) && !empty($teacher->teacherOfSection)) {
-        $teacherRestrictions = $teacher;
-    }
-}
 ?>
 
 <?php if ( ! is_admin() ) { get_header(); ?>
@@ -52,16 +32,7 @@ if ($isTeacher) {
 					<select id='resultClass' class="form-control" name="class" required>
 						<?php
 
-							// If teacher, only show their assigned class
-							if ($isTeacher && $teacherRestrictions) {
-								$classQuery = $wpdb->get_results( $wpdb->prepare(
-									"SELECT classid,className FROM ct_class WHERE classid = %d AND classid IN (SELECT examClass FROM ct_exam GROUP BY examClass ORDER BY className ASC)",
-									$teacherRestrictions->teacherOfClass
-								));
-							} else {
-								$classQuery = $wpdb->get_results( "SELECT classid,className FROM ct_class WHERE classid IN (SELECT examClass FROM ct_exam GROUP BY examClass ORDER BY className ASC)" );
-							}
-							
+							$classQuery = $wpdb->get_results( "SELECT classid,className FROM ct_class WHERE classid IN (SELECT examClass FROM ct_exam GROUP BY examClass ORDER BY className ASC)" );
 							echo "<option value=''>Select Class</option>";
 
 							foreach ($classQuery as $class) {
@@ -154,31 +125,12 @@ if ($isTeacher) {
 
 			
 				  		<?php //&class=49&exam=1&sec=11&grou&syear=2019
-				  		
-				  	    	// $examSubjects = $wpdb->get_results("
-            //                     SELECT examSubjects FROM ct_exam WHERE examid = $exam AND examClass = $class
-            //                 ");
-                           
-            //                 // Convert examSubjects into an array (assuming it is stored as a comma-separated string)
-            //                 $examSubjectIDs = array_map('intval', explode(',', $examSubjects));
-                             
-                            // Ensure we have valid IDs before querying
-                            // if (!empty($examSubjectIDs)) {
-                                // Convert array to a comma-separated string for SQL query
-                                // $ids = implode(",", $examSubjectIDs);
-                            
-                                // Query to get the sum of subCa
-                                $subjects = json_decode($wpdb->get_var("SELECT examSubjects FROM ct_exam WHERE examid = $exam AND examClass = $class"), true);
-            $ids = implode(',', array_map('intval', (array)$subjects));
-                                
-            $total_subCa = $ids ? $wpdb->get_var("SELECT IFNULL(SUM(subCa), 0) FROM ct_subject WHERE subjectid IN ($ids)") : 0;
-                                // print_r($total_subCa);exit;
-                            // }
-				  			$quey = "SELECT infoStdid,infoRoll FROM `ct_studentPoint`
+				  			$quey = "SELECT infoStdid,infoRoll,withheld FROM `ct_studentPoint`
 				  			LEFT JOIN ct_studentinfo ON ct_studentinfo.infoStdid = ct_studentPoint.spStdID AND ct_studentinfo.infoClass = $class AND ct_studentinfo.infoYear = '$year'
+				  			LEFT JOIN ct_result ON ct_studentinfo.infoStdid = ct_result.resStudentId AND spYear = '$year' AND spClass = $class AND spExam = $exam
 				  			WHERE spYear = '$year' AND spClass = $class AND infoSection = $sec AND spExam = $exam";
 				  			$quey .= $roll != '' ? "  AND infoRoll = '$roll'" : '';
-				  			$quey .= " ORDER BY infoRoll";
+				  			$quey .= " GROUP BY infoStdid ORDER BY infoRoll";
 				  			$info = $wpdb->get_results( $quey );
 
 				  			if(sizeof($info) > 0){
@@ -346,10 +298,10 @@ if ($isTeacher) {
 																		$class 	= $_GET['class'];
 																		$exam 	= $_GET['exam'];
 																		$year 	= $_GET['syear'];		
-                //                                                     $results2 = $wpdb->get_results( "SELECT * FROM `ct_result`
-																// 			LEFT JOIN ct_subject ON ct_result.resSubject = ct_subject.subjectid
-																// 			LEFT JOIN ct_class ON $class = ct_class.classid
-																// 			WHERE resClass = $class AND resExam = $exam AND resultYear = '$year' AND resStdRoll = '$roll' AND resStudentId = $stdnt AND subCombineMark = 0 GROUP BY resSubject ORDER BY sub4th,subOptinal,subCode ASC" );
+                                                                    $results2 = $wpdb->get_results( "SELECT * FROM `ct_result`
+																			LEFT JOIN ct_subject ON ct_result.resSubject = ct_subject.subjectid
+																			LEFT JOIN ct_class ON $class = ct_class.classid
+																			WHERE resClass = $class AND resExam = $exam AND resultYear = '$year' AND resStdRoll = '$roll' AND resStudentId = $stdnt AND subCombineMark = 0 GROUP BY resSubject ORDER BY sub4th,subjectName,subOptinal,subCode ASC" );
 
 																?>
 															</h3>
@@ -360,11 +312,8 @@ if ($isTeacher) {
 																	<tr>
 																		<th rowspan="2">Subject Name</th>
 																		<th rowspan="2">Marks</th>
-																		<?php if($total_subCa > 0){?>
-																		    <th colspan="6">Obtain Marks</th>
-																		<?php } else{?>
-																		    <th colspan="3">Obtain Marks</th>
-																		<?php }?>
+																		
+																		<th colspan="6">Obtain Marks</th>
 																		<th rowspan="2">Total</th>
 																		<th rowspan="2">Highest<br> Marks</th>
 																		<th rowspan="2">Grade <br>Point</th>
@@ -375,11 +324,9 @@ if ($isTeacher) {
 																		<th><?= $s3sRedux['cqtitle'] ?></th>
 																		<th><?= $s3sRedux['mcqtitle'] ?></th>
 																		<th><?= $s3sRedux['prctitle'] ?></th>
-																		<?php if($total_subCa > 0){?>
-    																		<th>Sub Total</th>
-    																		<th><?=$convertPercent?>%</th>														
-    																		<th><?= $s3sRedux['catitle'] ?> </th>
-																		<?php }?>
+																		<th>Sub Total</th>
+																		<th><?=$convertPercent?>%</th>														
+																		<th><?= $s3sRedux['catitle'] ?> </th>
 																	</tr>
 																</thead>
 
@@ -423,20 +370,20 @@ if ($isTeacher) {
 																		$combines = $wpdb->get_results("SELECT * FROM `ct_result`
 																			LEFT JOIN ct_subject ON ct_result.resSubject = ct_subject.subjectid
 																			LEFT JOIN ct_class ON $class = ct_class.classid
-																			WHERE resClass = $class AND resExam = $exam AND resultYear = '$year' AND resStdRoll = '$roll' AND resStudentId = $stdnt AND subCombineMark = 1 AND resSub4th = 0 GROUP BY resSubject ORDER BY sub4th,subOptinal,subCode ASC");
+																			WHERE resClass = $class AND resExam = $exam AND resultYear = '$year' AND resStdRoll = '$roll' AND resStudentId = $stdnt AND subCombineMark = 1 GROUP BY resSubject ORDER BY sub4th,subOptinal,subCode ASC");
 
 																		$results2 = $wpdb->get_results( "SELECT * FROM `ct_result`
 																			LEFT JOIN ct_subject ON ct_result.resSubject = ct_subject.subjectid
 																			LEFT JOIN ct_class ON $class = ct_class.classid
-																			WHERE resClass = $class AND resExam = $exam AND resultYear = '$year' AND resStdRoll = '$roll' AND resStudentId = $stdnt AND (subCombineMark = 0 || (subCombineMark = 1 AND resSub4th = 1)) GROUP BY resSubject ORDER BY resSub4th,subOptinal,subCode ASC" );
+																			WHERE resClass = $class AND resExam = $exam AND resultYear = '$year' AND resStdRoll = '$roll' AND resStudentId = $stdnt AND subCombineMark = 0 GROUP BY resSubject ORDER BY sub4th,subOptinal,subCode ASC" );
 
-																		$optfind = $wpdb->get_results( "SELECT *, subjectName FROM `ct_result`
+																		$optfind = $wpdb->get_results( "SELECT subjectName FROM `ct_result`
 																			LEFT JOIN ct_subject ON ct_result.resSubject = ct_subject.subjectid
-																			WHERE resClass = $class AND resExam = $exam AND resultYear = '$year' AND resStudentId = $stdnt AND resSub4th = 1 GROUP BY resSubject ORDER BY sub4th,subOptinal,subCode ASC" );
-
+																			WHERE resClass = $class AND resExam = $exam AND resultYear = '$year' AND resStudentId = $stdnt AND sub4th = 1 ORDER BY sub4th,subOptinal,subCode ASC" );
+																		
 																		$assessment = $wpdb->get_results( "SELECT *, subjectName FROM `ct_result`
 																			LEFT JOIN ct_subject ON ct_result.resSubject = ct_subject.subjectid
-																			WHERE resClass = $class AND resExam = $exam AND resultYear = '$year' AND resStudentId = $stdnt AND assessment = 1 GROUP BY resSubject ORDER BY sub4th,subOptinal,subCode ASC" );
+																			WHERE resClass = $class AND resExam = $exam AND resultYear = '$year' AND resStudentId = $stdnt AND assessment = 1 ORDER BY sub4th,subOptinal,subCode ASC" );
 
 																		$numberOf = sizeof($combines) + sizeof($results2);
 																		$gpaNotPrinted = true;
@@ -451,7 +398,6 @@ if ($isTeacher) {
 																			$numberOf += 1; 
 																			$showAssessment = true;
 																		}
-																// 		echo '<pre>';print_r($results2);exit;
 
 																		foreach ($combines as $combin) {
 																			$absentCk = array();
@@ -537,11 +483,11 @@ if ($isTeacher) {
 																				}
 
 
-																				if($combin2->resSub4th == 1){
-																					$totalobtain += ($obtain > ((($subTot1+$subTot2)/100)*40) ) ? @$obtain-((@$obtain/100)*40) : 0 ;
-																				}else{
-																					$totalobtain += $obtain;
-																				}
+																				// if($combin2->resSub4th == 1){
+																				// 	$totalobtain += ($obtain > ((($subTot1+$subTot2)/100)*40) ) ? $resTotal-(($subjTotal/100)*40) : 0 ;
+																				// }else{
+																				// 	$totalobtain += $obtain;
+																				// }
 																				?>
 																					<tr>
 																						<td><?= $combin->subjectName; ?></td>
@@ -550,15 +496,13 @@ if ($isTeacher) {
 																						<td><?= $combin->resCQ ?></td>
 																						<td><?= $combin->resMCQ ?></td>
 																						<td><?= $combin->resPrec ?></td>
+																						<td><?= ((isnum($combin->resCQ) + isnum($combin->resMCQ) + isnum($combin->resPrec))) ?></td>
 																						<?php if($combin->subCa > 0){?>
-    																						<td><?= ((isnum($combin->resCQ) + isnum($combin->resMCQ) + isnum($combin->resPrec))) ?></td>
-    																						<?php if($combin->subCa > 0){?>
-    																						<td><?= round((isnum($combin->resCQ) + isnum($combin->resMCQ) + isnum($combin->resPrec))*$convertPercent/100) ?></td>
-    																						<?php }else{?>
-    																						<td></td>
-    																						<?php }?>
-    																						<td><?= $combin->resCa ?></td>
+																						<td><?= round((isnum($combin->resCQ) + isnum($combin->resMCQ) + isnum($combin->resPrec))*$convertPercent/100) ?></td>
+																						<?php }else{?>
+																						<td></td>
 																						<?php }?>
+																						<td><?= $combin->resCa ?></td>
 																						<td <?= ($havecon) ? 'rowspan="2"' : ''; ?>><?= $obtain ?></td>
 																						<?php if($combin->subCa > 0){?>
 																						<td><?= round(((isnum($highest[0]->resCQ) + isnum($highest[0]->resMCQ) + isnum($highest[0]->resPrec))*$convertPercent/100) + isnum($highest[0]->resCa))  ?></td>
@@ -569,8 +513,8 @@ if ($isTeacher) {
 																						<td <?= ($havecon) ? 'rowspan="2"' : ''; ?>><?= $combinegrade ?></td>
 																						<?php if($gpaNotPrinted){ ?>
 																							<td rowspan="<?= $numberOf + 6?>">
-																								<?= $totalgrade ?><br>
-																								(<?= $totalgpa ?>)
+																								<?=  $value->withheld == 1 ? "Withheld": $totalgrade ?><br>
+																								(<?= $value->withheld == 1 ? "": $totalgpa ?>)
 																							</td>
 																						<?php } $gpaNotPrinted = false; ?>
 																					</tr>
@@ -584,16 +528,14 @@ if ($isTeacher) {
 																							
 																							<td><?= $reCQ2; ?></td>
 																							<td><?= $reMCQ2; ?></td>
-																							<td><?= $rePre2; ?></td>
-																							<?php if($total_subCa > 0){?>
-        																							<td><?= ((isnum($reCQ2) + isnum($reMCQ2) + isnum($rePre2))) ?></td>	
-        																							<?php if($combin->subCa > 0){?>
-        																							<td><?= ((isnum($reCQ2) + isnum($reMCQ2) + isnum($rePre2))*$convertPercent/100) ?></td>							
-        																						<?php }else{?>
-        																							<td></td>							
-        																						<?php }?>
-        																							<td><?= $reCa2; ?></td>	
-																							<?php }?>
+																							<td><?= $rePre2; ?></td>								
+																							<td><?= ((isnum($reCQ2) + isnum($reMCQ2) + isnum($rePre2))) ?></td>	
+																							<?php if($combin->subCa > 0){?>
+																							<td><?= ((isnum($reCQ2) + isnum($reMCQ2) + isnum($rePre2))*$convertPercent/100) ?></td>							
+																						<?php }else{?>
+																							<td></td>							
+																						<?php }?>
+																							<td><?= $reCa2; ?></td>	
 																						<?php if($combin->subCa > 0){?>
 													                                            <td><?= isset($highest2) 	?  round((isnum($highest2[0]->resCQ) + isnum($highest2[0]->resMCQ) + isnum($highest2[0]->resPrec))*$convertPercent/100 + isnum($highest2[0]->resCa))  : ''; ?></td>									</tr>
 																						<?php }else{?>
@@ -607,179 +549,8 @@ if ($isTeacher) {
 
 																		/*Combine mark end*/
 																		
-// echo '<pre>';print_r($results2);exit;
+
 																		foreach ($results2 as $key => $result2) {
-																		    
-																		    if($result2->subCombineMark == 1){
-																		        $combin = $result2;
-																		        $absentCk = array();
-																			$combineMark = $combin->subCombineMark;
-																			if($combin->subPaper == 1){
-																				$havecon = false;
-            																	$highest = $wpdb->get_results( "SELECT resCQ, resMCQ, resCa, resPrec, resTotal FROM `ct_result` 	WHERE resClass = $class AND resExam = $exam AND resultYear = '$year' AND resSubject = $combin->subjectid ORDER BY resTotal DESC LIMIT 1" );
-                                                                            if($combin->subCa > 0){
-																				$subTot1 = (isnum($combin->subMCQ)+isnum($combin->subCQ)+isnum($combin->subPect))*$convertPercent/100+$combin->subCa;
-																				$obtain = round(((isnum($combin->resTotal)-isnum($combin->resCa))*$convertPercent/100)+isnum($combin->resCa));
-																			}else{
-																				$subTot1 = isnum($combin->subMCQ)+isnum($combin->subCQ)+isnum($combin->subPect)+isnum($combin->subCa);
-																				$obtain = $combin->resTotal;
-																			}
-																			$allsubjTotal += $subTot1;
-																				$subTot2 = 0;
-																				$resCQ = $resMCQ = $resPre = $resCa = $subCQ = $subMCQ = $subPrec = $subCa = 0;
-																				foreach ($results2 as $combin2) {
-																					if($combin2->connecttedPaper == $combin->resSubject){
-
-																						$havecon = true;
-																						if($combin2->subCa > 0){
-																						$obtain += round(((isnum($combin2->resTotal)-isnum($combin2->resCa))*$convertPercent/100)+isnum($combin2->resCa));
-
-																						$subTot2 = (isnum($combin2->subMCQ)+isnum($combin2->subCQ)+isnum($combin2->subPect))*$convertPercent/100+$combin2->subCa;
-																						
-                                                                                    	}else{
-                                                                                    	    $obtain += isnum($combin2->resTotal)-isnum($combin2->resCa)+isnum($combin2->resCa);
-
-																						$subTot2 = isnum($combin2->subMCQ)+isnum($combin2->subCQ)+isnum($combin2->subPect)+isnum($combin2->subCa);
-																						
-																						
-                                                                                    	}
-                                                                                    	$allsubjTotal += $subTot2;
-																						$subName = $combin2->subjectName;
-																						$subCQ = isnum($combin2->subCQ); 
-																						$subMCQ = isnum($combin2->subMCQ);
-																						$subPrec = isnum($combin2->subPect);
-																						$subCa = isnum($combin2->subCa);
-																						$reCQ2 =$resCQ = isnum($combin2->resCQ); 
-																						$reMCQ2 =$resMCQ = isnum($combin2->resMCQ);
-																						$rePre2 =$resPre = isnum($combin2->resPrec);
-																						$reCa2 =$resCa = isnum($combin2->resCa);
-
-																						$absentCk[] = $combin2->resCQ;
-																						$absentCk[] = $combin2->resMCQ;
-																						$absentCk[] = $combin2->resPrec;
-																				// 		$absentCk[] = $combin2->resCa;
-
-																						$highest2 = $wpdb->get_results( "SELECT resCQ, resMCQ, resCa, resPrec, resTotal FROM `ct_result` 	WHERE resClass = $class AND resExam = $exam AND resultYear = '$year' AND resSubject = $combin2->subjectid ORDER BY resTotal DESC LIMIT 1" );
-																						
-																						break;
-																					}
-																				}
-
-																				$resCQ += isnum($combin->resCQ);
-																				$resMCQ += isnum($combin->resMCQ);
-																				$resPre += isnum($combin->resPrec);
-																				$resCa += isnum($combin->resCa);
-
-																				$absentCk[] = $combin->resCQ;
-																				$absentCk[] = $combin->resMCQ;
-																				$absentCk[] = $combin->resPrec;
-																				// $absentCk[] = $combin->resCa;
-																				
-																				$sub4th = $combin->resSub4th;
-
-																				$subCQ += isnum($combin->subCQ);
-																				$subMCQ += isnum($combin->subMCQ);
-																				$subPrec += isnum($combin->subPect);
-																				$subCa += isnum($combin->subCa);
-																				$combTotal = 0;
-
-																				if(in_array('a', $absentCk) || in_array('A', $absentCk)){ 
-																					$combinegrade = 'Ab';
-																					$conbinePoint = '0.00';
-																				}else{
-																				    if($combin->subCa > 0){
-																					$genRes = genPointWithPercent($subCQ,$subMCQ,$subPrec,$subCa,$resCQ,$resMCQ,$resPre,$resCa,$combineMark);
-																				    }else{
-																					$genRes = genPoint($subCQ,$subMCQ,$subPrec,$subCa,$resCQ,$resMCQ,$resPre,$resCa,$combineMark);
-																				    }
-																					$combinegrade = $genRes['grade'];
-																					$conbinePoint = $genRes['point'];
-																				}
-
-
-																				if($combin2->resSub4th == 1 || $combin->resSub4th == 1){
-																					$subjTotalComb = $subTot1 + $subTot2;
-                                                                    				$totalobtain += ($obtain > (($subjTotalComb/100)*40) ) ? $obtain-(($subjTotalComb/100)*40) : 0 ;
-																				}else{
-																					$totalobtain += $obtain;
-																				}
-																					if ($title4th && $sub4th == 1) {
-																				$title4th = false;
-																				?>
-																				<tr class="text-left">
-																					<th colspan="9">
-																						<div class="text-left" style="background:rgba(238, 238, 238, .5);padding: 3px 10px;">
-																							Optional Subject
-																						</div>
-																					</th>
-																				</tr>
-																				<?php
-																			}
-																				?>
-																					<tr>
-																						<td><?= $combin->subjectName; ?></td>
-																						<td><?= $subTot1 ?></td>
-																						
-																						<td><?= $combin->resCQ ?></td>
-																						<td><?= $combin->resMCQ ?></td>
-																						<td><?= $combin->resPrec ?></td>
-																						<?php if($total_subCa > 0){?>
-    																						<td><?= ((isnum($combin->resCQ) + isnum($combin->resMCQ) + isnum($combin->resPrec))) ?></td>
-    																						<?php if($combin->subCa > 0){?>
-    																						<td><?= round((isnum($combin->resCQ) + isnum($combin->resMCQ) + isnum($combin->resPrec))*$convertPercent/100) ?></td>
-    																						<?php }else{?>
-    																						<td></td>
-    																						<?php }?>
-    																						<td><?= $combin->resCa ?></td>
-																						<?php }?>
-																						<td <?= ($havecon) ? 'rowspan="2"' : ''; ?>><?= $obtain ?></td>
-																						<?php if($combin->subCa > 0){?>
-																						<td><?= round(((isnum($highest[0]->resCQ) + isnum($highest[0]->resMCQ) + isnum($highest[0]->resPrec))*$convertPercent/100) + isnum($highest[0]->resCa))  ?></td>
-																						<?php }else{?>
-																						<td><?= (isnum($highest[0]->resCQ) + isnum($highest[0]->resMCQ) + isnum($highest[0]->resPrec) + isnum($highest[0]->resCa))  ?></td>
-																						<?php }?>
-																						<td <?= ($havecon) ? 'rowspan="2"' : ''; ?>><?= $conbinePoint ?></td>
-																						<td <?= ($havecon) ? 'rowspan="2"' : ''; ?>><?= $combinegrade ?></td>
-																						<?php if($gpaNotPrinted){ ?>
-																							<td rowspan="<?= $numberOf + 6?>">
-																								<?= $totalgrade ?><br>
-																								(<?= $totalgpa ?>)
-																							</td>
-																						<?php } $gpaNotPrinted = false; ?>
-																					</tr>
-																				<?php
-
-																				if($havecon){ ?>
-																						<!-- 2nd Paper -->
-																						<tr>
-																							<td><?= $subName; ?></td>
-																							<td><?= $subTot2; ?></td>
-																							
-																							<td><?= $reCQ2; ?></td>
-																							<td><?= $reMCQ2; ?></td>
-																							<td><?= $rePre2; ?></td>
-																							<?php if($total_subCa > 0){?>
-        																							<td><?= ((isnum($reCQ2) + isnum($reMCQ2) + isnum($rePre2))) ?></td>	
-        																							<?php if($combin->subCa > 0){?>
-        																							<td><?= ((isnum($reCQ2) + isnum($reMCQ2) + isnum($rePre2))*$convertPercent/100) ?></td>							
-        																						<?php }else{?>
-        																							<td></td>							
-        																						<?php }?>
-        																							<td><?= $reCa2; ?></td>	
-																							<?php }?>
-																						<?php if($combin->subCa > 0){?>
-													                                            <td><?= isset($highest2) 	?  round((isnum($highest2[0]->resCQ) + isnum($highest2[0]->resMCQ) + isnum($highest2[0]->resPrec))*$convertPercent/100 + isnum($highest2[0]->resCa))  : ''; ?></td>									</tr>
-																						<?php }else{?>
-													                                        <td><?= isset($highest2) 	?  (isnum($highest2[0]->resCQ) + isnum($highest2[0]->resMCQ) + isnum($highest2[0]->resPrec) + isnum($highest2[0]->resCa))  : ''; ?></td>									</tr>
-																						<?php }?>
-																						
-																					<?php
-																				}
-																			}
-																		    }
-																		    else
-																		    {
-																		        // wihout combine
 																			$absentCk = array();
 																			$absentCk[] = $result2->resCQ;
 																			$absentCk[] = $result2->resMCQ;
@@ -841,15 +612,13 @@ if ($isTeacher) {
 																					<td><?= $result2->resCQ ?></td>
 																					<td><?= $result2->resMCQ ?></td>
 																					<td><?= $result2->resPrec ?></td>
-																					<?php if($total_subCa > 0){?>
-    																					<td><?= ((isnum($result2->resCQ) + isnum($result2->resMCQ) + isnum($result2->resPrec))) ?></td>
-    																					<?php if($result2->subCa > 0){?>
-    																					<td><?= round((isnum($result2->resCQ) + isnum($result2->resMCQ) + isnum($result2->resPrec))*$convertPercent/100) ?></td>
-    																					<?php }else{?>
-    																					<td></td>
-    																					<?php }?>
-    																					<td><?= $result2->resCa ?></td>
+																					<td><?= ((isnum($result2->resCQ) + isnum($result2->resMCQ) + isnum($result2->resPrec))) ?></td>
+																					<?php if($result2->subCa > 0){?>
+																					<td><?= round((isnum($result2->resCQ) + isnum($result2->resMCQ) + isnum($result2->resPrec))*$convertPercent/100) ?></td>
+																					<?php }else{?>
+																					<td></td>
 																					<?php }?>
+																					<td><?= $result2->resCa ?></td>
 																					<td><?= $resTotal ?></td>
 																					<?php if($result2->subCa > 0){?>
 																					<td><?= round((isnum($highest[0]->resCQ) + isnum($highest[0]->resMCQ) + isnum($highest[0]->resPrec))*$convertPercent/100 + isnum($highest[0]->resCa) ) ?></td>
@@ -861,13 +630,12 @@ if ($isTeacher) {
 																					
 																					<?php if($gpaNotPrinted){ ?>
 																						<td rowspan="<?= $numberOf ?>">
-																							<?= $totalgrade ?><br>
-																							(<?= $totalgpa ?>)
+																							<?= $value->withheld == 1 ? "Withheld": $totalgrade ?><br>
+																							(<?=  $value->withheld == 1 ? "": $totalgpa ?>)
 																						</td>
 																					<?php } $gpaNotPrinted = false; ?>	
 																				</tr>
 																			<?php
-																		}
 																		}
 																		if ($showAssessment) {
 																			$showAssessment = false;
@@ -962,12 +730,8 @@ if ($isTeacher) {
 																<tfoot style="background:rgba(238, 238, 238, .5)">
 																	<tr>
 																		<th colspan="3">Total Marks: <?= $allsubjTotal ?> </th>
-																			<?php if($total_subCa > 0){?>
 																		<th colspan="6">Obtain Marks: <?= $totalobtain ?></th>
-																			<?php }else {?>
-																		<th colspan="3">Obtain Marks: <?= $totalobtain ?></th>
-																			<?php }?>
-																		<th colspan="4">Merit Position: <?= ($totalgrade == 'F') ? 'Fail' : $meritPosition ?></th>
+																		<th colspan="4">Merit Position: <?= $value->withheld == 1 ? "Withheld" : ( ($totalgrade == 'F') ? 'Fail' : $meritPosition) ?></th>
 																	</tr>
 																</tfoot>
 															</table>
@@ -984,12 +748,19 @@ if ($isTeacher) {
 																				<td style="padding: 0 10px;">Section</td>
 																			</tr>
 																			<tr>
-																				<td style="padding: 0 10px;"><?= $classPosition ?></td>
-																				<td style="padding: 0 10px;"><?= $meritPosition ?></td>
+																				<td style="padding: 0 10px;"><?=  $value->withheld == 1 ? "Withheld" :  $classPosition ?></td>
+																				<td style="padding: 0 10px;"><?=  $value->withheld == 1 ? "Withheld" :  $meritPosition ?></td>
 																			</tr>
 																			<tr>
 																				<td style="padding: 0 10px;">GPA</td>
-																				<td colspan="2" style="padding: 0 10px;"><?= $totalgrade ?>(<?= number_format((float)$totalgpa, 2, '.', ''); ?>)</td>
+																				<td colspan="2" style="padding: 0 10px;">
+                                        <?php if ($value->withheld == 1): ?>
+                                            Withheld
+                                        <?php else: ?>
+                                            <?= $totalgrade ?> (<?= number_format((float)$totalgpa, 2, '.', ''); ?>)
+                                        <?php endif; ?>
+                                    </td>
+
 																			</tr>
 																			<tr>
 																				<td style="padding: 0 10px;">Fail subject(s)</td>

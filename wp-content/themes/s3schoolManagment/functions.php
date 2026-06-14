@@ -3,10 +3,6 @@
  * maxSchoolMngManagment
  */
 
-if (session_status() == PHP_SESSION_NONE) {
-    session_start();
-}
-
 function maxSchoolMng_setup(){
   load_theme_textdomain('maxSchoolMng');
   add_theme_support('automatic-feed-links');
@@ -93,9 +89,13 @@ function maxSchoolMngs_scripts(){
 }
 add_action('wp_enqueue_scripts', 'maxSchoolMngs_scripts');
 
+require_once ('inc/export-apis.php');
 require_once ('redux/ReduxCore/framework.php');
 require_once ('redux/sample/config.php');
 require_once ('inc/dashboard_widget.php');
+require_once ('inc/rocket_api.php');
+require_once ('inc/student-unique-id.php');
+require_once ('inc/paystation_api.php');
 
 function load_custom_wp_admin_style(){
   wp_enqueue_style('maxSchoolMng', 'https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css');
@@ -155,10 +155,6 @@ function maxAdminMenu(){
   /*Student*/
   add_submenu_page('managements', 'Student', 'Student', 'manage_options', 'student', 'studentManagement');
   function studentManagement(){  require_once ('adminPages/student.php'); }
-
-  /*Student Image Upload*/
-  add_submenu_page('managements', 'Upload Student Photos', 'Upload Student Photos', 'manage_options', 'upload_student_image', 'uploadStudentImage');
-  function uploadStudentImage(){  require_once ('adminPages/upload-student-image.php'); }
 
   /*Exam*/
   add_submenu_page('managements', 'Exam', 'Exam', 'manage_options', 'exam', 'examManagement');
@@ -314,7 +310,7 @@ function isnum($val){
 
 /*pass Fail*/
 function passFail($subMark,$studentMark){
-  $perc = round((($subMark / 100)* 33));
+  $perc = floor((($subMark / 100)* 33));
   if($subMark == 0 || $perc <= $studentMark){
     return  true;
   }else{
@@ -424,66 +420,6 @@ function wpb_acc(){
 }
 add_action('init','wpb_acc');
 
-// Frontend password change form
-function frontend_password_change_form() {
-    if (!is_user_logged_in()) {
-        return '<p>You must be logged in to change your password.</p>';
-    }
-
-    ob_start();
-    
-     // Handle form submission
-    if (isset($_POST['frontend_pass_change'])) {
-        $user = wp_get_current_user();
-
-        if (!wp_check_password($_POST['current_pass'], $user->user_pass, $user->ID)) {
-            echo "<p style='color:red;'>❌ Current password is incorrect.</p>";
-        } elseif ($_POST['new_pass'] !== $_POST['confirm_pass']) {
-            echo "<p style='color:red;'>❌ New passwords do not match.</p>";
-        } else {
-            wp_set_password($_POST['new_pass'], $user->ID);
-            wp_set_auth_cookie($user->ID); // keep user logged in
-            echo "<p style='color:green;'>✅ Password successfully changed.</p>";
-        }
-    }
-    ?>
-    <style>
-        .mb-3{
-            margin-bottom:15px;
-        }
-    </style>
-    <form method="post" class="p-3 bg-light rounded shadow-sm" style="max-width:500px;">
-          <h4 class="mb-3">🔑 Change Password</h4>
-        
-          <div class="mb-3">
-            <label for="current_pass" class="form-label">Current Password</label>
-            <input type="password" name="current_pass" id="current_pass" class="form-control" placeholder="Enter current password" required>
-          </div>
-        
-          <div class="mb-3">
-            <label for="new_pass" class="form-label">New Password</label>
-            <input type="password" name="new_pass" id="new_pass" class="form-control" placeholder="Enter new password" required>
-          </div>
-        
-          <div class="mb-3">
-            <label for="confirm_pass" class="form-label">Confirm New Password</label>
-            <input type="password" name="confirm_pass" id="confirm_pass" class="form-control" placeholder="Re-enter new password" required>
-          </div>
-        
-          <button type="submit" name="frontend_pass_change" class="btn btn-primary w-100">
-            Change Password
-          </button>
-        </form>
-
-    <?php
-
-   
-
-    return ob_get_clean();
-}
-add_shortcode('change_password_form', 'frontend_password_change_form');
-
-
 function EXPORT_DATABASE($tables=false, $backup_name=false){
 
   $host = "localhost";
@@ -493,7 +429,7 @@ function EXPORT_DATABASE($tables=false, $backup_name=false){
 
   $tablToDownload = array('ct_access','ct_attendance','ct_cgpa','ct_class','ct_exam','ct_group','ct_result','ct_revenue','ct_revenue_cat','ct_section','ct_student','ct_studentinfo','ct_studentPoint','ct_subject','ct_teacher');
   set_time_limit(3000); $mysqli = new mysqli($host,$user,$pass,$name); $mysqli->select_db($name); $mysqli->query("SET NAMES 'utf8'");
-  $queryTables = $mysqli->query('SHOW TABLES'); while($row = $queryTables->fetch_row()) { $target_tables[] = $row[0]; } if($tables !== false && is_array($tables)) { $target_tables = array_intersect( $target_tables, $tables); } 
+  $queryTables = $mysqli->query('SHOW TABLES'); while($row = $queryTables->fetch_row()) { $target_tables[] = $row[0]; } if($tables !== false) { $target_tables = array_intersect( $target_tables, $tables); } 
   $content = "SET SQL_MODE = \"NO_AUTO_VALUE_ON_ZERO\";\r\nSET time_zone = \"+00:00\";\r\n\r\n\r\n/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;\r\n/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;\r\n/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;\r\n/*!40101 SET NAMES utf8 */;\r\n--\r\n-- Database: `".$name."`\r\n--\r\n\r\n\r\n";
   foreach($target_tables as $table){
 
@@ -515,250 +451,6 @@ function EXPORT_DATABASE($tables=false, $backup_name=false){
   echo $content; exit;
 }
 
-
-// custom 
-function getLateSubHeadId() {
-    global $lateSubHeadId;
-    $lateSubHeadId = 8;
-}
-add_action( 'init', 'getLateSubHeadId' );
-
-function getAbsentSubHeadId() {
-    global $absentSubHeadId;
-    $absentSubHeadId = 9;
-}
-add_action( 'init', 'getAbsentSubHeadId' );
-
-function getCashSubHeadId() {
-    global $cashSubHeadId;
-    $cashSubHeadId = 10;
-}
-add_action( 'init', 'getCashSubHeadId' );
-
-function getAdmissionFeeSubHeadId() {
-    global $admissionFeeSubHeadId;
-    $admissionFeeSubHeadId = 1;
-}
-add_action( 'init', 'getAdmissionFeeSubHeadId' );
-
-function getAdmissionFormSubHeadId() {
-    global $admissionFormSubHeadId;
-    $admissionFormSubHeadId = 2;
-}
-add_action( 'init', 'getAdmissionFormSubHeadId' );
-
-function getExamFeeSubHeadId() {
-    global $examFeeSubHeadId;
-    $examFeeSubHeadId = 3;
-}
-add_action( 'init', 'getExamFeeSubHeadId' );
-
-function getMonthlyFeeSubHeadId() {
-    global $monthlyFeeSubHeadId;
-    $monthlyFeeSubHeadId = 4;
-}
-add_action( 'init', 'getMonthlyFeeSubHeadId' );
-
-function getTransportFeeSubHeadId() {
-    global $transportFeeSubHeadId;
-    $transportFeeSubHeadId =100;
-}
-add_action( 'init', 'getTransportFeeSubHeadId' );
-
-function getIctFeeSubHeadId() {
-    global $ictFeeSubHeadId;
-    $ictFeeSubHeadId =200;
-}
-add_action( 'init', 'getIctFeeSubHeadId' );
-
-function getCoachingFeeSubHeadId() {
-    global $coachingFeeSubHeadId;
-    $coachingFeeSubHeadId =300;
-}
-add_action( 'init', 'getCoachingFeeSubHeadId' );
-
-function getRegistrationFormFeeSubHeadId() {
-    global $registrationFeeSubHeadId;
-    $registrationFeeSubHeadId =400;
-}
-add_action( 'init', 'getRegistrationFormFeeSubHeadId' );
-
-function getDairySubHeadId() {
-    global $dairySubHeadId;
-    $dairySubHeadId =410;
-}
-add_action( 'init', 'getDairySubHeadId' );
-
-function getIdcardSubHeadId() {
-    global $idcardSubHeadId;
-    $idcardSubHeadId =420;
-}
-add_action( 'init', 'getIdcardSubHeadId' );
-
-function getMonthArrayName() {
-    global $monthArray;
-	$monthArray = array("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December");
-}
-add_action( 'init', 'getMonthArrayName' );
-
-/**
- * Handle Contact Form Submission
- */
-function handle_contact_form_submission() {
-    // Verify nonce
-    if (!isset($_POST['contact_nonce']) || !wp_verify_nonce($_POST['contact_nonce'], 'contact_form_nonce')) {
-        wp_send_json_error(array('message' => 'Security verification failed. Please refresh and try again.'));
-        return;
-    }
-
-    // Sanitize and validate form data
-    $name = sanitize_text_field($_POST['contact_name'] ?? '');
-    $email = sanitize_email($_POST['contact_email'] ?? '');
-    $phone = sanitize_text_field($_POST['contact_phone'] ?? '');
-    $subject = sanitize_text_field($_POST['contact_subject'] ?? '');
-    $message = sanitize_textarea_field($_POST['contact_message'] ?? '');
-
-    // Validate required fields
-    if (empty($name) || empty($email) || empty($subject) || empty($message)) {
-        wp_send_json_error(array('message' => 'Please fill in all required fields.'));
-        return;
-    }
-
-    // Validate email
-    if (!is_email($email)) {
-        wp_send_json_error(array('message' => 'Please provide a valid email address.'));
-        return;
-    }
-
-    // Get admin email from settings
-    global $s3sRedux;
-    $admin_email = !empty($s3sRedux['header_email']) ? $s3sRedux['header_email'] : get_option('admin_email');
-
-    // Prepare email content
-    $to = $admin_email;
-    $email_subject = 'New Contact Form Submission: ' . $subject;
-    
-    $email_body = "You have received a new message from the contact form.\n\n";
-    $email_body .= "Name: " . $name . "\n";
-    $email_body .= "Email: " . $email . "\n";
-    $email_body .= "Phone: " . ($phone ?: 'Not provided') . "\n";
-    $email_body .= "Subject: " . $subject . "\n\n";
-    $email_body .= "Message:\n" . $message . "\n\n";
-    $email_body .= "---\n";
-    $email_body .= "This email was sent from the contact form on " . get_bloginfo('name') . "\n";
-    $email_body .= "Sent on: " . current_time('mysql') . "\n";
-
-    // Email headers
-    $headers = array(
-        'Content-Type: text/plain; charset=UTF-8',
-        'From: ' . get_bloginfo('name') . ' <' . $admin_email . '>',
-        'Reply-To: ' . $name . ' <' . $email . '>'
-    );
-
-    // Send email
-    $mail_sent = wp_mail($to, $email_subject, $email_body, $headers);
-
-    // Store in database (optional)
-    global $wpdb;
-    $table_name = $wpdb->prefix . 'contact_submissions';
-    
-    // Create table if it doesn't exist
-    $charset_collate = $wpdb->get_charset_collate();
-    $sql = "CREATE TABLE IF NOT EXISTS $table_name (
-        id mediumint(9) NOT NULL AUTO_INCREMENT,
-        name varchar(100) NOT NULL,
-        email varchar(100) NOT NULL,
-        phone varchar(20),
-        subject varchar(200) NOT NULL,
-        message text NOT NULL,
-        submitted_at datetime DEFAULT CURRENT_TIMESTAMP,
-        ip_address varchar(45),
-        PRIMARY KEY  (id)
-    ) $charset_collate;";
-    
-    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-    dbDelta($sql);
-
-    // Insert submission
-    $wpdb->insert(
-        $table_name,
-        array(
-            'name' => $name,
-            'email' => $email,
-            'phone' => $phone,
-            'subject' => $subject,
-            'message' => $message,
-            'ip_address' => $_SERVER['REMOTE_ADDR']
-        ),
-        array('%s', '%s', '%s', '%s', '%s', '%s')
-    );
-
-    if ($mail_sent) {
-        wp_send_json_success(array('message' => 'Thank you for contacting us! We will get back to you soon.'));
-    } else {
-        wp_send_json_success(array('message' => 'Your message has been saved. We will get back to you soon.'));
-    }
-}
-add_action('wp_ajax_submit_contact_form', 'handle_contact_form_submission');
-add_action('wp_ajax_nopriv_submit_contact_form', 'handle_contact_form_submission');
-
-/**
- * Track and Update Visitor Count in sm_options table
- */
-function track_visitor_count() {
-    // Only track on frontend, not admin
-    if (is_admin()) {
-        return;
-    }
-
-    // Use session to track unique visitors per session
-    if (session_status() == PHP_SESSION_NONE) {
-        session_start();
-    }
-
-    // Check if this visitor has already been counted in this session
-    if (isset($_SESSION['visitor_counted'])) {
-        return;
-    }
-
-    global $wpdb;
-    $table_name = 'sm_options';
-    
-    // Check if table exists
-    $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_name'");
-    
-    if ($table_exists === $table_name) {
-        // Get current visitor count
-        $current_count = $wpdb->get_var("SELECT option_value FROM $table_name WHERE option_name = 'site_visitor_count'");
-        
-        if ($current_count !== null) {
-            // Increment existing count
-            $new_count = intval($current_count) + 1;
-            $wpdb->update(
-                $table_name,
-                array('option_value' => $new_count),
-                array('option_name' => 'site_visitor_count'),
-                array('%d'),
-                array('%s')
-            );
-        } else {
-            // Initialize visitor count if it doesn't exist
-            $wpdb->insert(
-                $table_name,
-                array(
-                    'option_name' => 'site_visitor_count',
-                    'option_value' => '1',
-                    'autoload' => 'yes'
-                ),
-                array('%s', '%d', '%s')
-            );
-        }
-        
-        // Mark this session as counted
-        $_SESSION['visitor_counted'] = true;
-    }
-}
-add_action('wp', 'track_visitor_count');
 
 /**
  * Get Visitor Count from sm_options table
@@ -887,4 +579,108 @@ function get_student_demographics() {
         'christian' => 0,
         'other' => 0
     );
+}
+
+/**
+ * Generate Student UIDs
+ */
+function run_student_uid_generation() {
+    global $wpdb;
+    $applied_count = 0;
+    
+    // Get all classes that have a numeric uid_code
+    $classes = $wpdb->get_results("SELECT classid, uid_code FROM ct_class WHERE uid_code IS NOT NULL AND uid_code != ''");
+    
+    foreach ($classes as $class) {
+        $classid = $class->classid;
+        $prefix = $class->uid_code;
+
+        // Skip if prefix is not numeric
+        if (!ctype_digit($prefix)) {
+            continue;
+        }
+        
+        // Groups students by admit year to generate serial numbers starting from 101 for each year-class combination
+        $years = $wpdb->get_col($wpdb->prepare(
+            "SELECT DISTINCT stdCurntYear FROM ct_student WHERE stdCurrentClass = %d AND (uid IS NULL OR uid = '')",
+            $classid
+        ));
+        
+        foreach ($years as $year) {
+            $year_prefix = substr($year, 2, 2);
+            $full_prefix = $year_prefix . $prefix;
+
+            // Calculate starting serial based on existing UIDs for this class and year
+            $max_serial = $wpdb->get_var($wpdb->prepare(
+                "SELECT MAX(CAST(SUBSTRING(uid, %d) AS UNSIGNED)) 
+                 FROM ct_student 
+                 WHERE stdCurrentClass = %d 
+                 AND stdCurntYear = %s 
+                 AND uid LIKE %s",
+                strlen($full_prefix) + 1,
+                $classid, 
+                $year,
+                $full_prefix . '%'
+            ));
+
+            $serial = ($max_serial && $max_serial >= 101) ? ($max_serial + 1) : 101;
+            
+            // Get students for this class and year ordered by infoSection, infoGroup and infoRoll
+            $students = $wpdb->get_results($wpdb->prepare(
+                "SELECT s.studentid, s.stdCurntYear 
+                 FROM ct_student s
+                 LEFT JOIN ct_studentinfo i ON s.studentid = i.infoStdid 
+                    AND s.stdCurrentClass = i.infoClass 
+                    AND s.stdCurntYear = i.infoYear
+                 LEFT JOIN ct_section sec ON i.infoSection = sec.sectionid 
+                    AND i.infoClass = sec.forClass 
+                 WHERE s.stdCurrentClass = %d 
+                 AND s.stdCurntYear = %s 
+                 AND (s.uid IS NULL OR s.uid = '')
+                 ORDER BY sec.sectionName ASC, i.infoRoll ASC, i.infoGroup ASC, s.studentid ASC",
+                $classid, $year
+            ));
+            foreach ($students as $student) {
+                $uid = $year_prefix . $prefix . str_pad($serial, 3, '0', STR_PAD_LEFT);
+                
+                $wpdb->update(
+                    'ct_student',
+                    array('uid' => $uid),
+                    array('studentid' => $student->studentid)
+                );
+                
+                $serial++;
+                $applied_count++;
+            }
+        }
+    }
+    return $applied_count;
+}
+
+/**
+ * Update Class UID Codes
+ */
+function update_class_uid_codes($uid_codes) {
+    global $wpdb;
+    $error_msg = "";
+    foreach ($uid_codes as $classid => $code) {
+        if ($code == '') continue;
+        
+        $current_val = $wpdb->get_var($wpdb->prepare("SELECT uid_code FROM ct_class WHERE classid = %d", $classid));
+        if (!empty($current_val)) continue;
+        
+        if (!ctype_digit($code) || strlen($code) != 2) {
+            $error_msg .= "Code '$code' must be exactly 2 digits. ";
+            continue;
+        }
+        
+        $is_duplicate = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM ct_class WHERE uid_code = %s", $code));
+        if ($is_duplicate > 0) {
+            $error_msg .= "Code '$code' is already assigned to another class. ";
+            continue;
+        }
+        
+        $wpdb->update('ct_class', array('uid_code' => $code), array('classid' => $classid));
+    }
+    return $error_msg;
 }

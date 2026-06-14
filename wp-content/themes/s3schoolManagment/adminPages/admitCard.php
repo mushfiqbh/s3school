@@ -165,7 +165,7 @@ $designVariation = isset($_GET['design']) ? sanitize_title((string) $_GET['desig
 									<div class="col-md-12">
 										<ul class="nav nav-tabs" id="admitCardTabs">
 											<li class="active"><a href="#frontSide" data-toggle="tab">Front Side</a></li>
-											<!-- <li><a href="#backSide" data-toggle="tab">Back Side</a></li> -->
+											<li><a href="#backSide" data-toggle="tab">Back Side</a></li>
 										</ul>
 									</div>
 
@@ -200,6 +200,7 @@ $designVariation = isset($_GET['design']) ? sanitize_title((string) $_GET['desig
 																	display: inline-block;
 																	border: 2px solid #333333;
 																	overflow: hidden;
+																	margin: 20px 0 35px 0;
 																	font-family: sans-serif;
 																	width: 100%;
 																	position: relative;
@@ -267,14 +268,13 @@ $designVariation = isset($_GET['design']) ? sanitize_title((string) $_GET['desig
 																}
 
 																#itemMainBox .admitNote {
-																	list-style-type: none;
 																	float: left;
 																	font-size: 12px;
-																	padding: 0;
 																}
 
 																#itemMainBox .admitNote p {
 																	margin: 0;
+																	padding-left: 15px;
 																}
 
 																#itemMainBox hr {
@@ -294,7 +294,7 @@ $designVariation = isset($_GET['design']) ? sanitize_title((string) $_GET['desig
 															$exam = $_GET['exam'];
 
 															if (isset($_GET['syear'])) {
-																$query = "SELECT studentid,stdName,stdFather,infoRoll,className,stdImg,infoYear,stdPhone,stdFather,groupName,ct_studentinfo.infoGroup,ct_studentinfo.info4thSub,sectionName,examName,stdAdmitYear,stdCreatedAt,ct_student.stdReligion  FROM ct_student
+																$query = "SELECT studentid,stdName,stdFather,infoRoll,className,stdImg,infoYear,stdPhone,stdFather,groupName,ct_studentinfo.infoGroup,sectionName,examName,stdAdmitYear,stdCreatedAt,ct_student.stdReligion  FROM ct_student
 															LEFT JOIN ct_studentinfo ON ct_student.studentid = ct_studentinfo.infoStdid AND ct_student.stdCurrentClass = ct_studentinfo.infoClass
 															LEFT JOIN ct_class ON ct_studentinfo.infoClass = ct_class.classid
 															LEFT JOIN ct_group ON ct_studentinfo.infoGroup = ct_group.groupId
@@ -389,23 +389,11 @@ $designVariation = isset($_GET['design']) ? sanitize_title((string) $_GET['desig
 
 																return strcmp((string) ($left->subjectName ?? ''), (string) ($right->subjectName ?? ''));
 															};
-
-															$itemMainSyles = '';
-															if(isset($_GET['design'])) {
-																if($_GET['design'] == 1) {
-																	$itemMainSyles = 'margin: 82px 0;';
-																}else if($_GET['design'] == 2) {
-																	$itemMainSyles = 'margin: 58px 0';
-																}else if($_GET['design'] == 3) {
-																	$itemMainSyles = 'margin: 70px 0;';
-																}
-															};
-
 															if ($groupsBy) {
 																foreach ($groupsBy as $key => $value) {
 																	$datetime = new DateTime($value->stdCreatedAt);
 															?>
-																	<div id="itemMainBox" style="<?php echo $itemMainSyles; ?>" >
+																	<div id="itemMainBox" style="<?php if (isset($_GET['design']) && $_GET['design'] == 1) echo 'margin-bottom: 80px;'; ?>" >
 																		<div class="itemWaterMark">
 																			<img src="<?= $s3sRedux['instLogo']['url'] ?>">
 																		</div>
@@ -453,32 +441,10 @@ $designVariation = isset($_GET['design']) ? sanitize_title((string) $_GET['desig
 																								$studentGroupId
 																							);
 																						}
-																						$frontSubjectQuery = 'SELECT subjectid, subjectName, shortName, subCode, sub4th, assessment FROM ct_subject WHERE ' . implode(' AND ', $frontSubjectClauses) . ' ORDER BY subid';
+																						$frontSubjectQuery = 'SELECT subjectid, subjectName, shortName, subCode FROM ct_subject WHERE ' . implode(' AND ', $frontSubjectClauses) . ' ORDER BY subid';
 																						$frontSubjectsForStudent = $wpdb->get_results($frontSubjectQuery);
 																						if (!empty($frontSubjectsForStudent)) {
-																							$student4thSub = array();
-																							if (isset($value->info4thSub)) {
-																								if (is_numeric($value->info4thSub)) {
-																									$student4thSub[] = trim((string)$value->info4thSub);
-																								} else {
-																									$decoded = json_decode($value->info4thSub, true);
-																									if (is_array($decoded)) {
-																										$student4thSub = array_map('strval', $decoded);
-																									} else {
-																										$student4thSub = array_map('trim', explode(',', $value->info4thSub));
-																									}
-																								}
-																							}
-
-																							$frontSubjectsForStudent = array_values(array_filter($frontSubjectsForStudent, function ($subject) use ($studentReligion, $religionSubjectMap, $student4thSub) {
-																								if (isset($subject->assessment) && $subject->assessment == 1) {
-																									return false;
-																								}
-																								if (isset($subject->sub4th) && $subject->sub4th == 1) {
-																									if (!in_array((string)$subject->subjectid, $student4thSub)) {
-																										return false;
-																									}
-																								}
+																							$frontSubjectsForStudent = array_values(array_filter($frontSubjectsForStudent, function ($subject) use ($studentReligion, $religionSubjectMap) {
 																								if (!isset($subject->subCode)) {
 																									return true;
 																								}
@@ -530,20 +496,16 @@ $designVariation = isset($_GET['design']) ? sanitize_title((string) $_GET['desig
 
 																				</div>
 
+
 																				<div style="width:100%">
 																					<?php if (!empty($frontSubjectsForStudent)) {
-																							$maxColumnsPerTable = 16;
+																							$maxColumnsPerTable = 12;
 																							$totalSubjects = count($frontSubjectsForStudent);
 																							$firstBatchSubjects = array_slice($frontSubjectsForStudent, 0, $maxColumnsPerTable);
 																							$remainingSubjects = array_slice($frontSubjectsForStudent, $maxColumnsPerTable);
 																					?>
-																						<!-- First Table: Up to 16 subjects -->
-																						<table style="width: 100%; border-collapse: collapse; font-size: 10px;">
-																							<thead>
-																								<tr>
-																									<th style="border:none; padding: 2px 0px; font-weight: 900; width: fit-content;" colspan="<?= count($firstBatchSubjects) + 1 ?>">Exam Schedule</th>
-																								</tr>
-																							</thead>
+																						<!-- First Table: Up to 12 subjects -->
+																						<table style="width: auto; border-collapse: collapse; font-size: 10px;">
 																							<tr>
 																								<td style="border: 1px solid #333; padding: 1px 4px; font-weight: 900; width: fit-content;"><b>Date</b></td>
 																								<?php foreach ($firstBatchSubjects as $subject) {
@@ -704,20 +666,26 @@ $designVariation = isset($_GET['design']) ? sanitize_title((string) $_GET['desig
 
 																			<?php } ?>
 																			</div>
-																			<div  style="width:100%;display:grid;grid-template-columns:4fr 1fr;">
-																			<ul class="admitNote">
-																				<?php if ($s3sRedux['admitCareNote'] != '') {
-																					$notes = explode("\n", $s3sRedux['admitCareNote']); ?>
-																					<?php foreach ($notes as $note) { ?>
-																				<li><?= $note ?></li>
-																					<?php } ?>
-																				<?php } ?>
-																			</ul>
+																			<table class="admitNote">
+																				<tr>
+																					<?php if ($s3sRedux['admitCareNote'] != '') {
+																						$notes = explode("\n", $s3sRedux['admitCareNote']); ?>
+																						<?php foreach ($notes as $note) { ?>
+																							<td style="width:75%;"><?= $note ?></td>
+																					<?php }
+																					} ?>
+																					<td>
+																						<div class="princSign" style="text-align: center;">
+																							<img width="110" style="max-width: 80px;" src="<?= $s3sRedux['principalSign']['url'] ?>"><br>
+																							<?= $s3sRedux['inst_head_title'] ?> signature
+																						</div>
+																					</td>
+																				</tr>
+																			</table>
 
-																			<div class="princSign" style="text-align: center;">
-																				<img width="110" style="max-width: 110px;" src="<?= $s3sRedux['principalSign']['url'] ?>"><br>
-																				<?= $s3sRedux['inst_head_title'] ?>
-																			</div>
+																			<div style="clear: both;text-align: center;padding: 10px 0 5px">
+																				<i style="font-size: 10px;color: #888;"> Generated by Barnomala, Developed by MS3 Technology BD,
+																					Al-Marjan Shopping Center, Zindabazar, Sylhet. Email: teambornomala@gmail.com</i>
 																			</div>
 																		</div>
 																	</div>
@@ -1024,7 +992,7 @@ $designVariation = isset($_GET['design']) ? sanitize_title((string) $_GET['desig
 													}
 
 													// Get all subjects for this class
-													$backSubjects = $wpdb->get_results("SELECT subjectid, subjectName, subCode, sub4th FROM ct_subject WHERE subjectClass = $class" . $backSubjectFilterClause . ' ORDER BY subid');
+													$backSubjects = $wpdb->get_results("SELECT subjectid, subjectName, subCode FROM ct_subject WHERE subjectClass = $class" . $backSubjectFilterClause . ' ORDER BY subid');
 
 													// Sort subjects by date
 													if (!empty($backSubjects)) {
@@ -1039,38 +1007,16 @@ $designVariation = isset($_GET['design']) ? sanitize_title((string) $_GET['desig
 															// Determine subjects for this student. If student has a group, limit optional subjects to that group.
 															$studentGroup = isset($student->infoGroup) ? intval($student->infoGroup) : 0;
 															$studentReligion = isset($student->stdReligion) ? trim($student->stdReligion) : '';
-															$student4thSub = array();
-															if (isset($student->info4thSub)) {
-																if (is_numeric($student->info4thSub)) {
-																	$student4thSub[] = trim((string)$student->info4thSub);
-																} else {
-																	$decoded = json_decode($student->info4thSub, true);
-																	if (is_array($decoded)) {
-																		$student4thSub = array_map('strval', $decoded);
-																	} else {
-																		$student4thSub = array_map('trim', explode(',', $student->info4thSub));
-																	}
-																}
-															}
-
 															// Base filter: subjects for the class (and optional exam subject restriction)
 															$studentSubjectFilter = "WHERE subjectClass = $class" . $backSubjectFilterClause;
 															if ($studentGroup > 0) {
 																// Include core subjects (subOptinal = 0) and optional subjects that match this group or 'all'.
 																$studentSubjectFilter .= " AND (subOptinal = 0 OR (subOptinal = 1 AND (forGroup = 'all' OR JSON_CONTAINS(forGroup, '\"" . $studentGroup . "\"'))))";
 															}
-															$backSubjectsForStudent = $wpdb->get_results('SELECT subjectid, subjectName, subCode, sub4th, assessment FROM ct_subject ' . $studentSubjectFilter . ' ORDER BY subid');
+															$backSubjectsForStudent = $wpdb->get_results('SELECT subjectid, subjectName, subCode FROM ct_subject ' . $studentSubjectFilter . ' ORDER BY subid');
 															// Sort per-student subject list by date as earlier
 															if (!empty($backSubjectsForStudent)) {
-																$backSubjectsForStudent = array_values(array_filter($backSubjectsForStudent, function ($subject) use ($studentReligion, $religionSubjectMap, $student4thSub) {
-																	if (isset($subject->assessment) && $subject->assessment == 1) {
-																		return false;
-																	}
-																	if (isset($subject->sub4th) && $subject->sub4th == 1) {
-																		if (!in_array((string)$subject->subjectid, $student4thSub)) {
-																			return false;
-																		}
-																	}
+																$backSubjectsForStudent = array_values(array_filter($backSubjectsForStudent, function ($subject) use ($studentReligion, $religionSubjectMap) {
 																	if (!isset($subject->subCode)) {
 																		return true;
 																	}

@@ -1,8 +1,17 @@
 <?php
 
 // 	define( 'SHORTINIT', true );
+    	require( '../../../../wp-load.php' );
+    	ob_start();
 
-	require( '../../../../wp-load.php' );
+
+// Initialize default POST keys to prevent notices
+if (!isset($_POST['type'])) $_POST['type'] = '';
+if (!isset($_POST['action'])) $_POST['action'] = '';
+	
+	
+	require_once get_template_directory() . '/adminPages/functions/teacher-access.php';
+	$applyTeacherRestrictions = s3s_teacher_restrictions_enabled();
 
 	/*
 		Check The Roll
@@ -113,7 +122,51 @@ $subjects = $wpdb->get_results("
 
 		$class = $_POST['class'];
 
-		$sections_query = "SELECT sectionid,sectionName FROM ct_section WHERE forClass = '$class' ORDER BY sectionName";
+		$current_user = wp_get_current_user();
+		$sections_query = "SELECT sectionid,sectionName FROM ct_section WHERE forClass = '$class'";
+
+		if ($applyTeacherRestrictions && $current_user->roles[0] == 'um_teachers') {
+			$current_user_id = get_current_user_id();
+			
+			// Determine table name (try prefixed first, fallback to ct_teacher)
+			$prefixed = $wpdb->prefix . 'ct_teacher';
+			$exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $prefixed));
+			$table = ($exists === $prefixed) ? $prefixed : 'ct_teacher';
+			
+			$teacher_record = $wpdb->get_row($wpdb->prepare("SELECT teacherOfClass, teacherOfSection, assignSection FROM $table WHERE tecUserId = %d", $current_user_id));
+
+			$allowed_sections = array();
+
+			// Add subject-assigned sections
+			if ($teacher_record && !empty($teacher_record->assignSection)) {
+				$assigned_sections = json_decode($teacher_record->assignSection, true);
+				$has_all = false;
+				if (is_array($assigned_sections) && !empty($assigned_sections)) {
+					if (in_array('all', $assigned_sections)) {
+						$has_all = true;
+						$assigned_sections = array_diff($assigned_sections, ['all']);
+					}
+					if (!empty($assigned_sections)) {
+						$allowed_sections = array_merge($allowed_sections, $assigned_sections);
+					}
+				}
+			}
+
+			// Add class teacher section (only if it matches the requested class)
+			if ($teacher_record && !empty($teacher_record->teacherOfClass) && !empty($teacher_record->teacherOfSection) && $teacher_record->teacherOfClass == $class) {
+				$allowed_sections[] = $teacher_record->teacherOfSection;
+			}
+
+			// If we have any allowed sections, filter the query
+			if ($has_all) {
+				// Show all sections
+			} elseif (!empty($allowed_sections)) {
+				$allowed_sections = array_unique($allowed_sections);
+				$sections_query .= " AND sectionid IN (" . implode(',', array_map('intval', $allowed_sections)) . ")";
+			}
+		}
+
+		$sections_query .= " ORDER BY sectionName";
 
 		$sections = $wpdb->get_results($sections_query);
 		if(!empty($sections)){
@@ -134,11 +187,32 @@ $subjects = $wpdb->get_results("
 	elseif($_POST['type'] == 'getGroupsByClass'){
 		$class = $_POST['class'];
 		
+		$current_user = wp_get_current_user();
 		$groups_query = "SELECT DISTINCT ct_group.groupId, ct_group.groupName 
 			FROM ct_group 
 			INNER JOIN ct_studentinfo ON ct_studentinfo.infoGroup = ct_group.groupId 
-			WHERE ct_studentinfo.infoClass = '$class'
-			ORDER BY ct_group.groupName ASC";
+			WHERE ct_studentinfo.infoClass = '$class'";
+
+		if ($applyTeacherRestrictions && $current_user->roles[0] == 'um_teachers') {
+			$current_user_id = get_current_user_id();
+			$teacher_record = $wpdb->get_row($wpdb->prepare("SELECT tecAssignSub FROM ct_teacher WHERE tecUserId = %d", $current_user_id));
+
+			if ($teacher_record && !empty($teacher_record->tecAssignSub)) {
+				$assigned_subjects = json_decode($teacher_record->tecAssignSub, true);
+				if (is_array($assigned_subjects) && !empty($assigned_subjects)) {
+					// Get groups that have subjects assigned to this teacher
+					$groups_query .= " AND ct_studentinfo.infoGroup IN (
+						SELECT DISTINCT forGroup 
+						FROM ct_subject 
+						WHERE subjectid IN (" . implode(',', array_map('intval', $assigned_subjects)) . ") 
+						AND subjectClass = '$class'
+						AND forGroup != 'all'
+					)";
+				}
+			}
+		}
+
+		$groups_query .= " ORDER BY ct_group.groupName ASC";
 		
 		$groups = $wpdb->get_results($groups_query);
 		
@@ -268,6 +342,22 @@ $subjects = $wpdb->get_results("
         $subs = json_decode($subs[0]->examSubjects, true);
     } else {
         $subs = [];
+    }
+
+    $current_user = wp_get_current_user();
+
+	if ($applyTeacherRestrictions && $current_user->roles[0] == 'um_teachers') {
+        $current_user_id = get_current_user_id();
+        $teacher_record = $wpdb->get_row($wpdb->prepare("SELECT tecAssignSub FROM ct_teacher WHERE tecUserId = %d", $current_user_id));
+
+        if ($teacher_record && !empty($teacher_record->tecAssignSub)) {
+            $assigned_subjects = json_decode($teacher_record->tecAssignSub, true);
+
+            if (is_array($assigned_subjects) && !empty($assigned_subjects) && !empty($subs)) {
+                // Filter exam subjects to only include assigned subjects
+                $subs = array_intersect($subs, $assigned_subjects);
+            }
+        }
     }
 
     if (!empty($subs)) {
@@ -871,452 +961,846 @@ elseif ($_POST['type'] == 'saveExamSchedule') {
 	}
 
 }
-/*
-    Get Online Application Details
-*/
-elseif($_POST['type'] == 'getApplicationDetails'){
-    $appId = intval($_POST['applicationId']);
-    $application = $wpdb->get_row($wpdb->prepare("
-        SELECT oa.*, c.className, g.groupName 
-        FROM ct_online_application oa 
-        LEFT JOIN ct_class c ON oa.stdAdmitClass = c.classid 
-        LEFT JOIN ct_group g ON oa.stdGroup = g.groupId 
-        WHERE oa.applicationid = %d
-    ", $appId), ARRAY_A);
-    
-    if($application){
-        // Get school info from sm_option table
-        $schoolName = $wpdb->get_var("SELECT option_value FROM sm_options WHERE option_name = 'institute_name'");
-        $schoolAddress = $wpdb->get_var("SELECT option_value FROM sm_options WHERE option_name = 'institute_address'");
-        
-        $application['schoolName'] = $schoolName ?: 'School Name';
-        $application['schoolAddress'] = $schoolAddress ?: 'School Address';
-        
-        echo json_encode(['status' => 'success', 'data' => $application]);
-    } else {
-        echo json_encode(['status' => 'error', 'message' => 'Application not found']);
-    }
+
+
+// custom 
+function getLateSubHeadId() {
+    global $lateSubHeadId;
+    $lateSubHeadId = 8;
 }
+add_action( 'init', 'getLateSubHeadId' );
 
-/*
-    Search Application by Phone
-*/
-elseif($_POST['type'] == 'searchApplicationByPhone'){
-    $phone = sanitize_text_field($_POST['phone']);
-    $dob = sanitize_text_field($_POST['dob']);
-    
-    if(empty($phone)){
-        echo json_encode(['status' => 'error', 'message' => 'Phone number is required']);
-        exit;
-    }
-    
-    if(empty($dob)){
-        echo json_encode(['status' => 'error', 'message' => 'Date of birth is required']);
-        exit;
-    }
-    
-    $applications = $wpdb->get_results($wpdb->prepare("
-        SELECT oa.*, c.className 
-        FROM ct_online_application oa 
-        LEFT JOIN ct_class c ON oa.stdAdmitClass = c.classid 
-        WHERE oa.stdPhone = %s AND oa.stdBrith = %s
-        ORDER BY oa.stdCreatedAt DESC
-    ", $phone, $dob), ARRAY_A);
-    
-    if($applications){
-        echo json_encode(['status' => 'success', 'data' => $applications]);
-    } else {
-        echo json_encode(['status' => 'success', 'data' => []]);
-    }
+function getAbsentSubHeadId() {
+    global $absentSubHeadId;
+    $absentSubHeadId = 9;
 }
+add_action( 'init', 'getAbsentSubHeadId' );
 
-
-/*
-    Get Admission Fee for Class
-*/
-elseif($_POST['type'] == 'getAdmissionFee'){
-    $class = intval($_POST['class']);
-    
-    $fee_data = $wpdb->get_row($wpdb->prepare(
-        "SELECT amount FROM ct_admission_fee_promoted WHERE class = %d AND is_active = 1",
-        $class
-    ));
-    
-    if($fee_data){
-        echo json_encode(['status' => 'success', 'fee' => $fee_data->amount]);
-    } else {
-        echo json_encode(['status' => 'success', 'fee' => 0]);
-    }
+function getCashSubHeadId() {
+    global $cashSubHeadId;
+    $cashSubHeadId = 10;
 }
+add_action( 'init', 'getCashSubHeadId' );
 
-/*
-    Get Sections for Class
-*/
-elseif($_POST['type'] == 'getSectionsForClass'){
-    $classId = intval($_POST['classId']);
-    
-    $sections = $wpdb->get_results($wpdb->prepare(
-        "SELECT sectionid, sectionName 
-         FROM ct_section 
-         WHERE classId = %d 
-         ORDER BY sectionName",
-        $classId
-    ), ARRAY_A);
-    
-    echo json_encode(['status' => 'success', 'sections' => $sections]);
+function getAdmissionFeeSubHeadId() {
+    global $admissionFeeSubHeadId;
+    $admissionFeeSubHeadId = 1;
 }
+add_action( 'init', 'getAdmissionFeeSubHeadId' );
 
-// ==========================================
-// UNIFIED RESULT MANAGEMENT
-// ==========================================
+function getAdmissionFormSubHeadId() {
+    global $admissionFormSubHeadId;
+    $admissionFormSubHeadId = 2;
+}
+add_action( 'init', 'getAdmissionFormSubHeadId' );
 
+function getExamFeeSubHeadId() {
+    global $examFeeSubHeadId;
+    $examFeeSubHeadId = 3;
+}
+add_action( 'init', 'getExamFeeSubHeadId' );
+
+function getMonthlyFeeSubHeadId() {
+    global $monthlyFeeSubHeadId;
+    $monthlyFeeSubHeadId = 4;
+}
+add_action( 'init', 'getMonthlyFeeSubHeadId' );
+
+function getTransportFeeSubHeadId() {
+    global $transportFeeSubHeadId;
+    $transportFeeSubHeadId =100;
+}
+add_action( 'init', 'getTransportFeeSubHeadId' );
+
+function getIctFeeSubHeadId() {
+    global $ictFeeSubHeadId;
+    $ictFeeSubHeadId =200;
+}
+add_action( 'init', 'getIctFeeSubHeadId' );
+
+
+function getPaystationSubHeadId() {
+    global $paystationSubHeadId;
+    $paystationSubHeadId = 250;
+}
+add_action( 'init', 'getPaystationSubHeadId' );
+
+function getCoachingFeeSubHeadId() {
+    global $coachingFeeSubHeadId;
+    $coachingFeeSubHeadId =300;
+}
+add_action( 'init', 'getCoachingFeeSubHeadId' );
+
+function getRegistrationFormFeeSubHeadId() {
+    global $registrationFeeSubHeadId;
+    $registrationFeeSubHeadId =400;
+}
+add_action( 'init', 'getRegistrationFormFeeSubHeadId' );
+
+function getDairySubHeadId() {
+    global $dairySubHeadId;
+    $dairySubHeadId =410;
+}
+add_action( 'init', 'getDairySubHeadId' );
+
+function getIdcardSubHeadId() {
+    global $idcardSubHeadId;
+    $idcardSubHeadId =420;
+}
+add_action( 'init', 'getIdcardSubHeadId' );
+
+function getMonthArrayName() {
+    global $monthArray;
+	$monthArray = array("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December");
+}
+add_action( 'init', 'getMonthArrayName' );
 /*
-    Load Students for Unified Result Entry
-*/
-elseif($_POST['type'] == 'load_students'){
-    $class = intval($_POST['class']);
-    $exam = intval($_POST['exam']);
-    $section = isset($_POST['section']) ? intval($_POST['section']) : 0;
-    $group = isset($_POST['group']) ? intval($_POST['group']) : 0;
-    $year = sanitize_text_field($_POST['year']);
-    $subject = intval($_POST['subject']);
+ * PayStation Payment Integration AJAX Handlers
+ */
 
-    // Get subject configuration
-    $subject_info = $wpdb->get_row($wpdb->prepare(
-        "SELECT subCode, subCQ, subMCQ, subPect, subCa, subOptinal, sub4th, subPaper, connecttedPaper FROM ct_subject WHERE subjectid = %d",
-        $subject
-    ));
-
-    if (!$subject_info) {
-        echo json_encode(['success' => false, 'message' => 'Subject not found']);
-        exit;
-    }
-
-    $subject_config = [
-        'cq' => intval($subject_info->subCQ),
-        'mcq' => intval($subject_info->subMCQ),
-        'prac' => intval($subject_info->subPect),
-        'ca' => intval($subject_info->subCa)
-    ];
-
-    $subOpt = intval($subject_info->subOptinal);
-    $sub4th = intval($subject_info->sub4th);
-    $subCode = $subject_info->subCode;
-
-    // Religion filter
-    $religionMap = [
-        'Muslim' => 111,
-        'Hinduism' => 112,
-        'Buddist' => 113,
-        'Christian' => 114
-    ];
-
-    $religionFilter = '';
-    if ($subCode && in_array($subCode, array_values($religionMap))) {
-        $religion = array_search($subCode, $religionMap);
-        $religionFilter = $wpdb->prepare(" AND ct_student.stdReligion = %s", $religion);
-    }
-
-    // Build student query
-    if ($subOpt == 0 && $sub4th == 0) {
-        // Regular subject
-        $stdQuery = "SELECT 
-            studentid,
-            infoRoll,
-            stdName,
-            groupName,
-            infoGroup,
-            infoSection,
-            sectionName,
-            stdReligion
-        FROM ct_student
-        LEFT JOIN ct_studentinfo ON ct_student.studentid = ct_studentinfo.infoStdid
-            AND ct_studentinfo.infoClass = $class AND ct_studentinfo.infoYear = '$year'
-        LEFT JOIN ct_group ON ct_studentinfo.infoGroup = ct_group.groupId
-        LEFT JOIN ct_section ON ct_studentinfo.infoSection = ct_section.sectionid
-        WHERE stdCurntYear = '$year' AND stdCurrentClass = $class" . $religionFilter;
-    } else {
-        // Optional or 4th subject
-        $stdQuery = "SELECT 
-            studentid,
-            infoRoll,
-            stdName,
-            groupName,
-            infoGroup,
-            infoSection,
-            infoOptionals,
-            info4thSub,
-            sectionName,
-            stdReligion
-        FROM ct_student
-        LEFT JOIN ct_studentinfo ON ct_student.studentid = ct_studentinfo.infoStdid
-            AND ct_studentinfo.infoClass = $class AND ct_studentinfo.infoYear = '$year'
-        LEFT JOIN ct_group ON ct_studentinfo.infoGroup = ct_group.groupId
-        LEFT JOIN ct_section ON ct_studentinfo.infoSection = ct_section.sectionid
-        WHERE stdCurntYear = '$year' AND stdCurrentClass = $class" . $religionFilter;
-
-        if ($subOpt == 1 && $sub4th == 1) {
-            $stdQuery .= " AND (infoOptionals LIKE '%\"$subject\"%' OR info4thSub = $subject)";
-        }
-        if ($subOpt == 1 && $sub4th == 0) {
-            $stdQuery .= " AND infoOptionals LIKE '%\"$subject\"%'";
-        }
-        if ($subOpt == 0 && $sub4th == 1) {
-            $stdQuery .= " AND info4thSub = $subject";
-        }
-    }
-
-    if ($section != 0 && $section != '') {
-        $stdQuery .= " AND infoSection = $section";
-    }
-    if ($group != 0 && $group != '') {
-        $stdQuery .= " AND infoGroup = $group";
-    }
-
-    $stdQuery .= " ORDER BY infoRoll ASC";
-
-    $students = $wpdb->get_results($stdQuery);
-
-    $studentsData = [];
-
-    foreach ($students as $student) {
-        // Check if result already exists
-        $existingResult = $wpdb->get_row($wpdb->prepare(
-            "SELECT resultId, resCQ, resMCQ, resPrec, resCa, resTotal 
-            FROM ct_result 
-            WHERE resStudentId = %d AND resClass = %d AND resExam = %d AND resSubject = %d AND resultYear = %s",
-            $student->studentid,
-            $class,
-            $exam,
-            $subject,
-            $year
+// Initiate PayStation payment
+if(isset($_POST['type']) && $_POST['type'] == 'initiatePaystationPayment'){
+    // Use dirname to get the correct path since get_template_directory() may not work here
+    require_once(dirname(__FILE__) . '/paystation_api.php');
+    
+    header('Content-Type: application/json');
+    
+    // Generate unique payment ID
+    $payment_id = 'PAY-' . date('Ymd') . '-' . strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 8));
+    
+    // Get student and fee data from POST
+    $student_data = array(
+        'student_id' => intval($_POST['student_id']),
+        'student_name' => sanitize_text_field($_POST['student_name']),
+        'student_roll' => sanitize_text_field($_POST['student_roll']),
+        'stdUniqueID' => sanitize_text_field($_POST['stdUniqueID'] ?? ''),
+        'class_id' => intval($_POST['class_id']),
+        'section' => isset($_POST['section']) && !empty($_POST['section']) ? intval($_POST['section']) : null,
+        'group_id' => isset($_POST['group_id']) && !empty($_POST['group_id']) ? intval($_POST['group_id']) : null,
+        'year' => sanitize_text_field($_POST['year']),
+        'cust_phone' => sanitize_text_field($_POST['cust_phone']),
+        'cust_email' => sanitize_email($_POST['cust_email'] ?? ''),
+        'cust_address' => sanitize_text_field($_POST['cust_address'] ?? ''),
+    );
+    
+    $fee_data = array(
+        'fee_breakdown' => json_decode(stripslashes($_POST['fee_breakdown']), true),
+        'sub_total' => floatval($_POST['sub_total']),
+        'remission' => floatval($_POST['remission'] ?? 0),
+        'total_amount' => floatval($_POST['total_amount']),
+        'month' => intval($_POST['month']),
+    );
+    
+    // Validate required data
+    if (empty($student_data['student_id']) || empty($fee_data['total_amount']) || $fee_data['total_amount'] <= 0) {
+        echo json_encode(array(
+            'success' => false, 
+            'message' => 'Invalid student or fee data'
         ));
-
-        $marks = [
-            'cq' => '',
-            'mcq' => '',
-            'prac' => '',
-            'ca' => ''
-        ];
-
-        $result_id = null;
-
-        if ($existingResult) {
-            // Edit mode - pre-fill marks
-            $marks = [
-                'cq' => $existingResult->resCQ,
-                'mcq' => $existingResult->resMCQ,
-                'prac' => $existingResult->resPrec,
-                'ca' => $existingResult->resCa
-            ];
-            $result_id = $existingResult->resultId;
-        }
-
-        $studentsData[] = [
-            'student_id' => $student->studentid,
-            'roll' => $student->infoRoll,
-            'name' => $student->stdName,
-            'group' => $student->groupName,
-            'section' => $student->sectionName,
-            'info_group' => $student->infoGroup,
-            'info_section' => $student->infoSection,
-            'result_id' => $result_id,
-            'marks' => $marks
-        ];
+        exit;
     }
-
-    echo json_encode([
-        'success' => true,
-        'data' => [
-            'students' => $studentsData,
-            'subject_config' => $subject_config
-        ]
-    ]);
+    
+    if (empty($student_data['cust_phone'])) {
+        echo json_encode(array(
+            'success' => false, 
+            'message' => 'Phone number is required for PayStation payment'
+        ));
+        exit;
+    }
+    
+    // Call PayStation API to initiate payment
+    $result = paystation_initiate_payment($payment_id, $student_data, $fee_data);
+    
+    if (is_wp_error($result)) {
+        echo json_encode(array(
+            'success' => false, 
+            'message' => $result->get_error_message()
+        ));
+    } else {
+        echo json_encode(array(
+            'success' => true,
+            'payment_url' => $result['payment_url'],
+            'payment_id' => $payment_id,
+            'invoice_number' => $result['invoice_number']
+        ));
+    }
+    exit;
 }
 
-/*
-    Save Individual Result (Add/Update)
-*/
-elseif($_POST['type'] == 'save_result'){
-    $student_id = intval($_POST['student_id']);
-    $result_id = isset($_POST['result_id']) && $_POST['result_id'] !== '' ? intval($_POST['result_id']) : null;
-    $mode = sanitize_text_field($_POST['mode']);
+// Get fee calculation for PayStation (uses existing getStudentInfo logic but returns structured data)
+if(isset($_POST['type']) && $_POST['type'] == 'getPaystationFeeInfo'){
     $class = intval($_POST['class']);
-    $exam = intval($_POST['exam']);
-    $section = isset($_POST['section']) ? intval($_POST['section']) : 0;
-    $group = isset($_POST['group']) ? intval($_POST['group']) : 0;
+    $section = isset($_POST['section']) && !empty($_POST['section']) ? intval($_POST['section']) : null;
     $year = sanitize_text_field($_POST['year']);
-    $subject = intval($_POST['subject']);
-    $marks = $_POST['marks'];
-
-    // Get subject info
-    $subject_info = $wpdb->get_row($wpdb->prepare(
-        "SELECT subPaper, connecttedPaper FROM ct_subject WHERE subjectid = %d",
-        $subject
-    ));
-
-    if (!$subject_info) {
-        echo json_encode(['success' => false, 'message' => 'Subject not found']);
+    $roll = intval($_POST['roll']);
+    $group = isset($_POST['group']) && !empty($_POST['group']) ? intval($_POST['group']) : null;
+    $fee_month = isset($_POST['month']) && !empty($_POST['month']) ? intval($_POST['month']) : intval(date('n'));
+    
+    // Get global sub head IDs
+    global $admissionFeeSubHeadId, $admissionFormSubHeadId, $monthlyFeeSubHeadId;
+    global $examFeeSubHeadId, $transportFeeSubHeadId, $ictFeeSubHeadId;
+    global $registrationFeeSubHeadId, $coachingFeeSubHeadId;
+    
+    $result = array();
+    
+    // Find student
+    $stdQuery = "SELECT ct_studentinfo.infoStdid, ct_student.stdName, ct_student.stdUniqueID,
+                 ct_student_wise_fee.transport_fee_id, ct_student_wise_fee.transport_type, 
+                 ct_student_wise_fee.transport_required, ct_student.admission_type, ct_student.facilities 
+                 FROM ct_studentinfo
+                 LEFT JOIN ct_student ON ct_student.studentid = ct_studentinfo.infoStdid
+                 LEFT JOIN ct_student_wise_fee ON ct_student.studentid = ct_student_wise_fee.student_id 
+                     AND $class = ct_student_wise_fee.class_id 
+                     AND '$year' = ct_student_wise_fee.year 
+                     AND 3 = ct_student_wise_fee.fee_type
+                 WHERE ct_studentinfo.infoYear = '$year' 
+                 AND ct_studentinfo.infoRoll = $roll 
+                 AND ct_studentinfo.infoClass = $class
+                 AND ct_student.stdStatus = 1";
+    
+    if($section){
+        $stdQuery .= " AND ct_studentinfo.infoSection = $section";
+    }
+    if($group){
+        $stdQuery .= " AND ct_studentinfo.infoGroup = $group";
+    }
+    $stdQuery .= " LIMIT 1";
+    
+    $studentInfo = $wpdb->get_results($stdQuery);
+    
+    if(!$studentInfo || empty($studentInfo)){
+        header('Content-Type: application/json');
+        echo json_encode(array('success' => false, 'message' => 'Student not found'));
         exit;
     }
-
-    // Get student info
-    $student_info = $wpdb->get_row($wpdb->prepare(
-        "SELECT infoRoll, infoGroup, infoSection, infoOptionals, info4thSub 
-        FROM ct_studentinfo 
-        WHERE infoStdid = %d AND infoClass = %d AND infoYear = %s",
-        $student_id,
-        $class,
-        $year
-    ));
-
-    if (!$student_info) {
-        echo json_encode(['success' => false, 'message' => 'Student information not found']);
-        exit;
+    
+    $studentId = $studentInfo[0]->infoStdid;
+    $result['student_id'] = $studentId;
+    $result['student_name'] = $studentInfo[0]->stdName;
+    $result['stdUniqueID'] = $studentInfo[0]->stdUniqueID ?? '';
+    $result['student_roll'] = $roll;
+    $result['class_id'] = $class;
+    $result['section'] = $section;
+    $result['group_id'] = $group;
+    $result['year'] = $year;
+    $result['month'] = $fee_month;
+    
+    // Get class name
+    $className = $wpdb->get_var("SELECT className FROM ct_class WHERE classid = $class");
+    $result['class_name'] = $className;
+    
+    // Get section name
+    if($section){
+        $sectionName = $wpdb->get_var("SELECT sectionName FROM ct_section WHERE sectionid = $section");
+        $result['section_name'] = $sectionName;
     }
-
-    // Determine optional/4th subject status
-    $resSubOpt = 0;
-    if (!empty($student_info->infoOptionals)) {
-        $optionals = json_decode($student_info->infoOptionals, true);
-        if (is_array($optionals) && in_array($subject, $optionals)) {
-            $resSubOpt = 1;
-        }
+    
+    // Get group name
+    if($group){
+        $groupName = $wpdb->get_var("SELECT groupName FROM ct_group WHERE groupId = $group");
+        $result['group_name'] = $groupName;
     }
-
-    $resSub4th = 0;
-    if (!empty($student_info->info4thSub)) {
-        // Handle both numeric and JSON format
-        if (is_numeric($student_info->info4thSub)) {
-            $fourthSubId = intval($student_info->info4thSub);
-        } else {
-            $fourthSub = json_decode($student_info->info4thSub, true);
-            if (is_array($fourthSub)) {
-                $fourthSubId = isset($fourthSub[0]) ? intval($fourthSub[0]) : null;
-            } else {
-                $fourthSubId = intval($student_info->info4thSub);
-            }
+    
+    // Get active collection sub head IDs
+    $subHeadId = $wpdb->get_results("SELECT * FROM ct_sub_head
+        WHERE active_for_collection = 1 AND relation_to = 1 AND isHidden IS NULL 
+        ORDER BY sort_order ASC, sub_head_name ASC");
+    
+    $fee_breakdown = array();
+    $sub_total = 0;
+    
+    foreach($subHeadId as $val){
+        $feesQuery = "SELECT fee FROM ct_student_fee_list WHERE sub_head_id = $val->id AND class_id = $class AND year = '$year'";
+        if($group){
+            $feesQuery .= " AND group_id = $group";
         }
-        if ($subject == $fourthSubId) {
-            $resSub4th = 1;
-        }
-    }
-
-    // Calculate total (same as result-add.php)
-    $stdCQ = (is_numeric($marks['cq']) && $marks['cq'] != '') ? $marks['cq'] : 0;
-    $stdMCQ = (is_numeric($marks['mcq']) && $marks['mcq'] != '') ? $marks['mcq'] : 0;
-    $stdPrec = (is_numeric($marks['prac']) && $marks['prac'] != '') ? $marks['prac'] : 0;
-    $stdCa = (is_numeric($marks['ca']) && $marks['ca'] != '') ? $marks['ca'] : 0;
-    $total = $stdCQ + $stdMCQ + $stdPrec + $stdCa;
-
-    $data = [
-        'resStudentId' => $student_id,
-        'resClass' => $class,
-        'resSubPaper' => $subject_info->subPaper,
-        'resgroup' => $student_info->infoGroup,
-        'resSec' => $student_info->infoSection,
-        'resExam' => $exam,
-        'resSubject' => $subject,
-        'resultYear' => $year,
-        'resCombineWith' => $subject_info->connecttedPaper,
-        'resSubOpt' => $resSubOpt,
-        'resSub4th' => $resSub4th,
-        'resStdRoll' => $student_info->infoRoll,
-        'resCQ' => $marks['cq'],
-        'resMCQ' => $marks['mcq'],
-        'resPrec' => $marks['prac'],
-        'resCa' => $marks['ca'],
-        'resTotal' => $total
-    ];
-
-    if ($mode === 'add' || $result_id === null) {
-        // INSERT
-        $data['resAdd'] = get_current_user_id();
+        $feesQuery .= " ORDER BY id DESC LIMIT 1";
+        $fees = $wpdb->get_results($feesQuery);
+        $base_fee = $fees ? floatval($fees[0]->fee) : 0;
         
-        $insert = $wpdb->insert('ct_result', $data);
+        $amount = 0;
 
-        if ($insert) {
-            echo json_encode([
-                'success' => true,
-                'data' => [
-                    'message' => 'Result added successfully',
-                    'result_id' => $wpdb->insert_id
-                ]
-            ]);
-        } else {
-            $error_msg = 'Failed to add result';
-            if ($wpdb->last_error) {
-                $error_msg .= ': ' . $wpdb->last_error;
+		if($val->type == 3){
+            // Exam fee
+            $activeExamId = $wpdb->get_results("SELECT examid FROM ct_exam WHERE active_for_collection = 1 AND examClass = $class LIMIT 1");
+            if($activeExamId){
+                $examId = $activeExamId[0]->examid;
+                $feeInfoQuery = "SELECT fee FROM ct_student_exam_fee_summary 
+                    WHERE sub_head_id = $val->id AND class_id = $class AND exam_id = $examId 
+                    AND year = '$year' AND student_id = $studentId";
+                if($section){ $feeInfoQuery .= " AND section = $section"; }
+                if($group){ $feeInfoQuery .= " AND group_id = $group"; }
+                $feeInfo = $wpdb->get_results($feeInfoQuery);
+                
+                if(!$feeInfo){
+                    $amount = $base_fee;
+                }
             }
-            echo json_encode(['success' => false, 'message' => $error_msg, 'debug_data' => $data]);
+        } else if($val->type == 1){
+			// Monthly fee
+			$sumOfFees = 0;
+			for($i = $fee_month; $i >= 1; $i--){
+				$feeInfoQuery = "SELECT fee FROM ct_student_monthly_fee_summary 
+					WHERE sub_head_id = $val->id AND class_id = $class AND year = '$year' 
+					AND month = $i AND student_id = $studentId";
+				if($section){
+					$feeInfoQuery .= " AND section = $section";
+				}
+				if($group){
+					$feeInfoQuery .= " AND group_id = $group";
+				}
+				$feeInfo = $wpdb->get_results($feeInfoQuery);
+				
+				if(!$feeInfo){
+					$fee_amount = $base_fee;
+					
+					if($val->id == $monthlyFeeSubHeadId){
+						if($studentInfo[0]->facilities == 'Full free' || $studentInfo[0]->facilities == 'Scholarship'){
+							$fee_amount = 0;
+						} else if($studentInfo[0]->facilities == 'Half free'){
+							$fee_amount = $fee_amount / 2;
+						} else {
+							$checkfees = $wpdb->get_results("SELECT monthly_fee FROM ct_student WHERE studentid = $studentId");
+							if($checkfees && $checkfees[0]->monthly_fee > 0){
+								$fee_amount = floatval($checkfees[0]->monthly_fee);
+							}
+						}
+					} else if($val->id == $transportFeeSubHeadId){
+						if($studentInfo[0]->transport_required == 1){
+							$transport_fee_id = $studentInfo[0]->transport_fee_id;
+							$tfees = $wpdb->get_results("SELECT amount FROM ct_transport_fee_list WHERE id = $transport_fee_id");
+							if($tfees){
+								$fee_amount = floatval($tfees[0]->amount);
+								if($studentInfo[0]->transport_type == 1){
+									$fee_amount = $fee_amount / 2;
+								}
+							} else {
+								$fee_amount = 0;
+							}
+						} else {
+							$fee_amount = 0;
+						}
+					} else if($val->id == $coachingFeeSubHeadId){
+						$checkfees = "SELECT amount FROM ct_student_wise_fee WHERE fee_type = 1 AND student_id = $studentId AND class_id = $class AND year = '$year'";
+						if($section){ $checkfees .= " AND section = $section"; }
+						if($group){ $checkfees .= " AND group_id = $group"; }
+						$studentwisefees = $wpdb->get_results($checkfees);
+						if($studentwisefees && $studentwisefees[0]->amount > 0){
+							$fee_amount = floatval($studentwisefees[0]->amount);
+						} else {
+							$fee_amount = 0;
+						}
+					}
+					
+					$sumOfFees += $fee_amount;
+				}
+			}
+			$amount = $sumOfFees;
+			
+		} else if($val->type == 2){
+			// Yearly fee
+			$feeInfoQuery = "SELECT fee FROM ct_student_yearly_fee_summary 
+				WHERE sub_head_id = $val->id AND class_id = $class AND year = '$year' AND student_id = $studentId";
+			if($section){ $feeInfoQuery .= " AND section = $section"; }
+			if($group){ $feeInfoQuery .= " AND group_id = $group"; }
+			$feeInfo = $wpdb->get_results($feeInfoQuery);
+			
+			if(!$feeInfo){
+				$amount = $base_fee;
+				
+				if($val->id == $admissionFeeSubHeadId){
+					if($studentInfo[0]->admission_type == 1){
+						if($studentInfo[0]->facilities == 'Half free'){
+							$amount = $amount / 2;
+						}
+					} else {
+						$promoted_fee = $wpdb->get_results("SELECT amount FROM ct_admission_fee_promoted WHERE class = $class");
+						if($promoted_fee){
+							$amount = floatval($promoted_fee[0]->amount);
+							if($studentInfo[0]->facilities == 'Half free'){
+								$amount = $amount / 2;
+							}
+						} else {
+							$amount = 0;
+						}
+					}
+				} else if($val->id == $admissionFormSubHeadId){
+					if($studentInfo[0]->facilities == 'Half free'){
+						$amount = $amount / 2;
+					}
+				} else if($val->id == $registrationFeeSubHeadId){
+					$checkfees = "SELECT amount FROM ct_student_wise_fee WHERE fee_type = 2 AND student_id = $studentId AND class_id = $class AND year = '$year'";
+					if($section){ $checkfees .= " AND section = $section"; }
+					if($group){ $checkfees .= " AND group_id = $group"; }
+					$studentwisefees = $wpdb->get_results($checkfees);
+					if($studentwisefees && $studentwisefees[0]->amount > 0){
+						$amount = floatval($studentwisefees[0]->amount);
+					}
+				}
+			} else {
+				$amount = 0;
+			}
+			
+		} 
+		else {
+			$amount = $base_fee;
+		}
+        
+        if($amount > 0){
+            $fee_breakdown[] = array(
+                'sub_head_id' => $val->id,
+                'sub_head_name' => $val->sub_head_name,
+                'fee_type' => $val->type == 1 ? 'monthly' : ($val->type == 2 ? 'yearly' : ($val->type == 3 ? 'exam' : 'other')),
+                'amount' => round($amount, 2)
+            );
+            $sub_total += $amount;
         }
-    } else {
-        // UPDATE
-        $update = $wpdb->update(
-            'ct_result',
-            [
-                'resCQ' => $marks['cq'],
-                'resMCQ' => $marks['mcq'],
-                'resPrec' => $marks['prac'],
-                'resCa' => $marks['ca'],
-                'resTotal' => $total
-            ],
-            ['resultId' => $result_id]
+    }
+
+	/**
+	 * Calculate total paid amount for the month
+	 * to be used for PayStation integration to show remaining amount if partial payment is made
+	 * 
+	 * 
+	 */
+	$onlinePaidTotalAmountQuery = "SELECT id, SUM(total) AS totalPaid FROM ct_student_fee_collection_info WHERE  class_id = $class AND year = '$year' AND month = $fee_month AND student_id = $studentId GROUP BY student_id";	
+	if(isset($section) && !empty($section)){
+		$onlinePaidTotalAmountQuery .= " AND section = $section";
+	}
+	if(isset($group) && !empty($group)){
+		$onlinePaidTotalAmountQuery .= " AND group_id = $group";
+	}
+	global $wpdb;
+	$onlinePaidTotalAmount = $wpdb->get_results($onlinePaidTotalAmountQuery);
+	$paidAmount = floatval($onlinePaidTotalAmount[0]->totalPaid);
+
+
+	// If there are previous payments, subtract from sub_total to get remaining amount for PayStation
+	$sub_total = max(0, $sub_total - $paidAmount);
+
+	$result['paid_amount'] = round($paidAmount, 2);    
+    $result['fee_breakdown'] = $fee_breakdown;
+    $result['sub_total'] = round($sub_total, 2);
+    $result['remission'] = 0;
+    $result['total_amount'] = round($sub_total, 2);
+    $result['success'] = true;
+    
+    header('Content-Type: application/json');
+    echo json_encode($result);
+    exit;
+}
+
+
+
+/*
+    Handle ID Card Image Upload (Consolidated)
+*/
+elseif (
+    (isset($_POST['action']) && $_POST['action'] === 'upload_id_image') || 
+    (isset($_POST['type']) && $_POST['type'] === 'upload_id_image')
+) {
+    header('Content-Type: application/json');
+    
+    if (empty($_FILES['id_image']) || !isset($_POST['design_no'])) {
+        echo json_encode(['success' => false, 'data' => 'Invalid request']);
+        wp_die();
+    }
+
+    global $wpdb;
+    $design_no = intval($_POST['design_no']);
+    $side = isset($_POST['side']) ? sanitize_text_field($_POST['side']) : 'front';
+    $person_type = isset($_POST['person_type']) ? sanitize_text_field($_POST['person_type']) : 'student';
+    
+    if ($design_no <= 0) {
+        echo json_encode(['success' => false, 'data' => 'Invalid design number']);
+        wp_die();
+    }
+
+    if (!function_exists('wp_handle_upload')) {
+        require_once ABSPATH . 'wp-admin/includes/file.php';
+    }
+
+    $uploadedfile = $_FILES['id_image'];
+    $upload_overrides = ['test_form' => false];
+    $movefile = wp_handle_upload($uploadedfile, $upload_overrides);
+
+    if ($movefile && !isset($movefile['error'])) {
+        $uploaded_image_url = $movefile['url'];
+
+        // Prepare option data
+        $prefix = ($person_type === 'teacher') ? 'id-teacher-design-' : 'id-design-';
+        $option_name  = ($side === 'back') ? $prefix . 'back-' . $design_no : $prefix . $design_no;
+        $option_value = $uploaded_image_url;
+
+        // Check if option already exists in sm_options
+        $exists = $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT COUNT(*) FROM sm_options WHERE option_name = %s",
+                $option_name
+            )
         );
 
-        if ($update !== false) {
-            echo json_encode([
-                'success' => true,
-                'data' => [
-                    'message' => 'Result updated successfully',
-                    'result_id' => $result_id
-                ]
-            ]);
+        if ($exists) {
+            $result = $wpdb->update(
+                'sm_options',
+                ['option_value' => $option_value],
+                ['option_name' => $option_name]
+            );
         } else {
-            echo json_encode(['success' => false, 'message' => 'Failed to update result']);
+            $result = $wpdb->insert(
+                'sm_options',
+                [
+                    'option_name'  => $option_name,
+                    'option_value' => $option_value,
+                    'autoload' => 'no'
+                ]
+            );
         }
+
+        if ($result !== false) {
+            $response_data = [
+                'success' => true,
+                'url'     => $uploaded_image_url,
+                'data'    => 'Image uploaded successfully',
+                'design_no' => $design_no
+            ];
+        } else {
+            $response_data = [
+                'success' => false, 
+                'message' => 'Failed to update database with image URL',
+                'db_error' => $wpdb->last_error
+            ];
+        }
+    } else {
+        $error_message = isset($movefile['error']) ? $movefile['error'] : 'Upload failed';
+        $response_data = ['success' => false, 'data' => $error_message];
     }
+    ob_end_clean();
+    echo json_encode($response_data);
+    exit;
 }
 
 /*
-    Delete Multiple Results
+    Delete ID Card Background
 */
-elseif($_POST['type'] == 'delete_results'){
-    $student_ids = $_POST['student_ids'];
-    $class = intval($_POST['class']);
-    $exam = intval($_POST['exam']);
-    $year = sanitize_text_field($_POST['year']);
-    $subject = intval($_POST['subject']);
-
-    if (!is_array($student_ids) || empty($student_ids)) {
-        echo json_encode(['success' => false, 'message' => 'No students selected']);
-        exit;
-    }
-
-    $student_ids = array_map('intval', $student_ids);
-    $placeholders = implode(',', array_fill(0, count($student_ids), '%d'));
-
-    $query = $wpdb->prepare(
-        "DELETE FROM ct_result 
-        WHERE resStudentId IN ($placeholders) 
-        AND resClass = %d 
-        AND resExam = %d 
-        AND resSubject = %d 
-        AND resultYear = %s",
-        array_merge($student_ids, [$class, $exam, $subject, $year])
-    );
-
-    $deleted = $wpdb->query($query);
-
-    if ($deleted !== false) {
-        echo json_encode([
-            'success' => true,
-            'data' => [
-                'message' => 'Results deleted successfully',
-                'deleted_count' => $deleted
-            ]
-        ]);
+elseif (isset($_POST['action']) && $_POST['action'] === 'delete_id_card_bg') {
+    header('Content-Type: application/json');
+    global $wpdb;
+    $design_no = intval($_POST['design_no']);
+    $side = isset($_POST['side']) ? sanitize_text_field($_POST['side']) : 'front';
+    $person_type = isset($_POST['person_type']) ? sanitize_text_field($_POST['person_type']) : 'student';
+    
+    $prefix = ($person_type === 'teacher') ? 'id-teacher-design-' : 'id-design-';
+    $option_name = ($side === 'back') ? $prefix . 'back-' . $design_no : $prefix . $design_no;
+    
+    $result = $wpdb->delete('sm_options', ['option_name' => $option_name]);
+    
+    ob_end_clean();
+    if ($result !== false) {
+        echo json_encode(['success' => true, 'message' => 'Background removed successfully']);
     } else {
-        echo json_encode(['success' => false, 'message' => 'Failed to delete results']);
+        echo json_encode(['success' => false, 'message' => 'Failed to remove background']);
     }
+    exit;
+}
+
+/*
+    Save ID Card Configuration
+*/
+elseif (isset($_POST['action']) && $_POST['action'] === 'save_id_card_config') {
+    header('Content-Type: application/json');
+    global $wpdb;
+
+    $design_no = intval($_POST['design_no']);
+    $person_type = isset($_POST['person_type']) ? sanitize_text_field($_POST['person_type']) : 'student';
+    $config_json = wp_unslash($_POST['config']); // Expecting JSON string
+
+    if ($design_no <= 0 || empty($config_json)) {
+        echo json_encode(['success' => false, 'message' => 'Invalid parameters']);
+        wp_die();
+    }
+
+    // Validate JSON
+    $config = json_decode($config_json, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        echo json_encode(['success' => false, 'message' => 'Invalid JSON config: ' . json_last_error_msg(), 'raw' => substr($config_json, 0, 100)]);
+        wp_die();
+    }
+
+    $option_name = ($person_type === 'teacher') ? 'id_card_teacher_design_' . $design_no . '_config' : 'id_card_design_' . $design_no . '_config';
+    
+    // Check if exists
+    $exists = $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM sm_options WHERE option_name = %s",
+        $option_name
+    ));
+
+    $data = [
+        'option_name' => $option_name,
+        'option_value' => $config_json
+    ];
+
+    if ($exists) {
+        $result = $wpdb->update('sm_options', ['option_value' => $config_json], ['option_name' => $option_name]);
+    } else {
+        $data['autoload'] = 'no';
+        $result = $wpdb->insert('sm_options', $data);
+    }
+
+    if ($result !== false) {
+        $response_data = ['success' => true, 'message' => 'Configuration saved', 'design_no' => $design_no];
+    } else {
+        $db_error = $wpdb->last_error;
+        $response_data = ['success' => false, 'message' => 'Database error: ' . $db_error, 'query' => $wpdb->last_query];
+    }
+    ob_end_clean();
+    echo json_encode($response_data);
+    exit;
+}
+
+/*
+    Get ID Card Configuration
+*/
+elseif (isset($_POST['action']) && $_POST['action'] === 'get_id_card_config') {
+    header('Content-Type: application/json');
+    global $wpdb;
+
+    $design_no = intval($_POST['design_no']);
+    $person_type = isset($_POST['person_type']) ? sanitize_text_field($_POST['person_type']) : 'student';
+    
+    if ($design_no <= 0) {
+        echo json_encode(['success' => false, 'message' => 'Invalid design number']);
+        wp_die();
+    }
+
+    $option_name = ($person_type === 'teacher') ? 'id_card_teacher_design_' . $design_no . '_config' : 'id_card_design_' . $design_no . '_config';
+    $config_json = $wpdb->get_var($wpdb->prepare(
+        "SELECT option_value FROM sm_options WHERE option_name = %s",
+        $option_name
+    ));
+
+    if ($config_json) {
+        $response_data = ['success' => true, 'data' => json_decode($config_json)];
+    } else {
+        $response_data = ['success' => true, 'data' => null];
+    }
+    ob_end_clean();
+    echo json_encode($response_data);
+    exit;
+}
+
+/*
+    List ID Card Designs
+*/
+elseif (isset($_POST['action']) && $_POST['action'] === 'get_id_card_designs') {
+    header('Content-Type: application/json');
+    global $wpdb;
+
+    $person_type = isset($_POST['person_type']) ? sanitize_text_field($_POST['person_type']) : 'student';
+
+    // Ensure default designs exist
+    if ($person_type === 'teacher') {
+        $defaults_to_check = [
+            1 => [
+                'design_name' => '', 'design_type' => 'front', 'orientation' => 'portrait', 'image_shape' => 'rounded',
+                'image_border_size' => '', 'image_border_color' => '#000000', 'image_margin_top' => '75',
+                'student_image_size' => 85, 'student_name_color' => '#065499',
+                'show_logo' => false, 'show_inst_name' => true, 'show_image' => true, 'show_name' => true, 'show_id' => false,
+                'show_class' => true, 'show_section' => false, 'show_roll' => true, 'show_year' => true, 'show_dob' => true,
+                'show_blood' => true, 'show_phone' => false, 'show_father' => false, 'show_mother' => false,
+                'show_address' => false, 'show_inst_address' => false, 'show_inst_phone' => false, 'show_signature' => true
+            ]
+        ];
+    } else {
+        $defaults_to_check = [
+            1 => [
+                'design_name' => 'Standard Potrait', 'design_type' => 'front', 'orientation' => 'portrait', 'image_shape' => 'rounded',
+                'image_border_size' => '4', 'image_border_color' => '#0078b7', 'image_margin_top' => '75',
+                'student_image_size' => 85, 'student_name_color' => '#065499',
+                'show_logo' => false, 'show_inst_name' => false, 'show_image' => true, 'show_name' => true, 'show_id' => true,
+                'show_class' => true, 'show_section' => true, 'show_roll' => false, 'show_year' => true, 'show_dob' => true,
+                'show_blood' => false, 'show_phone' => true, 'show_father' => false, 'show_mother' => false,
+                'show_address' => false, 'show_signature' => true
+            ],
+            2 => [
+                'design_name' => 'Standard Potrait', 'design_type' => 'back', 'orientation' => 'portrait', 'image_shape' => 'square',
+                'image_border_size' => '', 'image_border_color' => '#000000', 'image_margin_top' => '',
+                'student_image_size' => 85, 'student_name_color' => '#065499',
+                'show_logo' => true, 'show_inst_name' => true, 'show_image' => false, 'show_name' => false, 'show_id' => false,
+                'show_class' => false, 'show_section' => false, 'show_roll' => false, 'show_year' => false, 'show_dob' => true,
+                'show_blood' => true, 'show_phone' => true, 'show_father' => false, 'show_mother' => false,
+                'show_address' => true, 'show_inst_address' => true, 'show_inst_phone' => true, 'show_signature' => true
+            ]
+        ];
+    }
+
+    foreach ($defaults_to_check as $no => $config) {
+        $option_name = ($person_type === 'teacher') ? 'id_card_teacher_design_' . $no . '_config' : 'id_card_design_' . $no . '_config';
+        $exists = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM sm_options WHERE option_name = %s", $option_name));
+        if (!$exists) {
+            $wpdb->insert('sm_options', [
+                'option_name' => $option_name,
+                'option_value' => json_encode($config),
+                'autoload' => 'no'
+            ]);
+        }
+    }
+
+    // We look for patterns: id_card_design_{$no}_config or id-design-{$no} (or teacher variants)
+    if ($person_type === 'teacher') {
+        $query = "SELECT option_name, option_value FROM sm_options WHERE option_name LIKE 'id_card_teacher_design_%_config' OR option_name LIKE 'id-teacher-design-%'";
+        $config_pattern = '/id_card_teacher_design_(\d+)_config/';
+        $img_pattern = '/id-teacher-design-(\d+)/';
+    } else {
+        $query = "SELECT option_name, option_value FROM sm_options WHERE option_name LIKE 'id_card_design_%_config' OR option_name LIKE 'id-design-%'";
+        $config_pattern = '/id_card_design_(\d+)_config/';
+        $img_pattern = '/id-design-(\d+)/';
+    }
+
+    $results = $wpdb->get_results($query);
+    
+    $designs = [];
+    $design_numbers = [1];
+    
+    // First collect all numbers
+    foreach ($results as $row) {
+        if (preg_match($config_pattern, $row->option_name, $matches)) {
+            $design_numbers[] = intval($matches[1]);
+        } elseif (preg_match($img_pattern, $row->option_name, $matches)) {
+            $design_numbers[] = intval($matches[1]);
+        }
+    }
+    
+    $unique_numbers = array_unique($design_numbers);
+    sort($unique_numbers);
+
+    foreach ($unique_numbers as $no) {
+        $name = 'Design ' . $no;
+        
+        // Try to find the name in config
+        $option_name = ($person_type === 'teacher') ? 'id_card_teacher_design_' . $no . '_config' : 'id_card_design_' . $no . '_config';
+        $config_json = $wpdb->get_var($wpdb->prepare("SELECT option_value FROM sm_options WHERE option_name = %s", $option_name));
+        
+        if ($config_json) {
+            $config = json_decode($config_json, true);
+            if (!empty($config['design_name'])) {
+                $name = $config['design_name'] . ' (' . ucfirst($config['design_type'] ?? 'front') . ')';
+            }
+        }
+        
+        $designs[] = [
+            'no' => $no,
+            'name' => $name
+        ];
+    }
+    
+    ob_end_clean();
+    echo json_encode(['success' => true, 'data' => $designs]);
+    exit;
+}
+
+/*
+    Create New ID Card Design
+*/
+elseif (isset($_POST['action']) && $_POST['action'] === 'create_id_card_design') {
+    header('Content-Type: application/json');
+    global $wpdb;
+
+    $person_type = isset($_POST['person_type']) ? sanitize_text_field($_POST['person_type']) : 'student';
+
+    // Find max existing number
+    if ($person_type === 'teacher') {
+        $query = "SELECT option_name FROM sm_options WHERE option_name LIKE 'id_card_teacher_design_%_config' OR option_name LIKE 'id-teacher-design-%'";
+        $config_pattern = '/id_card_teacher_design_(\d+)_config/';
+        $img_pattern = '/id-teacher-design-(\d+)/';
+    } else {
+        $query = "SELECT option_name FROM sm_options WHERE option_name LIKE 'id_card_design_%_config' OR option_name LIKE 'id-design-%'";
+        $config_pattern = '/id_card_design_(\d+)_config/';
+        $img_pattern = '/id-design-(\d+)/';
+    }
+
+    $results = $wpdb->get_results($query);
+    
+    $max_no = 1;
+    foreach ($results as $row) {
+        if (preg_match($config_pattern, $row->option_name, $matches)) {
+            $max_no = max($max_no, intval($matches[1]));
+        } elseif (preg_match($img_pattern, $row->option_name, $matches)) {
+            $max_no = max($max_no, intval($matches[1]));
+        }
+    }
+    
+    $new_no = $max_no + 1;
+    
+    // Initialize with default config
+    if ($person_type === 'teacher' && $new_no == 1) {
+        $default_config = [
+            'design_name' => '', 'design_type' => 'front', 'orientation' => 'portrait', 'image_shape' => 'rounded',
+            'image_border_size' => '', 'image_border_color' => '#000000', 'image_margin_top' => '75',
+            'show_logo' => false, 'show_inst_name' => true, 'show_image' => true, 'show_name' => true, 'show_id' => false,
+            'show_class' => true, 'show_section' => false, 'show_roll' => true, 'show_year' => true, 'show_dob' => true,
+            'show_blood' => true, 'show_phone' => false, 'show_father' => false, 'show_mother' => false,
+            'show_address' => false, 'show_inst_address' => false, 'show_inst_phone' => false, 'show_signature' => true
+        ];
+    } elseif ($person_type !== 'teacher' && $new_no == 1) {
+        $default_config = [
+            'design_name' => 'Standard Potrait', 'design_type' => 'front', 'orientation' => 'portrait', 'image_shape' => 'rounded',
+            'image_border_size' => '4', 'image_border_color' => '#0078b7', 'image_margin_top' => '75',
+            'show_logo' => false, 'show_inst_name' => false, 'show_image' => true, 'show_name' => true, 'show_id' => true,
+            'show_class' => true, 'show_section' => true, 'show_roll' => false, 'show_year' => true, 'show_dob' => true,
+            'show_blood' => false, 'show_phone' => true, 'show_father' => false, 'show_mother' => false,
+            'show_address' => false, 'show_signature' => true
+        ];
+    } elseif ($person_type !== 'teacher' && $new_no == 2) {
+        $default_config = [
+            'design_name' => 'Standard Potrait', 'design_type' => 'back', 'orientation' => 'portrait', 'image_shape' => 'square',
+            'image_border_size' => '', 'image_border_color' => '#000000', 'image_margin_top' => '',
+            'show_logo' => true, 'show_inst_name' => true, 'show_image' => false, 'show_name' => false, 'show_id' => false,
+            'show_class' => false, 'show_section' => false, 'show_roll' => false, 'show_year' => false, 'show_dob' => true,
+            'show_blood' => true, 'show_phone' => true, 'show_father' => false, 'show_mother' => false,
+            'show_address' => true, 'show_inst_address' => true, 'show_inst_phone' => true, 'show_signature' => true
+        ];
+    } else {
+        $default_config = [
+            'design_name' => 'Design ' . $new_no,
+            'show_image' => true, 'show_name' => true, 'show_id' => true, 'show_class' => true,
+            'show_section' => ($person_type !== 'teacher'), 'show_roll' => true, 'show_year' => true, 'show_dob' => true,
+            'show_blood' => true, 'show_phone' => true, 'show_father' => true, 'show_mother' => true,
+            'show_address' => true, 'show_logo' => true, 'show_inst_name' => true, 'show_signature' => true,
+            'image_shape' => 'square', 'image_border_size' => 0, 'image_border_color' => '#000000', 'image_margin_top' => 75, 'orientation' => 'portrait'
+        ];
+    }
+    
+    $option_name = ($person_type === 'teacher') ? 'id_card_teacher_design_' . $new_no . '_config' : 'id_card_design_' . $new_no . '_config';
+
+    $wpdb->insert('sm_options', [
+        'option_name' => $option_name,
+        'option_value' => json_encode($default_config),
+        'autoload' => 'no'
+    ]);
+    
+    ob_end_clean();
+    echo json_encode(['success' => true, 'new_design_no' => $new_no]);
+    exit;
+}
+
+/*
+    Get ID Card Backgrounds
+*/
+elseif (isset($_POST['action']) && $_POST['action'] === 'get_id_card_backgrounds') {
+    header('Content-Type: application/json');
+    global $wpdb;
+    $design_no = intval($_POST['design_no']);
+    $person_type = isset($_POST['person_type']) ? sanitize_text_field($_POST['person_type']) : 'student';
+
+    $prefix = ($person_type === 'teacher') ? 'id-teacher-design-' : 'id-design-';
+    
+    $front = $wpdb->get_var($wpdb->prepare("SELECT option_value FROM sm_options WHERE option_name = %s", $prefix . $design_no));
+    $back = $wpdb->get_var($wpdb->prepare("SELECT option_value FROM sm_options WHERE option_name = %s", $prefix . 'back-' . $design_no));
+    
+    echo json_encode(['success' => true, 'data' => [
+        'front' => [$design_no => $front],
+        'back' => [$design_no => $back]
+    ]]);
+    exit;
 }

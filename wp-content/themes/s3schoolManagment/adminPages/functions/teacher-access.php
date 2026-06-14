@@ -4,7 +4,7 @@
  */
 
 if (!defined('S3S_TEACHER_RESTRICTIONS_ENABLED')) {
-    define('S3S_TEACHER_RESTRICTIONS_ENABLED', true);
+    define('S3S_TEACHER_RESTRICTIONS_ENABLED', false);
 }
 
 if (!function_exists('s3s_teacher_restrictions_enabled')) {

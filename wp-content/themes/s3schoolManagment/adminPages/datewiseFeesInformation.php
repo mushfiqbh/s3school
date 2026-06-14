@@ -17,8 +17,7 @@ function getSectionNameById($id, $class){
 	$name = $wpdb->get_results( $name_qry );
 	return @$name[0]->sectionName;
 }
-$selectedfromDate = isset($_POST['from-date']) ? $_POST['from-date'] : date('Y-m-d');
-$selectedtoDate = isset($_POST['to-date']) ? $_POST['to-date'] : date('Y-m-d');
+
 ?>
                                   
 <?php if ( ! is_admin() ) { get_header(); ?>
@@ -81,12 +80,12 @@ $selectedtoDate = isset($_POST['to-date']) ? $_POST['to-date'] : date('Y-m-d');
 					</div>
 				  	<div class="form-group">
 						<label>From Date</label>
-						<input id="from-date" type="date" name="from-date" value="<?php echo $selectedfromDate; ?>">
+						<input id="from-date" type="date" name="from-date" value="<?php echo date('Y-m-d'); ?>">
 
 					</div>
 				  	<div class="form-group">
 						<label>To Date</label>
-						<input id="to-date" type="date" name="to-date" value="<?php echo $selectedtoDate; ?>">
+						<input id="to-date" type="date" name="to-date" value="<?php echo date('Y-m-d'); ?>">
 						<input class="form-control btn-success" name="datewiseFeesInformation" type="submit" value="Search">
 
 					</div>
@@ -112,30 +111,19 @@ $selectedtoDate = isset($_POST['to-date']) ? $_POST['to-date'] : date('Y-m-d');
 			$section = @$_POST['sec'];
 			$year = @$_POST['stdyear'];
 			$allLists = [];
-			
 			//  get active collection sub head id
 			$subHeadId = $wpdb->get_results("SELECT * FROM ct_sub_head
 			WHERE  relation_to = 1 and isHidden is null ORDER BY sub_head_name ASC");
 			foreach($subHeadId as $key => $val){
 				$allLists[$key]['name'] = $val->sub_head_name;
-				
-				// if($class!= '' && $section != '' && $year != ''){
-				// 	$sum = $wpdb->get_results("SELECT SUM(ct_student_fee_collection_details.fee) AS total FROM ct_student_fee_collection_details
-				// 	LEFT JOIN ct_student_fee_collection_info ON ct_student_fee_collection_info.id = ct_student_fee_collection_details.info_id
-				// 	WHERE  DATE(ct_student_fee_collection_details.date) >= '$from_date' AND DATE(ct_student_fee_collection_details.date) <= '$to_date' AND ct_student_fee_collection_details.sub_head_id = $val->id AND ct_student_fee_collection_info.year = $year AND ct_student_fee_collection_info.class_id = $class AND ct_student_fee_collection_info.section = $section");
-				// }else{
-				// 	$sum = $wpdb->get_results("SELECT SUM(fee) AS total FROM ct_student_fee_collection_details
-				// 	WHERE  DATE(date) >= '$from_date' AND DATE(date) <= '$to_date' AND sub_head_id = $val->id");
-				// }
-				$qry = "SELECT SUM(ct_student_fee_collection_details.fee) AS total FROM ct_student_fee_collection_details
-				 	LEFT JOIN ct_student_fee_collection_info ON ct_student_fee_collection_info.id = ct_student_fee_collection_details.info_id
-				 	WHERE  DATE(ct_student_fee_collection_details.date) >= '$from_date' AND DATE(ct_student_fee_collection_details.date) <= '$to_date' AND ct_student_fee_collection_details.sub_head_id = $val->id";
-				if ($section != '') { $qry .= " AND ct_student_fee_collection_info.section = $section"; }
-				if ($class != '') { $qry .= " AND ct_student_fee_collection_info.class_id = $class"; }
-
-				if ($year != '') { $qry .= " AND ct_student_fee_collection_info.year = $year"; }
-
-				$sum = $wpdb->get_results( $qry ); 
+				if($class!= '' && $section != '' && $year != ''){
+					$sum = $wpdb->get_results("SELECT SUM(ct_student_fee_collection_details.fee) AS total FROM ct_student_fee_collection_details
+					LEFT JOIN ct_student_fee_collection_info ON ct_student_fee_collection_info.id = ct_student_fee_collection_details.info_id
+					WHERE  DATE(ct_student_fee_collection_details.date) >= '$from_date' AND DATE(ct_student_fee_collection_details.date) <= '$to_date' AND ct_student_fee_collection_details.sub_head_id = $val->id AND ct_student_fee_collection_info.year = $year AND ct_student_fee_collection_info.class_id = $class AND ct_student_fee_collection_info.section = $section");
+				}else{
+					$sum = $wpdb->get_results("SELECT SUM(fee) AS total FROM ct_student_fee_collection_details
+					WHERE  DATE(date) >= '$from_date' AND DATE(date) <= '$to_date' AND sub_head_id = $val->id");
+				}
 				
 				$allLists[$key]['fee'] = $sum[0]->total;
 			}
@@ -169,8 +157,6 @@ $selectedtoDate = isset($_POST['to-date']) ? $_POST['to-date'] : date('Y-m-d');
 								<p style="margin: 0;"> <?= getClassNameById($class)?>, Section: <?= getSectionNameById($section,$class)?></p>
 							<?php }else{?>
 								<p style="margin: 0;">Datewise Fees Information</p>
-								<?php if($class!= ''){ echo "<p>Class: ". getClassNameById($class)."</p>";}	?>
-								<?php if($section!= ''){ echo "<p>Section: ". getSectionNameById($section,$class)."</p>";}	?>
 							<?php }?>
 					  		<p style="margin: 0;">From: <?= date('d-m-Y', strtotime($from_date))?> To:  <?= date('d-m-Y', strtotime($to_date))?></p>
 

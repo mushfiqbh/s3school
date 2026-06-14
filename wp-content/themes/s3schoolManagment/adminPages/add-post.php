@@ -27,57 +27,21 @@ if (isset($_POST['editpost'])) {
 }
 
 if (isset($_POST['s3addfontendpost'])) {
-	// Server-side validation for gallery images (150KB limit)
-	$image_id = intval($_POST['postimg']);
+	$post = array(
+		'post_title'    => $_POST['ptitle'],
+		'post_content'  => $_POST['postcontent'],
+		'post_category' => array($_POST['pcat']),
+		'post_status'   => 'publish',
+		'post_type'   => 'post'
+	);
+	$postId = wp_insert_post($post);
+	set_post_thumbnail($postId, $_POST['postimg']);
+
 	$category_id = intval($_POST['pcat']);
 	$category = get_category($category_id);
 	$is_gallery = ($category && stripos($category->name, 'gallery') !== false);
-	
-	if ($image_id && $is_gallery) {
-		$image_path = get_attached_file($image_id);
-		if ($image_path && file_exists($image_path)) {
-			$file_size = filesize($image_path);
-			$max_gallery_size = 150 * 1024; // 150KB
-			
-			if ($file_size > $max_gallery_size) {
-				echo '<div class="alert alert-danger">Error: Gallery image size (' . round($file_size / 1024, 2) . ' KB) exceeds the 150 KB limit. Please upload a smaller image.</div>';
-				$_POST['s3addfontendpost'] = null; // Prevent post creation
-			} else {
-				// File size is valid, proceed with post creation
-				$post = array(
-					'post_title'    => $_POST['ptitle'],
-					'post_content'  => $_POST['postcontent'],
-					'post_category' => array($_POST['pcat']),
-					'post_status'   => 'publish',
-					'post_type'   => 'post'
-				);
-				$postId = wp_insert_post($post);
-				set_post_thumbnail($postId, $_POST['postimg']);
-				echo '<div class="alert alert-success">Gallery post created successfully!</div>';
-			}
-		} else {
-			// Image file not found, proceed without validation
-			$post = array(
-				'post_title'    => $_POST['ptitle'],
-				'post_content'  => $_POST['postcontent'],
-				'post_category' => array($_POST['pcat']),
-				'post_status'   => 'publish',
-				'post_type'   => 'post'
-			);
-			$postId = wp_insert_post($post);
-			set_post_thumbnail($postId, $_POST['postimg']);
-		}
-	} else {
-		// Not a gallery post, use default validation (60KB handled in JS)
-		$post = array(
-			'post_title'    => $_POST['ptitle'],
-			'post_content'  => $_POST['postcontent'],
-			'post_category' => array($_POST['pcat']),
-			'post_status'   => 'publish',
-			'post_type'   => 'post'
-		);
-		$postId = wp_insert_post($post);
-		set_post_thumbnail($postId, $_POST['postimg']);
+	if ($is_gallery) {
+		echo '<div class="alert alert-success">Gallery post created successfully!</div>';
 	}
 }
 
@@ -165,9 +129,6 @@ $action    = isset($editpost) ? 's3fontendeditpost' : 's3addfontendpost';
 										</div>
 										<div class="form-group">
 											<label>Attach Image or PDF</label>
-											<p class="text-muted" id="imageSizeHint" style="font-size: 12px; margin: 5px 0;">
-												<strong>Image Size Limit:</strong> <span id="currentSizeLimit">60 KB for regular posts, 150 KB for gallery posts</span>
-											</p>
 											<div class="mediaUploadHolder">
 												<button type="button" class="mediaUploader btn btn-success returnid">Upload</button>
 												<span>
@@ -248,18 +209,6 @@ $action    = isset($editpost) ? 's3fontendeditpost' : 's3addfontendpost';
 			$('#allposttbl').DataTable();
 			$('#allposttbl').on('click', '.deletepost', function() {
 				$(this).hide('fast').closest('div').find('.btn').show('fast');
-			});
-			
-			// Update size limit indicator when category changes
-			$('#pcat').on('change', function() {
-				var selectedText = $(this).find('option:selected').text().toLowerCase();
-				var isGallery = selectedText.indexOf('gallery') !== -1;
-				
-				if (isGallery) {
-					$('#currentSizeLimit').html('<span style="color: #28a745; font-weight: 600;">150 KB for gallery posts</span>');
-				} else {
-					$('#currentSizeLimit').html('60 KB for regular posts, 150 KB for gallery posts');
-				}
 			});
 		});
 	})(jQuery);

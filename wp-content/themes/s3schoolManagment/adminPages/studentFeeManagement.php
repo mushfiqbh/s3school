@@ -102,8 +102,9 @@ function getFeeAmount($sub_head_id, $class, $year){
 }
 
 function getFeeAmountByStudent($student_id, $month = null, $year, $sub_head_id, $class ){
-	global $wpdb;
+global $wpdb;
 	$list = [];
+	// Includes both Cash and PayStation API payments from monthly fee summary
 	$feesQuery = "SELECT fee FROM ct_student_monthly_fee_summary WHERE student_id = $student_id and sub_head_id = $sub_head_id AND class_id = $class AND year = '$year'";
 
 	if(isset($month) && !empty($month)){
@@ -128,6 +129,7 @@ function getYearlyFeeAmountByStudent($student_id, $year, $sub_head_id, $class ){
 	global $admissionFeeSubHeadId;
 	global $admissionFormSubHeadId;
 	$list = [];
+	// Includes both Cash and PayStation API payments from yearly fee summary
 	$feesQuery = "SELECT fee FROM ct_student_yearly_fee_summary WHERE student_id = $student_id and sub_head_id = $sub_head_id AND class_id = $class AND year = '$year'";
 
 	$feesQuery .= " limit 1";
@@ -154,6 +156,7 @@ function getYearlyFeeAmountByStudent($student_id, $year, $sub_head_id, $class ){
 function getExamFeeAmountByStudent($student_id, $exam_id, $year, $sub_head_id, $class ){
 	global $wpdb;
 	$list = [];
+	// Includes both Cash and PayStation API payments from exam fee summary
 	$feesQuery = "SELECT fee FROM ct_student_exam_fee_summary WHERE student_id = $student_id and exam_id = $exam_id and sub_head_id = $sub_head_id AND class_id = $class AND year = '$year'";
 
 	
@@ -209,7 +212,161 @@ function convertNumberToWord($num = false)
             $commas = $commas - 1;
         }
         return ucwords(implode(' ', $words));
+    };
+
+/**
+ * DB operation with ct_student_fee_collection_info table
+ * Reduce amount from current month paid, add new entry into next month
+ * 
+ * @Param: int $recordId Current record id
+ * @Param: int $netDueAmount Exceed amount paid than total fee
+*/
+function moveExtraPortionToNextMonth($recordId, $netDueAmount)
+{
+    global $wpdb;
+
+    if (!$recordId || !$netDueAmount) {
+        return false;
     }
+
+    $recordId = (int)$recordId;
+    $entryTableName = 'ct_student_fee_collection_info';
+
+    $exceedAmount = ($netDueAmount < 0)
+        ? abs($netDueAmount)
+        : $netDueAmount;
+
+    // Get current record
+    $currentRecordQuery = $wpdb->prepare(
+        "
+        SELECT *
+        FROM {$entryTableName}
+        WHERE id = %d
+        ",
+        $recordId
+    );
+
+    $currentRecord = $wpdb->get_row($currentRecordQuery);
+
+    if (!$currentRecord) {
+        return false;
+    }
+
+    $alreadyRemission = (float)$currentRecord->remission;
+
+    // Prevent duplicate transfer
+    if (
+        $alreadyRemission > 0 &&
+        !empty($currentRecord->remission_category) &&
+        str_contains(
+            $currentRecord->remission_category,
+            'Exceed Amount Transferred to Next Month'
+        )
+    ) {
+        return true;
+    }
+
+    if ($alreadyRemission > 0) {
+        $existingCategory = $currentRecord->remission_category ?: 'Initial';
+
+        $newRemissionCategory =
+            $existingCategory .
+            ' (' . $alreadyRemission . ')' .
+            ' + Exceed Amount Transferred to Next Month (' . $exceedAmount . ')';
+    } else {
+        $newRemissionCategory = 'Exceed Amount Transferred to Next Month';
+    }
+
+    $newRemission = $alreadyRemission + $exceedAmount;
+    $newTotalForCurrent = (float)$currentRecord->total - $exceedAmount;
+
+    // Update current record
+    $updateResult = $wpdb->query(
+        $wpdb->prepare(
+            "
+            UPDATE {$entryTableName}
+            SET
+                remission = %f,
+                remission_category = %s,
+                total = %f
+            WHERE id = %d
+            ",
+            $newRemission,
+            $newRemissionCategory,
+            $newTotalForCurrent,
+            $recordId
+        )
+    );
+
+    if ($updateResult === false) {
+        return false;
+    }
+
+    // Calculate next month/year
+    $newMonth = ((int)$currentRecord->month % 12) + 1;
+
+    $newYear = ((int)$currentRecord->month == 12)
+        ? ((int)$currentRecord->year + 1)
+        : (int)$currentRecord->year;
+
+    // Insert next month's record
+    $insertQuery = $wpdb->prepare(
+        "
+        INSERT INTO {$entryTableName}
+        (
+            student_roll,
+            student_id,
+            year,
+            month,
+            class_id,
+            section,
+            group_id,
+            sub_total,
+            total,
+            remission,
+            remission_category,
+            status,
+            notes,
+            date,
+            created_by,
+            created_at
+        )
+        SELECT
+            student_roll,
+            student_id,
+            %d,
+            %d,
+            class_id,
+            section,
+            group_id,
+            %f,
+            %f,
+            0,
+            '',
+            status,
+            notes,
+            date,
+            created_by,
+            created_at
+        FROM {$entryTableName}
+        WHERE id = %d
+        ",
+        $newYear,
+        $newMonth,
+        $exceedAmount,
+        $exceedAmount,
+        $recordId
+    );
+
+    $insertResult = $wpdb->query($insertQuery);
+
+    if ($insertResult === false) {
+        return false;
+    }
+
+    return true;
+};
+
 
 $activeExp = $activeRev = "";
 global $absentSubHeadId;
@@ -288,6 +445,34 @@ if (isset($_POST['delRevinew'])) {
 	.pl-10{
 		padding-left: 10px !important
 	}
+	/* Toggle Switch */
+	.toggle-switch {
+		position: relative;
+		width: 44px;
+		height: 24px;
+		background-color: #ccc;
+		border-radius: 12px;
+		transition: background-color 0.3s ease;
+		display: inline-block;
+	}
+	.toggle-switch::after {
+		content: '';
+		position: absolute;
+		top: 2px;
+		left: 2px;
+		width: 20px;
+		height: 20px;
+		background-color: #fff;
+		border-radius: 50%;
+		transition: transform 0.3s ease;
+		box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+	}
+	.exam-fee-toggle input:checked + .toggle-switch {
+		background-color: #4dc28f;
+	}
+	.exam-fee-toggle input:checked + .toggle-switch::after {
+		transform: translateX(20px);
+	}
 </style>
 		<div class="row text-center">
 			<h2> Fee Management</h2>
@@ -311,6 +496,8 @@ if (isset($_POST['delRevinew'])) {
 			<a href="?page=studentFeeManagement&view=absentRemission" class="btn btn-primary pull-right">Absent Poor Fund List </a>
 			<a href="?page=studentFeeManagement&view=fullFree" class="btn btn-primary pull-right">Full Free Half Free List </a>
 			<a href="?page=studentFeeManagement&view=studentFeeYearlySummary" class="btn btn-primary pull-right">Student Fee Yearly Summary Report </a>
+			<a href="?page=studentFeeManagement&view=paystationTransactions" class="btn btn-primary pull-right">PayStation Transactions </a>
+			<a href="?page=studentFeeManagement&view=paystationStatistics" class="btn btn-primary pull-right">PayStation Statistics </a>
 			<?php if(wp_get_current_user()->roles[0] != 'um_teachers' || wp_get_current_user()->roles[0] == 'um_accounts'){?>
 				<a href="?page=studentFeeManagement&view=transport" class="btn btn-primary pull-right">Transport Fee </a>
 				<a href="?page=studentFeeManagement&view=promoted" class="btn btn-primary pull-right">Promoted Admission Fee </a>
@@ -335,7 +522,7 @@ if (isset($_POST['delRevinew'])) {
 			  	<div class="">
 				  <form action="" method="POST" class="form-inline">
 				  <div class="row pl-10">
-				  <div class="form-group">
+					<div class="form-group">
 						<label>Class</label>
 						<select id='resultClass' class="form-control" name="stdclass" required>
 						<?php
@@ -383,6 +570,7 @@ if (isset($_POST['delRevinew'])) {
 					</div>
 				  </div>
 				  <br>
+
 				  <div class="row pl-10">
 				  <?php 
 					  $feeHead = $wpdb->get_results( "SELECT ct_sub_head.*, ct_head.head_name FROM `ct_sub_head` LEFT JOIN  ct_head ON ct_sub_head.head_id = ct_head.id WHERE ct_sub_head.relation_to = '1' AND ct_sub_head.isHidden is null ORDER BY ct_sub_head.sort_order ASC" );
@@ -876,6 +1064,7 @@ if (isset($_POST['delRevinew'])) {
 			$allLists[$key]['name'] = $val->stdName;
 			$allLists[$key]['roll'] = $val->infoRoll;
 			$allLists[$key]['studentId'] = $val->infoStdid;
+			// Monthly fees - includes both Cash and PayStation API payments
 			$allLists[$key]['monthlyFee'] = ["January" => getFeeAmountByStudent($val->infoStdid, 1, $year, $monthlyFeeSubHeadId, $class), 
 			"February" => getFeeAmountByStudent($val->infoStdid, 2, $year, $monthlyFeeSubHeadId, $class), 
 			"March" => getFeeAmountByStudent($val->infoStdid, 3, $year, $monthlyFeeSubHeadId, $class), 
@@ -901,6 +1090,7 @@ if (isset($_POST['delRevinew'])) {
 			"October" => getFeeAmountByStudent($val->infoStdid, 10, $year, $transportFeeSubHeadId, $class), 
 			"November" => getFeeAmountByStudent($val->infoStdid, 11, $year, $transportFeeSubHeadId, $class), 
 			"December" => getFeeAmountByStudent($val->infoStdid, 12, $year, $transportFeeSubHeadId, $class)];
+			// Yearly fees - includes both Cash and PayStation API payments
 			$allLists[$key]['admissionFee'] =  getYearlyFeeAmountByStudent($val->infoStdid, $year, $admissionFeeSubHeadId, $class);
 			$allLists[$key]['admissionFormFee'] =  getYearlyFeeAmountByStudent($val->infoStdid, $year, $admissionFormSubHeadId, $class);
 			$allLists[$key]['registrationFee'] =  getYearlyFeeAmountByStudent($val->infoStdid, $year, $registrationFeeSubHeadId, $class);
@@ -1160,6 +1350,7 @@ if (isset($_POST['delRevinew'])) {
 
 
 		  <?php
+		  
 		if(isset($_POST['dueList'])):
 			$month 	= $_POST['fee-month'] ?? ''; 
 			$year 	= $_POST['stdyear']; 
@@ -1167,10 +1358,20 @@ if (isset($_POST['delRevinew'])) {
 			$sec 		= $_POST['sec'];
 			$grou 	= $_POST['group'];
 			$sub_head_id 	= $_POST['sub_head_id'];
-			$monthName = $monthArray[$month-1];
+			// Validate month and monthArray before accessing
+			$monthName = '';
+			if (!empty($month) && is_numeric($month) && $month >= 1 && $month <= 12) {
+				// Ensure monthArray is initialized (it's set via getMonthArrayName() hook)
+				if (!isset($monthArray) || !is_array($monthArray)) {
+					// Fallback: initialize monthArray if not set
+					$monthArray = array("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December");
+				}
+				if (isset($monthArray[$month-1])) {
+					$monthName = $monthArray[$month-1];
+				}
+			}
 
 			if($sub_head_id != ''){
-
 				// SUB HEAD INFO
 				$subHeadQry = "SELECT * FROM ct_sub_head WHERE id = $sub_head_id";
 				$subHeadDetails = $wpdb->get_results( $subHeadQry ); 
@@ -1186,6 +1387,8 @@ if (isset($_POST['delRevinew'])) {
 				if ($grou != '') { $qry1 .= " AND infoGroup = $grou"; }
 
 				// check monthly or others in query
+				// Note: view_fee_collection_with_details should include both Cash and PayStation API payments
+				// If the view filters by payment method, it needs to be updated to include PayStation payments (sub_head_id = 250)
 				if($subHeadType == 1){
 					$qry1 .= " AND infoStdid NOT IN (SELECT student_id FROM view_fee_collection_with_details  
 					WHERE class_id = $class AND year = '$year' AND month= $month AND sub_head_id = $sub_head_id)";
@@ -1284,7 +1487,8 @@ if (isset($_POST['delRevinew'])) {
 							
 							// $sumOfFees += $fees;
 							
-						}			
+						}	
+        		
 					}
 					
 					$allLists[$key]['due'] = $sumOfFees;
@@ -1400,12 +1604,35 @@ if (isset($_POST['delRevinew'])) {
 			}else{
 				$fees = 0;
 			}
-			if($subval->type == 1){
+			
+			if($subval->type == 3){
+				// exam
+				// get active exam id
+				$activeExamId = $wpdb->get_results("SELECT examid FROM ct_exam WHERE examClass = $class and active_for_collection = 1 LIMIT 1");
+				if($activeExamId){
+					$activeExamId = $activeExamId[0]->examid;
+					$feeInfoQuery = "SELECT fee FROM ct_student_exam_fee_summary WHERE sub_head_id = $subval->id AND class_id = $class AND exam_id = $activeExamId AND year = '$year' AND student_id = $val->infoStdid";
+					if(isset($sec) && !empty($sec)){
+						$feeInfoQuery .= " AND section = $sec";
+					}
+					if(isset($grou) && !empty($grou)){
+						$feeInfoQuery .= " AND group_id = $grou";
+					}
+					$feeInfo = $wpdb->get_results($feeInfoQuery);
+
+					if(!$feeInfo){
+						$allLists[$key]['due'] += $fees;
+					}else{
+						$allLists[$key]['due'] += 0;
+					}	
+				}
+			} else if($subval->type == 1){
 				// monthly
 				$sumOfFees = 0;
 				$fee_month_list = [];
 				for($i = $month; $i>=1; $i--){
 					$feeInfoQuery = "SELECT fee FROM ct_student_monthly_fee_summary WHERE sub_head_id = $subval->id AND class_id = $class AND year = '$year' AND month = $i AND student_id = $val->infoStdid";
+					
 					if(isset($sec) && !empty($sec)){
 						$feeInfoQuery .= " AND section = $sec";
 					}
@@ -1414,8 +1641,9 @@ if (isset($_POST['delRevinew'])) {
 					}
 					
 					$feeInfo = $wpdb->get_results($feeInfoQuery);
-				
-					if(!$feeInfo){
+					
+					
+				    if (!$feeInfo) {
 						if($subval->id == $monthlyFeeSubHeadId){
 							if($studentInfo[0]->facilities == 'Full free' || $studentInfo[0]->facilities == 'Scholarship'){
 								// $sumOfFees += 0;
@@ -1469,11 +1697,12 @@ if (isset($_POST['delRevinew'])) {
 						
 						// $sumOfFees += $fees;
 						
-					}			
+					}
 				}
 				
+				
 				$allLists[$key]['due'] += $sumOfFees;
-					
+			
 
 			}else if($subval->type == 2){
 				// yearly
@@ -1491,7 +1720,8 @@ if (isset($_POST['delRevinew'])) {
 					if($studentInfo[0]->admission_type == 1){
 						$allLists[$key]['due'] += $fees;
 					}else{
-						$feesquery = "SELECT amount FROM ct_admission_fee_promoted WHERE class = $class";
+						$today = date('Y-m-d');
+						$feesquery = "SELECT amount FROM ct_admission_fee_promoted WHERE class = $class AND admission_start_date <= '$today' AND admission_end_date >= '$today'";
 						$fees = $wpdb->get_results($feesquery);
 						if($fees){						
 							$fees = $fees[0]->amount;
@@ -1522,39 +1752,45 @@ if (isset($_POST['delRevinew'])) {
 						$allLists[$key]['due'] += 0;
 					}
 					
-			}else if($subval->type == 3){
-				// exam
-				// get active exam id
-				$activeExamId = $wpdb->get_results("SELECT examid FROM ct_exam WHERE examClass = $class and active_for_collection = 1 LIMIT 1");
-				if($activeExamId){
-					$activeExamId = $activeExamId[0]->examid;
-					$feeInfoQuery = "SELECT fee FROM ct_student_exam_fee_summary WHERE sub_head_id = $subval->id AND class_id = $class AND exam_id = $activeExamId AND year = '$year' AND student_id = $val->infoStdid";
-					if(isset($sec) && !empty($sec)){
-						$feeInfoQuery .= " AND section = $sec";
-					}
-					if(isset($grou) && !empty($grou)){
-						$feeInfoQuery .= " AND group_id = $grou";
-					}
-					$feeInfo = $wpdb->get_results($feeInfoQuery);
-
-					if(!$feeInfo){
-						$allLists[$key]['due'] += $fees;
-					}else{
-						$allLists[$key]['due'] += 0;
-					}	
-				}
-				
 			}else if($subval->type == 4){
 				$allLists[$key]['due'] += $fees;
 			}
-
-
-		}//end of sub head
-			// $allLists[$key]['due'] = 400;
+			
+		} //end of sub head
+		
+		
+				/**
+    			 * Fetch paystation total from ct_student_fee_collection_info for selected month
+    			 * Deduct Online Paid Amount	
+    			 * If due amount is Unearned Revenue (Exceed amount paid): move exceeded portion into next month
+    			 * 
+    			 * Commit: 2026-3-6 20:00
+    			 * Author: mushfiqbh
+    			*/
+				$onlinePaidTotalAmountQuery = "SELECT id, SUM(total) AS totalPaid FROM ct_student_fee_collection_info WHERE  class_id = $class AND year = '$year' AND month = $month AND student_id = $val->infoStdid GROUP BY student_id";
+				
+				if(isset($sec) && !empty($sec)){
+					$onlinePaidTotalAmountQuery .= " AND section = $sec";
+				}
+				if(isset($grou) && !empty($grou)){
+					$onlinePaidTotalAmountQuery .= " AND group_id = $grou";
+				}
+				
+				$onlinePaidTotalAmount = $wpdb->get_results($onlinePaidTotalAmountQuery);
+				
+    			if($onlinePaidTotalAmount){
+    			    $netDueAmount = $allLists[$key]['due'] - $onlinePaidTotalAmount[0]->totalPaid;
+    			    if($netDueAmount < 0){  // Unearned Revenue
+    			        moveExtraPortionToNextMonth($onlinePaidTotalAmount[0]->id, $netDueAmount); // Reduce amount from current month paid, add new entry into next month
+    			        $netDueAmount = 0;
+    			    }
+    			    
+    			    $allLists[$key]['due'] = $netDueAmount;
+    			}
 		}
+	}
+	
 
-
-		}
 			// echo '<pre>';
 			// print_r($allLists);exit;
 
@@ -1759,7 +1995,18 @@ if (isset($_POST['delRevinew'])) {
 			$sec 		= $_POST['sec'];
 			$grou 	= $_POST['group'];
 			// $sub_head_id 	= $_POST['sub_head_id'];
-			$monthName = $monthArray[$month-1];
+			// Validate month and monthArray before accessing
+			$monthName = '';
+			if (!empty($month) && is_numeric($month) && $month >= 1 && $month <= 12) {
+				// Ensure monthArray is initialized (it's set via getMonthArrayName() hook)
+				if (!isset($monthArray) || !is_array($monthArray)) {
+					// Fallback: initialize monthArray if not set
+					$monthArray = array("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December");
+				}
+				if (isset($monthArray[$month-1])) {
+					$monthName = $monthArray[$month-1];
+				}
+			}
 
 		
 			// All sub head combine
@@ -1802,7 +2049,7 @@ if (isset($_POST['delRevinew'])) {
 			
 			
 
-			// get total by student id
+			// get total by student id - includes both Cash and PayStation API payments
 			$feesQuery = "SELECT SUM(total) as total, id FROM ct_student_fee_collection_info WHERE month = $month AND student_id = $val->infoStdid AND class_id = $class AND year = '$year' ";
 
 		
@@ -1935,6 +2182,7 @@ if (isset($_POST['delRevinew'])) {
 		if(isset($_POST['daillyFeeReport'])):
 			$from_date = $_POST['from-date'];
 							
+                    			// Daily fee report - includes both Cash and PayStation API payments
                     			$feesQuery = "SELECT SUM(total) as total, sectionName,className  FROM ct_student_fee_collection_info
                     			LEFT JOIN ct_section ON ct_student_fee_collection_info.section = ct_section.sectionid
                     			LEFT JOIN ct_class ON ct_student_fee_collection_info.class_id = ct_class.classid
@@ -2059,7 +2307,7 @@ if (isset($_POST['delRevinew'])) {
 							<label><?= $val->sub_head_name ?></label>
 							<select id="feeCategory-<?= $val->id ?>" class="form-control" name="<?= $val->id ?>" selected>
 								<option value="1" <?= $val->active_for_collection == 1 ? 'selected': '' ?>>Active</option>
-								<option value="0" <?= $val->active_for_collection == 0 ? 'selected': '' ?>>Inactive</option>
+								<option value="0" <?= $val->active_for_collection == 0 ? 'selected': '' ?>>close</option>
 							</select>
 							<?php
 							}
@@ -2748,7 +2996,8 @@ if($val->type == 1){
 				// 	}
 					// PROMOTED STUDENT
 					// save yearly summary 
-					$feesquery = "SELECT amount FROM ct_admission_fee_promoted WHERE class = $class";
+					$today = date('Y-m-d');
+					$feesquery = "SELECT amount FROM ct_admission_fee_promoted WHERE class = $class AND admission_start_date <= '$today' AND admission_end_date >= '$today'";
 					$promotedfees = $wpdb->get_results($feesquery);
 					if(@$promotedfees && @$promotedfees[0]->amount > 0){						
 						$fees = $promotedfees[0]->amount;
@@ -3645,6 +3894,14 @@ die();
 						  <input id="amount" type="number" name="amount"  value="<?= $id == null? '' : @$updateInfo->amount ?>" required>
 					  </div>
 					  <div class="form-group">
+						  <label>Admission Start Date</label>
+						  <input class="form-control" type="date" name="admission_start_date"  value="<?= $id == null? '' : @$updateInfo->admission_start_date ?>">
+					  </div>
+					  <div class="form-group">
+						  <label>Admission End Date</label>
+						  <input class="form-control" type="date" name="admission_end_date"  value="<?= $id == null? '' : @$updateInfo->admission_end_date ?>">
+					  </div>
+					  <div class="form-group">
 						  <?php if(isset($_GET['id']) != ''){ ?>
 							<input id="promoted_admission_id" type="hidden" name="id" value="<?= $id?>" required>
 
@@ -3663,21 +3920,23 @@ die();
 								<th style=" text-align: center;">No</th>
 								<th style=" text-align: center;">Class</th>
 								<th style=" text-align: center;">Amount</th>
-								<th style=" text-align: center;">Admission Status</th>
+								<th style=" text-align: center;">Admission Start Date</th>
+								<th style=" text-align: center;">Admission End Date</th>
 								<th style=" text-align: center;">Action</th>
 							</tr>
 							<?php  
 							$allLists = $wpdb->get_results( "SELECT * FROM ct_admission_fee_promoted LEFT JOIN ct_class ON ct_admission_fee_promoted.class = ct_class.classid" );
 
-							foreach($allLists as $key=>$val){?>
+							foreach($allLists as $key=>$val){
+								?>
 							<tr>
 							  <td><?= $key + 1?></td>
 							  <td><?= $val->className?></td>
 							  <td><?= $val->amount?></td>
-							  <td><?php echo $val->is_active ? 'Open' : 'Closed'; ?></td>
+							  <td><?= $val->admission_start_date ? date('M d, Y', strtotime($val->admission_start_date)) : 'N/A' ?></td>
+							  <td><?= $val->admission_end_date ? date('M d, Y', strtotime($val->admission_end_date)) : 'N/A' ?></td>
 							  <td>
 							  	<a href="?page=studentFeeManagement&view=promoted&id=<?= $val->id?>" class="btn btn-primary">Edit</a>
-							  	<button type="button" class="btn btn-warning" onclick="toggleActive(<?= $val->id ?>, <?= $val->is_active ?>)"><?php echo $val->is_active ? 'Deactivate' : 'Activate'; ?></button>
 							  </td>
 							</tr>
 							<?php 
@@ -3694,7 +3953,9 @@ if (isset($_POST['promoted-admission'])) {
 			'ct_admission_fee_promoted',
 			array(
 				'class' 	=> $_POST['promotedClass'],
-				'amount' 	=> $_POST['amount']
+				'amount' 	=> $_POST['amount'],
+				'admission_start_date' 	=> $_POST['admission_start_date'],
+				'admission_end_date' 	=> $_POST['admission_end_date']
 			)
 		);
 		$message = ms3showMessage($insert, 'Added');
@@ -3716,7 +3977,9 @@ if (isset($_POST['promoted-admission'])) {
 			'ct_admission_fee_promoted',
 			array(
 				'class' 	=> $_POST['promotedClass'],
-			'amount' 	=> $_POST['amount']
+				'amount' 	=> $_POST['amount'],
+				'admission_start_date' 	=> $_POST['admission_start_date'],
+				'admission_end_date' 	=> $_POST['admission_end_date']
 			),
 			array( 'id' => $_POST['id'])
 		);
@@ -4327,6 +4590,583 @@ foreach($feeDetails as $val){
 			
 
 
+		<?php }elseif($_GET['view'] == 'paystationTransactions'){ ?>
+			<div class="panel panel-info">
+				<div class="panel-heading"><h3>PayStation Transaction Management</h3></div>
+				<div class="panel-body">
+					<form action="" method="POST" class="form-inline">
+						<div class="row pl-10">
+							<div class="form-group">
+								<label>Status</label>
+								<select class="form-control" name="status_filter">
+									<option value="">All Status</option>
+									<option value="pending" <?= isset($_POST['status_filter']) && $_POST['status_filter'] == 'pending' ? 'selected' : '' ?>>Pending</option>
+									<option value="paid" <?= isset($_POST['status_filter']) && $_POST['status_filter'] == 'paid' ? 'selected' : '' ?>>Paid</option>
+									<option value="failed" <?= isset($_POST['status_filter']) && $_POST['status_filter'] == 'failed' ? 'selected' : '' ?>>Failed</option>
+									<option value="cancelled" <?= isset($_POST['status_filter']) && $_POST['status_filter'] == 'cancelled' ? 'selected' : '' ?>>Cancelled</option>
+								</select>
+							</div>
+							
+							<div class="form-group">
+								<label>From Date</label>
+								<input type="date" name="from_date" class="form-control" value="<?= isset($_POST['from_date']) ? $_POST['from_date'] : date('Y-m-d', strtotime('-30 days')) ?>">
+							</div>
+							
+							<div class="form-group">
+								<label>To Date</label>
+								<input type="date" name="to_date" class="form-control" value="<?= isset($_POST['to_date']) ? $_POST['to_date'] : date('Y-m-d') ?>">
+							</div>
+							
+							<div class="form-group">
+								<label>Search</label>
+								<input type="text" name="search" class="form-control" placeholder="Invoice/Student ID/Name" value="<?= isset($_POST['search']) ? $_POST['search'] : '' ?>">
+							</div>
+							
+							<div class="form-group">
+								<input type="submit" name="filter_transactions" class="btn btn-success" value="Filter">
+								<a href="?page=studentFeeManagement&view=paystationTransactions" class="btn btn-info">Reset</a>
+							</div>
+						</div>
+					</form>
+				</div>
+			</div>
+			
+			<?php
+			$table_name = $wpdb->prefix . 'paystation_transactions';
+			$table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_name'");
+			
+			if ($table_exists):
+				// Build query
+				$query = "SELECT pt.*, s.stdName, s.studentid 
+						  FROM $table_name pt 
+						  LEFT JOIN ct_student s ON s.studentid = pt.student_id 
+						  WHERE 1=1";
+				
+				$params = array();
+				
+				// Apply filters
+				if (isset($_POST['filter_transactions']) || isset($_GET['status'])) {
+					$status_filter = isset($_POST['status_filter']) ? $_POST['status_filter'] : (isset($_GET['status']) ? $_GET['status'] : '');
+					if (!empty($status_filter)) {
+						$query .= " AND pt.status = %s";
+						$params[] = $status_filter;
+					}
+					
+					$from_date = isset($_POST['from_date']) ? $_POST['from_date'] : '';
+					$to_date = isset($_POST['to_date']) ? $_POST['to_date'] : '';
+					
+					if (!empty($from_date)) {
+						$query .= " AND DATE(pt.created_at) >= %s";
+						$params[] = $from_date;
+					}
+					
+					if (!empty($to_date)) {
+						$query .= " AND DATE(pt.created_at) <= %s";
+						$params[] = $to_date;
+					}
+					
+					$search = isset($_POST['search']) ? $_POST['search'] : '';
+					if (!empty($search)) {
+						$query .= " AND (pt.invoice_number LIKE %s OR pt.payment_id LIKE %s OR pt.student_id LIKE %s OR s.stdName LIKE %s)";
+						$search_term = '%' . $wpdb->esc_like($search) . '%';
+						$params[] = $search_term;
+						$params[] = $search_term;
+						$params[] = $search_term;
+						$params[] = $search_term;
+					}
+				}
+				
+				$query .= " ORDER BY pt.created_at DESC LIMIT 500";
+				
+				if (!empty($params)) {
+					$transactions = $wpdb->get_results($wpdb->prepare($query, $params));
+				} else {
+					$transactions = $wpdb->get_results($query);
+				}
+				
+				// Get statistics
+				$stats_query = "SELECT 
+					COUNT(*) as total,
+					SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) as paid_count,
+					SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_count,
+					SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed_count,
+					SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_count,
+					SUM(CASE WHEN status = 'paid' THEN total_amount ELSE 0 END) as total_paid_amount,
+					SUM(total_amount) as total_amount
+					FROM $table_name";
+				
+				$stats = $wpdb->get_row($stats_query);
+			?>
+			
+			<div class="panel panel-default">
+				<div class="panel-heading">
+					<h4>Transaction Statistics</h4>
+				</div>
+				<div class="panel-body">
+					<div class="row">
+						<div class="col-md-3">
+							<div class="well text-center">
+								<h3><?= number_format($stats->total) ?></h3>
+								<p>Total Transactions</p>
+							</div>
+						</div>
+						<div class="col-md-3">
+							<div class="well text-center" style="background-color: #d4edda;">
+								<h3 style="color: #155724;"><?= number_format($stats->paid_count) ?></h3>
+								<p>Successful Payments</p>
+								<strong><?= number_format($stats->total_paid_amount, 2) ?> BDT</strong>
+							</div>
+						</div>
+						<div class="col-md-3">
+							<div class="well text-center" style="background-color: #fff3cd;">
+								<h3 style="color: #856404;"><?= number_format($stats->pending_count) ?></h3>
+								<p>Pending Payments</p>
+							</div>
+						</div>
+						<div class="col-md-3">
+							<div class="well text-center" style="background-color: #f8d7da;">
+								<h3 style="color: #721c24;"><?= number_format($stats->failed_count + $stats->cancelled_count) ?></h3>
+								<p>Failed/Cancelled</p>
+							</div>
+						</div>
+					</div>
+					<?php if ($stats->total > 0): ?>
+					<div class="row" style="margin-top: 15px;">
+						<div class="col-md-12">
+							<strong>Success Rate:</strong> <?= number_format(($stats->paid_count / $stats->total) * 100, 2) ?>%
+						</div>
+					</div>
+					<?php endif; ?>
+				</div>
+			</div>
+			
+			<div class="panel panel-default">
+				<div class="panel-heading">
+					<h4>Transaction List (<?= count($transactions) ?> records)</h4>
+				</div>
+				<div class="panel-body">
+					<style>
+						.paystation-transactions-table {
+							width: 100%;
+							border-collapse: collapse;
+						}
+						.paystation-transactions-table th,
+						.paystation-transactions-table td {
+							padding: 10px;
+							border: 1px solid #ddd;
+							vertical-align: middle;
+						}
+						.paystation-transactions-table th {
+							background-color: #f5f5f5;
+							font-weight: bold;
+							text-align: center;
+						}
+						.paystation-transactions-table tbody tr:hover {
+							background-color: #f9f9f9;
+						}
+					</style>
+					<div class="table-responsive" style="overflow-x: auto;">
+						<table class="table table-bordered table-striped table-hover paystation-transactions-table">
+							<thead>
+								<tr>
+									<th style="width: 50px;">#</th>
+									<th style="width: 150px;">Date</th>
+									<th style="width: 200px;">Invoice Number</th>
+									<th style="width: 200px;">Student</th>
+									<th style="width: 120px;">Amount</th>
+									<th style="width: 120px;">Status</th>
+									<th style="width: 150px;">Payment Date</th>
+									<th style="width: 100px;">Actions</th>
+								</tr>
+							</thead>
+							<tbody>
+								<?php if ($transactions): ?>
+									<?php foreach ($transactions as $index => $txn): 
+										$student_data = json_decode($txn->student_data, true);
+										$fee_data = json_decode($txn->fee_data, true);
+										$status_class = '';
+										$status_icon = '';
+										
+										switch($txn->status) {
+											case 'paid':
+												$status_class = 'success';
+												$status_icon = 'fa-check-circle';
+												break;
+											case 'pending':
+												$status_class = 'warning';
+												$status_icon = 'fa-clock';
+												break;
+											case 'failed':
+												$status_class = 'danger';
+												$status_icon = 'fa-times-circle';
+												break;
+											case 'cancelled':
+												$status_class = 'info';
+												$status_icon = 'fa-ban';
+												break;
+										}
+									?>
+										<tr>
+											<td style="text-align: center;"><?= $index + 1 ?></td>
+											<td style="white-space: nowrap;"><?= $txn->created_at && $txn->created_at != '0000-00-00 00:00:00' ? date('d M Y, h:i A', strtotime($txn->created_at)) : 'N/A' ?></td>
+											<td><strong><?= esc_html($txn->invoice_number ?: $txn->payment_id) ?></strong></td>
+											<td>
+												<?= esc_html($txn->stdName ?: ($student_data['student_name'] ?? 'N/A')) ?><br>
+												<small class="text-muted">ID: <?= $txn->student_id ?></small>
+											</td>
+											<td style="text-align: right;"><strong><?= number_format($txn->total_amount, 2) ?> BDT</strong></td>
+											<td style="text-align: center;">
+												<span class="label label-<?= $status_class ?>">
+													<i class="fa <?= $status_icon ?>"></i> <?= ucfirst($txn->status) ?>
+												</span>
+											</td>
+											<td style="white-space: nowrap;">
+												<?= $txn->payment_date ? date('d M Y, h:i A', strtotime($txn->payment_date)) : '<span class="text-muted">-</span>' ?>
+											</td>
+											<td style="text-align: center;">
+												<button type="button" class="btn btn-sm btn-info" data-toggle="modal" data-target="#txnModal<?= $txn->id ?>">
+													<i class="fa fa-eye"></i> View
+												</button>
+											</td>
+										</tr>
+									<?php endforeach; ?>
+								<?php else: ?>
+									<tr>
+										<td colspan="8" class="text-center" style="padding: 20px;">No transactions found</td>
+									</tr>
+								<?php endif; ?>
+							</tbody>
+						</table>
+					</div>
+					
+					<!-- Modals placed outside table to avoid structure issues -->
+					<?php if ($transactions): ?>
+						<?php foreach ($transactions as $txn): 
+							$student_data = json_decode($txn->student_data, true);
+							$fee_data = json_decode($txn->fee_data, true);
+							$status_class = '';
+							$status_icon = '';
+							
+							switch($txn->status) {
+								case 'paid':
+									$status_class = 'success';
+									$status_icon = 'fa-check-circle';
+									break;
+								case 'pending':
+									$status_class = 'warning';
+									$status_icon = 'fa-clock';
+									break;
+								case 'failed':
+									$status_class = 'danger';
+									$status_icon = 'fa-times-circle';
+									break;
+								case 'cancelled':
+									$status_class = 'info';
+									$status_icon = 'fa-ban';
+									break;
+							}
+						?>
+							<!-- Transaction Detail Modal -->
+							<div class="modal fade" id="txnModal<?= $txn->id ?>" tabindex="-1" role="dialog">
+								<div class="modal-dialog modal-lg" role="document">
+									<div class="modal-content">
+										<div class="modal-header">
+											<button type="button" class="close" data-dismiss="modal">&times;</button>
+											<h4 class="modal-title">Transaction Details - <?= esc_html($txn->invoice_number ?: $txn->payment_id) ?></h4>
+										</div>
+										<div class="modal-body">
+											<div class="row">
+												<div class="col-md-6">
+													<h5>Transaction Information</h5>
+													<table class="table table-bordered">
+														<tr><th>Payment ID</th><td><?= esc_html($txn->payment_id) ?></td></tr>
+														<tr><th>Invoice Number</th><td><?= esc_html($txn->invoice_number ?: 'N/A') ?></td></tr>
+														<tr><th>Status</th><td><span class="label label-<?= $status_class ?>"><?= ucfirst($txn->status) ?></span></td></tr>
+														<tr><th>Amount</th><td><strong><?= number_format($txn->total_amount, 2) ?> BDT</strong></td></tr>
+														<tr><th>Created At</th><td><?= $txn->created_at && $txn->created_at != '0000-00-00 00:00:00' ? date('d M Y, h:i A', strtotime($txn->created_at)) : 'N/A' ?></td></tr>
+														<tr><th>Payment Date</th><td><?= $txn->payment_date && $txn->payment_date != '0000-00-00 00:00:00' ? date('d M Y, h:i A', strtotime($txn->payment_date)) : 'N/A' ?></td></tr>
+													</table>
+												</div>
+												<div class="col-md-6">
+													<h5>Student Information</h5>
+													<table class="table table-bordered">
+														<?php if ($student_data): ?>
+															<tr><th>Name</th><td><?= esc_html($student_data['student_name'] ?? 'N/A') ?></td></tr>
+															<tr><th>Student ID</th><td><?= esc_html($student_data['student_id'] ?? 'N/A') ?></td></tr>
+															<tr><th>Class</th><td><?= esc_html($student_data['class_name'] ?? 'N/A') ?></td></tr>
+															<tr><th>Section</th><td><?= esc_html($student_data['section_name'] ?? 'N/A') ?></td></tr>
+															<tr><th>Roll</th><td><?= esc_html($student_data['student_roll'] ?? 'N/A') ?></td></tr>
+															<tr><th>Phone</th><td><?= esc_html($student_data['cust_phone'] ?? 'N/A') ?></td></tr>
+														<?php else: ?>
+															<tr><td colspan="2">No student data available</td></tr>
+														<?php endif; ?>
+													</table>
+												</div>
+											</div>
+											
+											<?php if ($fee_data && isset($fee_data['fee_breakdown'])): ?>
+											<div class="row" style="margin-top: 15px;">
+												<div class="col-md-12">
+													<h5>Fee Breakdown</h5>
+													<table class="table table-bordered">
+														<thead>
+															<tr>
+																<th>Fee Type</th>
+																<th>Sub Head</th>
+																<th>Amount</th>
+															</tr>
+														</thead>
+														<tbody>
+															<?php foreach ($fee_data['fee_breakdown'] as $fee): ?>
+																<tr>
+																	<td><?= ucfirst($fee['fee_type']) ?></td>
+																	<td><?= esc_html($fee['sub_head_name']) ?></td>
+																	<td><?= number_format($fee['amount'], 2) ?> BDT</td>
+																</tr>
+															<?php endforeach; ?>
+															<tr class="info">
+																<th colspan="2">Total</th>
+																<th><?= number_format($fee_data['total_amount'], 2) ?> BDT</th>
+															</tr>
+														</tbody>
+													</table>
+												</div>
+											</div>
+											<?php endif; ?>
+											
+											<?php if ($txn->paystation_response): 
+												$response = json_decode($txn->paystation_response, true);
+												if ($response):
+											?>
+											<div class="row" style="margin-top: 15px;">
+												<div class="col-md-12">
+													<h5>PayStation API Response</h5>
+													<div class="well" style="max-height: 200px; overflow-y: auto; background-color: #f5f5f5;">
+														<pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word;"><?= esc_html(json_encode($response, JSON_PRETTY_PRINT)) ?></pre>
+													</div>
+												</div>
+											</div>
+											<?php endif; endif; ?>
+										</div>
+										<div class="modal-footer">
+											<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+										</div>
+									</div>
+								</div>
+							</div>
+						<?php endforeach; ?>
+					<?php endif; ?>
+				</div>
+			</div>
+			<?php else: ?>
+				<div class="alert alert-warning">
+					PayStation transactions table not found. Please make a payment first to create the table.
+				</div>
+			<?php endif; ?>
+		
+		<?php }elseif($_GET['view'] == 'paystationStatistics'){ ?>
+			<div class="panel panel-info">
+				<div class="panel-heading"><h3>PayStation Payment Statistics</h3></div>
+				<div class="panel-body">
+					<?php
+					$table_name = $wpdb->prefix . 'paystation_transactions';
+					$table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_name'");
+					
+					if ($table_exists):
+						// Overall Statistics
+						$overall_stats = $wpdb->get_row("SELECT 
+							COUNT(*) as total,
+							SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) as paid_count,
+							SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_count,
+							SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed_count,
+							SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled_count,
+							SUM(CASE WHEN status = 'paid' THEN total_amount ELSE 0 END) as total_paid,
+							SUM(total_amount) as total_amount
+							FROM $table_name");
+						
+						// Daily statistics (last 30 days)
+						$daily_stats = $wpdb->get_results("SELECT 
+							DATE(created_at) as date,
+							COUNT(*) as total,
+							SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) as paid_count,
+							SUM(CASE WHEN status = 'paid' THEN total_amount ELSE 0 END) as paid_amount
+							FROM $table_name
+							WHERE created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+							GROUP BY DATE(created_at)
+							ORDER BY date DESC");
+						
+						// Monthly statistics
+						$monthly_stats = $wpdb->get_results("SELECT 
+							DATE_FORMAT(created_at, '%Y-%m') as month,
+							COUNT(*) as total,
+							SUM(CASE WHEN status = 'paid' THEN 1 ELSE 0 END) as paid_count,
+							SUM(CASE WHEN status = 'paid' THEN total_amount ELSE 0 END) as paid_amount
+							FROM $table_name
+							GROUP BY DATE_FORMAT(created_at, '%Y-%m')
+							ORDER BY month DESC
+							LIMIT 12");
+						
+						// Compare with Cash payments
+						$cash_total = $wpdb->get_var("SELECT SUM(total) FROM ct_student_fee_collection_info 
+							WHERE notes NOT LIKE '%PayStation%' AND notes NOT LIKE '%Online%' 
+							AND DATE(created_at) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)");
+						
+						$paystation_total = $wpdb->get_var("SELECT SUM(total_amount) FROM $table_name 
+							WHERE status = 'paid' AND DATE(created_at) >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)");
+					?>
+					
+					<div class="row">
+						<div class="col-md-12">
+							<h4>Overall Statistics</h4>
+							<div class="row">
+								<div class="col-md-3">
+									<div class="well text-center">
+										<h2><?= number_format($overall_stats->total) ?></h2>
+										<p>Total Transactions</p>
+									</div>
+								</div>
+								<div class="col-md-3">
+									<div class="well text-center" style="background-color: #d4edda;">
+										<h2 style="color: #155724;"><?= number_format($overall_stats->paid_count) ?></h2>
+										<p>Successful</p>
+										<strong><?= number_format($overall_stats->total_paid, 2) ?> BDT</strong>
+									</div>
+								</div>
+								<div class="col-md-3">
+									<div class="well text-center" style="background-color: #fff3cd;">
+										<h2 style="color: #856404;"><?= number_format($overall_stats->pending_count) ?></h2>
+										<p>Pending</p>
+									</div>
+								</div>
+								<div class="col-md-3">
+									<div class="well text-center" style="background-color: #f8d7da;">
+										<h2 style="color: #721c24;"><?= number_format($overall_stats->failed_count + $overall_stats->cancelled_count) ?></h2>
+										<p>Failed/Cancelled</p>
+									</div>
+								</div>
+							</div>
+							
+							<?php if ($overall_stats->total > 0): ?>
+							<div class="row" style="margin-top: 20px;">
+								<div class="col-md-12">
+									<div class="progress">
+										<div class="progress-bar progress-bar-success" style="width: <?= ($overall_stats->paid_count / $overall_stats->total) * 100 ?>%">
+											Success: <?= number_format(($overall_stats->paid_count / $overall_stats->total) * 100, 2) ?>%
+										</div>
+										<div class="progress-bar progress-bar-warning" style="width: <?= ($overall_stats->pending_count / $overall_stats->total) * 100 ?>%">
+											Pending: <?= number_format(($overall_stats->pending_count / $overall_stats->total) * 100, 2) ?>%
+										</div>
+										<div class="progress-bar progress-bar-danger" style="width: <?= (($overall_stats->failed_count + $overall_stats->cancelled_count) / $overall_stats->total) * 100 ?>%">
+											Failed: <?= number_format((($overall_stats->failed_count + $overall_stats->cancelled_count) / $overall_stats->total) * 100, 2) ?>%
+										</div>
+									</div>
+								</div>
+							</div>
+							<?php endif; ?>
+						</div>
+					</div>
+					
+					<div class="row" style="margin-top: 30px;">
+						<div class="col-md-6">
+							<h4>Last 30 Days Comparison</h4>
+							<table class="table table-bordered">
+								<tr>
+									<th>Payment Method</th>
+									<th>Total Amount</th>
+									<th>Percentage</th>
+								</tr>
+								<tr>
+									<td>Cash</td>
+									<td><?= number_format($cash_total ?: 0, 2) ?> BDT</td>
+									<td>
+										<?php 
+										$total_both = ($cash_total ?: 0) + ($paystation_total ?: 0);
+										echo $total_both > 0 ? number_format((($cash_total ?: 0) / $total_both) * 100, 2) : 0;
+										?>%
+									</td>
+								</tr>
+								<tr class="info">
+									<td><strong>PayStation (Online)</strong></td>
+									<td><strong><?= number_format($paystation_total ?: 0, 2) ?> BDT</strong></td>
+									<td>
+										<strong>
+										<?php 
+										echo $total_both > 0 ? number_format((($paystation_total ?: 0) / $total_both) * 100, 2) : 0;
+										?>%
+										</strong>
+									</td>
+								</tr>
+								<tr class="success">
+									<td><strong>Total</strong></td>
+									<td><strong><?= number_format($total_both, 2) ?> BDT</strong></td>
+									<td><strong>100%</strong></td>
+								</tr>
+							</table>
+						</div>
+						
+						<div class="col-md-6">
+							<h4>Monthly Statistics (Last 12 Months)</h4>
+							<div class="table-responsive">
+								<table class="table table-bordered table-striped">
+									<thead>
+										<tr>
+											<th>Month</th>
+											<th>Total</th>
+											<th>Successful</th>
+											<th>Amount</th>
+										</tr>
+									</thead>
+									<tbody>
+										<?php foreach ($monthly_stats as $stat): ?>
+											<tr>
+												<td><?= date('M Y', strtotime($stat->month . '-01')) ?></td>
+												<td><?= $stat->total ?></td>
+												<td><?= $stat->paid_count ?></td>
+												<td><?= number_format($stat->paid_amount, 2) ?> BDT</td>
+											</tr>
+										<?php endforeach; ?>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+					
+					<div class="row" style="margin-top: 30px;">
+						<div class="col-md-12">
+							<h4>Daily Statistics (Last 30 Days)</h4>
+							<div class="table-responsive">
+								<table class="table table-bordered table-striped">
+									<thead>
+										<tr>
+											<th>Date</th>
+											<th>Total Transactions</th>
+											<th>Successful</th>
+											<th>Amount Collected</th>
+										</tr>
+									</thead>
+									<tbody>
+										<?php foreach ($daily_stats as $stat): ?>
+											<tr>
+												<td><?= date('d M Y', strtotime($stat->date)) ?></td>
+												<td><?= $stat->total ?></td>
+												<td><?= $stat->paid_count ?></td>
+												<td><?= number_format($stat->paid_amount, 2) ?> BDT</td>
+											</tr>
+										<?php endforeach; ?>
+									</tbody>
+								</table>
+							</div>
+						</div>
+					</div>
+					
+					<?php else: ?>
+						<div class="alert alert-warning">
+							PayStation transactions table not found. Please make a payment first to create the table.
+						</div>
+					<?php endif; ?>
+				</div>
+			</div>
+		
 		<?php }elseif($_GET['view'] == 'activeExam'){ ?>
 			<div class="panel panel-info">
 			<div class="panel-heading"><h3>Active Exam</h3></div>
@@ -4703,28 +5543,6 @@ var selectedActiveExam;
 		document.getElementById('grand-total').value = grandtotal;
 	}
 
-	function toggleActive(id, currentStatus) {
-		var newStatus = currentStatus ? 0 : 1;
-		jQuery.ajax({
-			url: '<?php echo get_template_directory_uri(); ?>/inc/ajaxAction.php',
-			type: 'POST',
-			data: {
-				type: 'togglePromotedFeeActive',
-				id: id,
-				is_active: newStatus
-			},
-			success: function(response) {
-				var data = JSON.parse(response);
-				if(data.success) {
-					location.reload();
-				} else {
-					alert('Error: ' + data.message);
-				}
-			},
-			error: function() {
-				alert('AJAX error');
-			}
-		});
-	}
+	// Admission dates are now used to determine active status automatically
 
 </script>

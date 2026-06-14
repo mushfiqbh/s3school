@@ -150,12 +150,10 @@ if (isset($_POST['deleteResult'])) {
                                 <h2>Result Management</h2>
                                 <div>
                                     <a href="?page=result&view=marksheet" class="btn btn-primary pull-right">Blank Mark Sheet</a>
-                                    <a href="?page=result&view=withheld" class="btn btn-primary pull-right">Withheld</a>
                                     <?php if ($haveAccess) { ?>
                                         <a href="?page=result&view=delete" class="btn btn-primary pull-right">Detele</a>
                                         <a href="?page=result&view=allresult" class="btn btn-primary pull-right">All Result</a>
                                     <?php } ?>
-                                    <a href="?page=result&view=resultview" class="btn btn-primary pull-right">View</a>
                                     <a href="?page=result&view=resultedit" class="btn btn-primary pull-right">Edit</a>
                                     <a href="?page=result" class="btn btn-primary pull-right">Add</a>
                                 </div>
@@ -191,10 +189,6 @@ if (isset($_POST['deleteResult'])) {
                             require 'inc/result-delete.php';
                         } elseif ($_GET['view'] == 'marksheet') {
                             require 'inc/blank-marksheet.php';
-                        } elseif ($_GET['view'] == 'resultview') {
-                            require 'inc/result-view.php';
-                        } elseif ($_GET['view'] == 'withheld') {
-                            require 'inc/withheldlist.php';
                         }
 
                     ?>
