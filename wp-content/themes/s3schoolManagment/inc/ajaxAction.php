@@ -1,8 +1,13 @@
 <?php
 
 // 	define( 'SHORTINIT', true );
+    	require( '../../../../wp-load.php' );
+    	ob_start();
 
-	require( '../../../../wp-load.php' );
+
+// Initialize default POST keys to prevent notices
+if (!isset($_POST['type'])) $_POST['type'] = '';
+if (!isset($_POST['action'])) $_POST['action'] = '';
 
 	/*
 		Check The Roll
@@ -113,7 +118,10 @@ $subjects = $wpdb->get_results("
 
 		$class = $_POST['class'];
 
-		$sections_query = "SELECT sectionid,sectionName FROM ct_section WHERE forClass = '$class' ORDER BY sectionName";
+		$current_user = wp_get_current_user();
+		$sections_query = "SELECT sectionid,sectionName FROM ct_section WHERE forClass = '$class'";
+
+		$sections_query .= " ORDER BY sectionName";
 
 		$sections = $wpdb->get_results($sections_query);
 		if(!empty($sections)){
@@ -134,11 +142,13 @@ $subjects = $wpdb->get_results("
 	elseif($_POST['type'] == 'getGroupsByClass'){
 		$class = $_POST['class'];
 		
+		$current_user = wp_get_current_user();
 		$groups_query = "SELECT DISTINCT ct_group.groupId, ct_group.groupName 
 			FROM ct_group 
 			INNER JOIN ct_studentinfo ON ct_studentinfo.infoGroup = ct_group.groupId 
-			WHERE ct_studentinfo.infoClass = '$class'
-			ORDER BY ct_group.groupName ASC";
+			WHERE ct_studentinfo.infoClass = '$class'";
+
+		$groups_query .= " ORDER BY ct_group.groupName ASC";
 		
 		$groups = $wpdb->get_results($groups_query);
 		
@@ -270,6 +280,8 @@ $subjects = $wpdb->get_results("
         $subs = [];
     }
 
+    $current_user = wp_get_current_user();
+
     if (!empty($subs)) {
         $subs_escaped = array_map('intval', $subs);
         $subjectQuery = "SELECT subjectid,subjectName FROM ct_subject 
@@ -378,7 +390,7 @@ elseif($_POST['type'] == 'getYearSection'){
 	$options = '';
     $currentYear = date("Y");
 	if($session == 'year'){
-		for ($i=-2; $i < 2; $i++) {
+		for ($i=-2; $i < 7; $i++) {
 		     $sec = (date("Y")-$i);
             $selected = ($currentYear == $sec) ? 'selected' : '';
       
@@ -386,7 +398,7 @@ elseif($_POST['type'] == 'getYearSection'){
     } 
 	}else{
 	    $currentYear = date("Y")."-".(date("Y")+1);
-		for ($i=-2; $i < 2; $i++) { 
+		for ($i=-2; $i < 7; $i++) { 
       $sec = (date("Y")-($i+1))."-".(date("Y")-$i);
       $selected = ($currentYear == $sec) ? 'selected' : '';
       $options .= "<option value='$sec' $selected>$sec</option>";
@@ -871,100 +883,8 @@ elseif ($_POST['type'] == 'saveExamSchedule') {
 	}
 
 }
-/*
-    Get Online Application Details
-*/
-elseif($_POST['type'] == 'getApplicationDetails'){
-    $appId = intval($_POST['applicationId']);
-    $application = $wpdb->get_row($wpdb->prepare("
-        SELECT oa.*, c.className, g.groupName 
-        FROM ct_online_application oa 
-        LEFT JOIN ct_class c ON oa.stdAdmitClass = c.classid 
-        LEFT JOIN ct_group g ON oa.stdGroup = g.groupId 
-        WHERE oa.applicationid = %d
-    ", $appId), ARRAY_A);
-    
-    if($application){
-        // Get school info from sm_option table
-        $schoolName = $wpdb->get_var("SELECT option_value FROM sm_options WHERE option_name = 'institute_name'");
-        $schoolAddress = $wpdb->get_var("SELECT option_value FROM sm_options WHERE option_name = 'institute_address'");
-        
-        $application['schoolName'] = $schoolName ?: 'School Name';
-        $application['schoolAddress'] = $schoolAddress ?: 'School Address';
-        
-        echo json_encode(['status' => 'success', 'data' => $application]);
-    } else {
-        echo json_encode(['status' => 'error', 'message' => 'Application not found']);
-    }
-}
-
-/*
-    Search Application by Phone
-*/
-elseif($_POST['type'] == 'searchApplicationByPhone'){
-    $phone = sanitize_text_field($_POST['phone']);
-    $dob = sanitize_text_field($_POST['dob']);
-    
-    if(empty($phone)){
-        echo json_encode(['status' => 'error', 'message' => 'Phone number is required']);
-        exit;
-    }
-    
-    if(empty($dob)){
-        echo json_encode(['status' => 'error', 'message' => 'Date of birth is required']);
-        exit;
-    }
-    
-    $applications = $wpdb->get_results($wpdb->prepare("
-        SELECT oa.*, c.className 
-        FROM ct_online_application oa 
-        LEFT JOIN ct_class c ON oa.stdAdmitClass = c.classid 
-        WHERE oa.stdPhone = %s AND oa.stdBrith = %s
-        ORDER BY oa.stdCreatedAt DESC
-    ", $phone, $dob), ARRAY_A);
-    
-    if($applications){
-        echo json_encode(['status' => 'success', 'data' => $applications]);
-    } else {
-        echo json_encode(['status' => 'success', 'data' => []]);
-    }
-}
 
 
-/*
-    Get Admission Fee for Class
-*/
-elseif($_POST['type'] == 'getAdmissionFee'){
-    $class = intval($_POST['class']);
-    
-    $fee_data = $wpdb->get_row($wpdb->prepare(
-        "SELECT amount FROM ct_admission_fee_promoted WHERE class = %d AND is_active = 1",
-        $class
-    ));
-    
-    if($fee_data){
-        echo json_encode(['status' => 'success', 'fee' => $fee_data->amount]);
-    } else {
-        echo json_encode(['status' => 'success', 'fee' => 0]);
-    }
-}
-
-/*
-    Get Sections for Class
-*/
-elseif($_POST['type'] == 'getSectionsForClass'){
-    $classId = intval($_POST['classId']);
-    
-    $sections = $wpdb->get_results($wpdb->prepare(
-        "SELECT sectionid, sectionName 
-         FROM ct_section 
-         WHERE classId = %d 
-         ORDER BY sectionName",
-        $classId
-    ), ARRAY_A);
-    
-    echo json_encode(['status' => 'success', 'sections' => $sections]);
-}
 
 // ==========================================
 // UNIFIED RESULT MANAGEMENT

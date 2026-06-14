@@ -121,7 +121,7 @@ if (isset($_POST['deleteResult'])) {
                         <?php
 
                         if (isset($message)) {
-                        ?>
+                            ?>
                             <div class="messageDiv">
                                 <div class="alert <?= ($message['status'] == 'success') ? 'alert-success' : 'alert-danger'; ?>">
                                     <?= $message['message'] ?>
@@ -144,30 +144,27 @@ if (isset($_POST['deleteResult'])) {
                             }
                         </style>
 
-                        <?php
-                        if (wp_get_current_user()->user_login != 'teacher') { ?>
-                            <div class="resmangh2 responsive-rm">
-                                <h2>Result Management</h2>
-                                <div>
-                                    <a href="?page=result&view=marksheet" class="btn btn-primary pull-right">Blank Mark Sheet</a>
-                                    <a href="?page=result&view=withheld" class="btn btn-primary pull-right">Withheld</a>
-                                    <?php if ($haveAccess) { ?>
-                                        <a href="?page=result&view=delete" class="btn btn-primary pull-right">Detele</a>
-                                        <a href="?page=result&view=allresult" class="btn btn-primary pull-right">All Result</a>
-                                    <?php } ?>
-                                    <a href="?page=result&view=resultview" class="btn btn-primary pull-right">View</a>
-                                    <a href="?page=result&view=resultedit" class="btn btn-primary pull-right">Edit</a>
-                                    <a href="?page=result" class="btn btn-primary pull-right">Add</a>
-                                </div>
-                            </div><br>
 
-                        <?php }  ?>
+                        <div class="resmangh2 responsive-rm">
+                            <h2>Result Management</h2>
+                            <div>
+                                <a href="?page=result&view=marksheet" class="btn btn-primary pull-right">Blank Mark Sheet</a>
+                                    <a href="?page=result&view=withheld" class="btn btn-primary pull-right">Withheld</a>
+                                <?php if ($haveAccess) { ?>
+                                    <a href="?page=result&view=delete" class="btn btn-primary pull-right">Detele</a>
+                                    <a href="?page=result&view=allresult" class="btn btn-primary pull-right">All Result</a>
+                            <?php } ?>
+                            <a href="?page=result&view=resultedit" class="btn btn-primary pull-right">Edit</a>
+                                <a href="?page=result" class="btn btn-primary pull-right">Add</a>
+                                <a href="?page=result&view=resultview" class="btn btn-primary pull-right">Check</a>
+                            </div>
+                        </div><br>
 
 
                     </div>
 
-
-
+                    
+                       
 
 
                     <?php if (!is_admin()) { ?>
@@ -176,34 +173,34 @@ if (isset($_POST['deleteResult'])) {
                 </div>
 
                 <div class="row">
-                    <?php
-                        if (!isset($_GET['view'])) {
-                            require 'inc/result-add.php';
-                        } elseif ($_GET['view'] == 'result') {  // Single Result View
-                            require 'inc/result-result.php';
-                        } elseif ($_GET['view'] == 'allresult') {
-                            require 'inc/result-allresult.php';
-                        } elseif ($_GET['view'] == 'edit') {  // Single Result Edit
-                            require 'inc/result-edit.php';
-                        } elseif ($_GET['view'] == 'resultedit') {  // All Result Edit
-                            require 'inc/result-edit.php';
-                        } elseif ($_GET['view'] == 'delete') {
-                            require 'inc/result-delete.php';
-                        } elseif ($_GET['view'] == 'marksheet') {
-                            require 'inc/blank-marksheet.php';
-                        } elseif ($_GET['view'] == 'resultview') {
-                            require 'inc/result-view.php';
-                        } elseif ($_GET['view'] == 'withheld') {
-                            require 'inc/withheldlist.php';
-                        }
+                     <?php
+    if (!isset($_GET['view'])) {
+        require 'inc/result-add.php';
+    } elseif ($_GET['view'] == 'result') {  // Single Result View
+        require 'inc/result-result.php';
+    } elseif ($_GET['view'] == 'allresult') {
+        require 'inc/result-allresult.php';
+    } elseif ($_GET['view'] == 'edit') {  // Single Result Edit
+        require 'inc/result-edit.php';
+    } elseif ($_GET['view'] == 'resultedit') {  // All Result Edit
+        require 'inc/result-edit.php';
+    } elseif ($_GET['view'] == 'delete') {
+        require 'inc/result-delete.php';
+    } elseif ($_GET['view'] == 'marksheet') {
+        require 'inc/blank-marksheet.php';
+    } elseif ($_GET['view'] == 'resultview') {
+        require 'inc/result-view.php';
+    } elseif ($_GET['view'] == 'withheld') {
+        require 'inc/withheldlist.php';
+    }
 
-                    ?>
+    ?>
                 </div>
             </div>
         </div>
     </div>
 <?php get_footer();
-                    } ?>
+} ?>
 
 <script type="text/javascript">
     (function($) {

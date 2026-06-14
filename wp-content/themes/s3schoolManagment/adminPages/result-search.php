@@ -402,15 +402,8 @@ get_header(); ?>
 														====================*/
 
 														// $optionals = implode (", ",json_decode($student->infoOptionals));
-														$fourth = '';
-														if (!empty($student->info4thSub)) {
-															$tmp = json_decode($student->info4thSub, true);
-															if (is_array($tmp)) {
-																$fourth = $tmp[0];
-															} elseif (!empty($tmp)) {
-																$fourth = (string)$tmp;
-															}
-														}		
+														$fourth = $student->info4thSub;
+
 														// $optionals = ($optionals == 0) ? $optionals.",".$fourth : $optionals; 
 
 														$combines = $wpdb->get_results("SELECT * FROM `ct_subject`

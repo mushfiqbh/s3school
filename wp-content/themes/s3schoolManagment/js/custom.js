@@ -42,9 +42,6 @@
 
 
     var media_uploader = '';
-    var DEFAULT_MAX_SIZE = 60 * 1024; // Default 60 KB limit for uploaded images
-    var GALLERY_MAX_SIZE = 150 * 1024; // 150 KB limit for gallery images
-    
     $('.mediaUploader').click(function(event) {
       var $this = $(this);
       media_uploader = wp.media({
@@ -62,47 +59,7 @@
         }
         var image_caption = json.caption;
         var image_title = json.title;
-  var mimeType = json.mime || '';
-        var fileSize = json.filesizeInBytes || 0;
-
-        if(!fileSize && json.filesizeHumanReadable){
-          var parts = json.filesizeHumanReadable.trim().split(' ');
-          if(parts.length === 2){
-            var sizeValue = parseFloat(parts[0]);
-            var unit = parts[1].toUpperCase();
-            var multiplier = 1;
-            if(unit.indexOf('KB') === 0){ multiplier = 1024; }
-            else if(unit.indexOf('MB') === 0){ multiplier = 1024 * 1024; }
-            else if(unit.indexOf('GB') === 0){ multiplier = 1024 * 1024 * 1024; }
-            if(!isNaN(sizeValue)){
-              fileSize = sizeValue * multiplier;
-            }
-          }
-        }
-
-        // Determine max size based on selected category
-        var maxSize = DEFAULT_MAX_SIZE;
-        var sizeLimitText = '60 KB';
-        var isGalleryCategory = false;
-        
-        // Check if this is from add-post page and if gallery category is selected
-        if ($('#pcat').length > 0) {
-          var selectedCategoryText = $('#pcat option:selected').text().toLowerCase();
-          if (selectedCategoryText.indexOf('gallery') !== -1) {
-            isGalleryCategory = true;
-            maxSize = GALLERY_MAX_SIZE;
-            sizeLimitText = '150 KB';
-          }
-        }
-        
-        if(mimeType.indexOf('image/') === 0 && fileSize > maxSize){
-          var fileSizeKB = Math.round(fileSize / 1024);
-          alert('Image size (' + fileSizeKB + ' KB) exceeds the ' + sizeLimitText + ' limit for ' + (isGalleryCategory ? 'gallery' : 'regular') + ' posts. Please select a smaller image.');
-          media_uploader.open();
-          return;
-        }
-
-        $this.closest('.mediaUploadHolder').find('span').html("<img height='40' src='"+image_url+"'>");
+        var mimeType = json.mime || '';
         $this.closest('.mediaUploadHolder').find('.teacherImg').val(image_id);
 
         // Immediately embed in editor

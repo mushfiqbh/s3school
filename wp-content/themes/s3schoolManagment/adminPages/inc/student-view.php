@@ -42,6 +42,10 @@ foreach ($students as $student) {
         <p><?= $student->groupName ?></p>
         <label>Section Name</label>
         <p><?= $student->sectionName ?></p>
+        <?php if(!empty($student->stdShift)){ ?>
+        <label>Shift</label>
+        <p><?= $student->stdShift ?></p>
+        <?php } ?>
 
         <label>SSC Roll</label>
         <p><?= $student->sscRoll ?></p>

@@ -3,55 +3,95 @@
 * Template Name: Admin CGPA Genarate
 */
 global $wpdb;
-require_once __DIR__ . '/functions/teacher-access.php';
-
-$teacherAccess = s3s_get_teacher_access_context();
-$isTeacher = $teacherAccess['is_teacher'];
-$teacherRestrictions = $teacherAccess['restrictions'];
-$hasAssignedClass = $teacherAccess['has_assignment'];
-
-// Extract teacher restrictions for use in queries
-$teacherOfClass = '';
-$teacherOfSection = '';
-if ($hasAssignedClass && $teacherRestrictions) {
-	$teacherOfClass = $teacherRestrictions->teacherOfClass;
-	$teacherOfSection = $teacherRestrictions->teacherOfSection;
-}
 
 if (isset($_POST['genarateCgpa'])) {
 	$cgpaYear = $_POST['cgpaYear'];
-	$cgpaCls = $_POST['cgpaClass']; 
+	$cgpaCls = $_POST['cgpaClass'];
+
+    // 1. Get all exams for the selected class and year, including their CGPA percentage weight
+	$exams = $wpdb->get_results("SELECT examid,examName,cgpaPercent FROM ct_studentPoint LEFT JOIN ct_exam ON spExam = examid WHERE spClass = $cgpaCls AND spYear ='$cgpaYear' GROUP BY spExam ORDER By examSirial");
+    $examCounter = sizeof($exams);
+
+    // 2. Mark all student points for this class/year as 'calculated' (spstutas = 1)
 	$users = $wpdb->query("UPDATE `ct_studentPoint` SET spstutas = 1 WHERE spYear = '$cgpaYear' AND spClass = $cgpaCls");
-	$allPoint = $wpdb->get_results("SELECT `spStdID`,cast(sum((`spPoint`/100)*cgpaPercent) as decimal(12,2)) as spoint, sum(spTotalMark) as totalmark, sum(spFaild) as spFaild FROM `ct_studentPoint` LEFT JOIN ct_exam ON ct_exam.examid = ct_studentPoint.spExam WHERE `spClass` = $cgpaCls AND `spYear` = '$cgpaYear' GROUP BY `spStdID` ORDER BY spFaild,spoint DESC");
+
+    /*
+     * 3. Calculate CGPA for each student and sort by merit:
+     *    - For each student, sum up their points for all exams, weighted by each exam's cgpaPercent
+     *    - Calculate total marks and total failed subjects
+     *    - The formula for each student:
+     *        CGPA = SUM((spPoint / 100) * cgpaPercent) over all exams
+     *    - Sort order (in sequence):
+     *        1. Passed students (0 failed subjects) appear first
+     *        2. Then by number of exams attended (descending)
+     *        3. Then by number of failed subjects (ascending)
+     *        4. Then by CGPA (descending)
+     *        5. Finally by total marks (descending)
+     *    - Students with identical scores receive the same position
+     *    - Results are grouped by student ID
+     */
+	$allPoint = $wpdb->get_results("SELECT `spStdID`, COUNT(spStdID) AS exam_counter, cast(sum((`spPoint`/100)*cgpaPercent) as decimal(12,2)) as spoint, sum(spTotalMark) as totalmark, sum(spFaild) as spFaild FROM `ct_studentPoint` LEFT JOIN ct_exam ON ct_exam.examid = ct_studentPoint.spExam WHERE `spClass` = $cgpaCls AND `spYear` = '$cgpaYear' GROUP BY `spStdID` ORDER BY CASE WHEN SUM(spFaild) = 0 THEN 0 ELSE 1 END, exam_counter DESC, spFaild ASC, spoint DESC, totalmark DESC");
+
+    // 4. Prepare bulk insert query for all students' CGPA results
 	$cgpainseart = "INSERT INTO `ct_cgpa` (`cgpaYear`,`cgpaClass`,`cgpaStudent`,`cgpaPoint`,`cgpaTotalMark`,`cgpaFaild`,`cgpaPosition`) VALUES";
-	foreach ($allPoint as $key => $value) {
+	foreach ($allPoint as $key => $value) {	   
 		$stdId = $value->spStdID;
 		$spoint = $value->spoint;
 		$totalm = $value->totalmark;
 		$faild = $value->spFaild;
+		
+		if($spoint == 0){
+			$faild++;
+		}
+
 		$posi = $key+1;
 		if ($key != 0)
 			$cgpainseart .= ",";
 		$cgpainseart .= " ('$cgpaYear',$cgpaCls,$stdId,$spoint,$totalm,$faild,$posi)";
 	}
+    // 5. Insert all students' CGPA results into ct_cgpa table
 	$wpdb->query($cgpainseart);
 
+    /*
+     * 6. For each section in the class, update section-wise position (cgpaSecPosi):
+     *    - Updates cgpaSecPosi in ct_cgpa for each student in the section
+     */
 	$sections = $wpdb->get_results("SELECT infoSection FROM `ct_studentinfo` WHERE `infoClass` = $cgpaCls AND `infoYear` = '$cgpaYear' GROUP BY `infoSection`");
 	foreach ($sections as $section) {
 		$sec = $section->infoSection;
-		$up = "UPDATE 
-			ct_cgpa TBL1 
-			INNER JOIN 
-			(
-		    SELECT cgpaid,
-		      @rowNumber := @rowNumber + 1 AS rowNum
-		    FROM ct_cgpa LEFT JOIN ct_studentinfo ON infoStdid = cgpaStudent, (SELECT @rowNumber := 0) var
-		    WHERE `cgpaClass` = $cgpaCls AND `cgpaYear` = '$cgpaYear' AND infoSection = $sec
-		    ORDER BY cgpaFaild,cgpaPoint DESC
-			) AS TBL2
-			ON TBL1.cgpaid = TBL2.cgpaid
-			SET TBL1.cgpaSecPosi = TBL2.rowNum";
-			$wpdb->query($up);
+		// Get all students in this section, ordered by ranking rules
+		$students = $wpdb->get_results(
+			"SELECT cg.cgpaid, cg.cgpaFaild, cg.cgpaPoint, cg.cgpaTotalMark
+			 FROM ct_cgpa cg
+			 LEFT JOIN ct_studentinfo si ON si.infoStdid = cg.cgpaStudent AND si.infoClass = $cgpaCls AND si.infoYear = '$cgpaYear'
+			 WHERE cg.cgpaClass = $cgpaCls AND cg.cgpaYear = '$cgpaYear' AND si.infoSection = $sec
+			 ORDER BY 
+				CASE WHEN cg.cgpaFaild = 0 THEN 0 ELSE 1 END,
+				cg.cgpaFaild ASC,
+				cg.cgpaPoint DESC,
+				cg.cgpaTotalMark DESC"
+		);
+		   $last = null;
+		   $rank = 1;
+		   $countAtRank = 0;
+		   foreach ($students as $idx => $student) {
+			   $current = $student->cgpaFaild . '-' . $student->cgpaPoint . '-' . $student->cgpaTotalMark;
+			   if ($last !== $current) {
+				   // If not the first, increment rank by number of students at previous rank
+				   if ($idx !== 0) {
+					   $rank += $countAtRank;
+				   }
+				   $countAtRank = 1;
+				   $last = $current;
+			   } else {
+				   $countAtRank++;
+			   }
+			   $wpdb->query($wpdb->prepare(
+				   "UPDATE ct_cgpa SET cgpaSecPosi = %d WHERE cgpaid = %d",
+				   $rank,
+				   $student->cgpaid
+			   ));
+		   }
 	}
 }
 
@@ -103,11 +143,7 @@ if (isset($_POST['cancelCgpa'])) {
 										    </thead>
 										    <tbody>
 										      <?php 
-											   	if ($isTeacher && $hasAssignedClass && $teacherOfClass !== '') {
-											  		$classes = $wpdb->get_results( $wpdb->prepare( "SELECT spClass,className FROM `ct_studentPoint` LEFT JOIN ct_class ON ct_studentPoint.spClass = ct_class.classid WHERE spYear = %d AND spstutas = 0 AND havecgpa = 1 AND spClass IN ($teacherOfClass) GROUP BY spClass ORDER BY spClass ASC", $spYear ) );
-											  	} else {
-												  		$classes = $wpdb->get_results( $wpdb->prepare( "SELECT spClass,className FROM `ct_studentPoint` LEFT JOIN ct_class ON ct_studentPoint.spClass = ct_class.classid WHERE spYear = %d AND spstutas = 0 AND havecgpa = 1 GROUP BY spClass ORDER BY spClass ASC", $spYear ) );
-												  	}
+												  	$classes = $wpdb->get_results( "SELECT spClass,className FROM `ct_studentPoint` LEFT JOIN ct_class ON ct_studentPoint.spClass = ct_class.classid WHERE spYear = $spYear AND spstutas = 0 AND havecgpa = 1 GROUP BY spClass ORDER BY spClass ASC" );
 												  	foreach ($classes as $class) {
 												  		$spClass = $class->spClass;
 												  		?>
@@ -159,11 +195,7 @@ if (isset($_POST['cancelCgpa'])) {
 										    </thead>
 										    <tbody>
 										      <?php 
-											   	if ($isTeacher && $hasAssignedClass && $teacherOfClass !== '') {
-											  		$classes = $wpdb->get_results( $wpdb->prepare( "SELECT spClass,className FROM `ct_studentPoint` LEFT JOIN ct_class ON ct_studentPoint.spClass = ct_class.classid WHERE spYear = %d AND spstutas = 1 AND spClass IN ($teacherOfClass) GROUP BY spClass ORDER BY spClass ASC", $spYear ) );
-											  	} else {
-												  		$classes = $wpdb->get_results( $wpdb->prepare( "SELECT spClass,className FROM `ct_studentPoint` LEFT JOIN ct_class ON ct_studentPoint.spClass = ct_class.classid WHERE spYear = %d AND spstutas = 1 GROUP BY spClass ORDER BY spClass ASC", $spYear ) );
-												  	}
+												  	$classes = $wpdb->get_results( "SELECT spClass,className FROM `ct_studentPoint` LEFT JOIN ct_class ON ct_studentPoint.spClass = ct_class.classid WHERE spYear = $spYear AND spstutas = 1 GROUP BY spClass ORDER BY spClass ASC" );
 												  	foreach ($classes as $class) {
 												  		$spClass = $class->spClass;
 												  		?>

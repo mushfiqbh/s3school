@@ -1,1172 +1,737 @@
 <?php
+
 /*
- * Template Name: Student Application
+ * Template Name: Student Inseart
  */
 
 get_header();
 
 /*=================
-    Handle Submission
+	Add Student
 =================*/
-$message = null;
-$submitted_app_id = null;
-$show_payment_section = false;
+if (isset($_POST['addStudent'])) {
+	// Backward compatibility: accept legacy stdCurntYear as stdAdmitYear
+	if (!isset($_POST['stdAdmitYear']) && isset($_POST['stdCurntYear'])) {
+		$_POST['stdAdmitYear'] = $_POST['stdCurntYear'];
+	}
+	// Map submitted fields to ct_online_application schema
+	$insert = $wpdb->insert(
+		'ct_online_application',
+		array(
+			// Required not-null fields (ensure defaults if missing)
+			'stdName' => isset($_POST['stdName']) ? $_POST['stdName'] : '',
+			'stdNameBangla' => isset($_POST['stdNameBangla']) ? $_POST['stdNameBangla'] : '',
+			'stdGender' => !empty($_POST['stdGender']) ? $_POST['stdGender'] : (function() {
+				$message = 'Gender is required';
+				return '';
+			})(),
+			'stdBldGrp' => isset($_POST['stdBldGrp']) ? $_POST['stdBldGrp'] : '',
+			'facilities' => isset($_POST['facilities']) ? $_POST['facilities'] : '',
+			'stdImg' => isset($_POST['stdImg']) ? $_POST['stdImg'] : '',
+			'stdFather' => isset($_POST['stdFather']) ? $_POST['stdFather'] : '',
+			'stdFatherProf' => isset($_POST['stdFatherProf']) ? $_POST['stdFatherProf'] : '',
+			'stdMother' => isset($_POST['stdMother']) ? $_POST['stdMother'] : '',
+			'motherLate' => 0,
+			'stdMotherProf' => isset($_POST['stdMotherProf']) ? $_POST['stdMotherProf'] : '',
+			'stdParentIncome' => isset($_POST['stdParentIncome']) ? $_POST['stdParentIncome'] : 0,
+			'stdlocalGuardian' => isset($_POST['stdlocalGuardian']) ? $_POST['stdlocalGuardian'] : '',
+			'stdGuardianNID' => isset($_POST['stdGuardianNID']) ? $_POST['stdGuardianNID'] : 0,
+			'stdPhone' => isset($_POST['stdPhone']) ? $_POST['stdPhone'] : '',
+			'stdPermanent' => isset($_POST['stdPermanent']) ? $_POST['stdPermanent'] : '',
+			'stdPresent' => isset($_POST['stdPresent']) ? $_POST['stdPresent'] : '',
+			'stdBrith' => isset($_POST['stdBrith']) ? $_POST['stdBrith'] : '',
+			'stdNationality' => isset($_POST['stdNationality']) ? $_POST['stdNationality'] : '',
+			'stdReligion' => isset($_POST['stdReligion']) ? $_POST['stdReligion'] : '',
+			'stdAdmitClass' => isset($_POST['stdAdmitClass']) ? $_POST['stdAdmitClass'] : 0,
+			'stdAdmitYear' => isset($_POST['stdAdmitYear']) ? $_POST['stdAdmitYear'] : '',
+			// Optional/nullable fields
+			'stdSection' => isset($_POST['stdSection']) ? $_POST['stdSection'] : null,
+			'stdRoll' => isset($_POST['stdRoll']) ? $_POST['stdRoll'] : null,
+			'stdTcNumber' => isset($_POST['stdTcNumber']) ? $_POST['stdTcNumber'] : null,
+			'sscRoll' => isset($_POST['sscRoll']) ? $_POST['sscRoll'] : null,
+			'sscReg' => isset($_POST['sscReg']) ? $_POST['sscReg'] : null,
+			'stdPrevSchool' => isset($_POST['stdPrevSchool']) ? $_POST['stdPrevSchool'] : null,
+			'stdGPA' => isset($_POST['stdGPA']) ? $_POST['stdGPA'] : null,
+			'stdIntellectual' => isset($_POST['stdIntellectual']) ? $_POST['stdIntellectual'] : null,
+			'stdScholarsClass' => isset($_POST['stdScholarsClass']) ? $_POST['stdScholarsClass'] : null,
+			'stdScholarsYear' => isset($_POST['stdScholarsYear']) ? $_POST['stdScholarsYear'] : null,
+			'stdScholarsMemo' => isset($_POST['stdScholarsMemo']) ? $_POST['stdScholarsMemo'] : null,
+			// Financial and note fields (nullable)
+			'paymentPaid' => isset($_POST['paymentPaid']) ? $_POST['paymentPaid'] : null,
+			'paymentDue' => isset($_POST['paymentDue']) ? $_POST['paymentDue'] : null,
+			'stdNote' => isset($_POST['stdNote']) ? $_POST['stdNote'] : null,
+		)
+	);
 
-if (isset($_POST['submitApplication'])) {
-    // Backward compatibility
-    if (!isset($_POST['stdAdmitYear']) && isset($_POST['stdCurntYear'])) {
-        $_POST['stdAdmitYear'] = $_POST['stdCurntYear'];
-    }
+	// Robust error reporting
+	if ($insert === false) {
+		error_log('Online application insert error: ' . $wpdb->last_error);
+		$message = array('status' => 'faild', 'message' => 'Insert failed: ' . esc_html($wpdb->last_error));
+	} else {
+		$application_id = $wpdb->insert_id;
+		$message = array('status' => 'success', 'message' => 'Application submitted successfully');
+		// Redirect to slip view
+		wp_redirect(add_query_arg(array('view_slip' => 'true', 'app_id' => $application_id), get_permalink()));
+		exit;
+	}
+}
 
-    // Check if this is an update
-    $is_update = isset($_POST['applicationId']) && !empty($_POST['applicationId']);
-    $application_id = $is_update ? intval($_POST['applicationId']) : null;
+/*=================
+	Update Student
+=================*/
+if (isset($_POST['updateSubject'])) {
+	$update = $wpdb->update(
+		'ct_subject',
+		array(
+			'stdName' => $_POST['stdName'],
+			'stdRoll' => $_POST['stdRoll'],
+			'stdImg' => $_POST['stdImg'],
+			'stdFather' => $_POST['stdFather'],
+			'stdFatherProf' => $_POST['stdFatherProf'],
+			'stdMother' => $_POST['stdMother'],
+			'stdMotherProf' => $_POST['stdMotherProf'],
+			'stdParentIncome' => $_POST['stdParentIncome'],
+			'stdlocalGuardian' => $_POST['stdlocalGuardian'],
+			'stdPhone' => $_POST['stdPhone'],
+			'stdPermanent' => $_POST['stdPermanent'],
+			'stdPresent' => $_POST['stdPresent'],
+			'stdBrith' => $_POST['stdBrith'],
+			'stdNationality' => $_POST['stdNationality'],
+			'stdReligion' => $_POST['stdReligion'],
+			'stdAdmitClass' => $_POST['stdAdmitClass'],
+			'stdCurntYear' => $_POST['stdCurntYear'],
+			'stdSection' => isset($_POST['stdSection']) ? $_POST['stdSection'] : 0,
+			'stdOptionals' => isset($_POST['stdOptionals']) ? json_encode($_POST['stdOptionals']) : 0,
+			'stdTcNumber' => $_POST['stdTcNumber'],
+			'stdPrevSchool' => $_POST['stdPrevSchool'],
+			'stdGPA' => $_POST['stdGPA'],
+			'stdIntellectual' => $_POST['stdIntellectual'],
+			'stdScholarsClass' => $_POST['stdScholarsClass'],
+			'stdScholarsYear' => $_POST['stdScholarsYear'],
+			'stdScholarsMemo' => $_POST['stdScholarsMemo'],
+			'paymentPaid' => $_POST['paymentPaid'],
+			'paymentDue' => $_POST['paymentDue'],
+			'stdNote' => $_POST['stdNote'],
+			'stdUpdatedAt' => current_time('mysql')
+		),
+		array('studentid' => $_POST['id'])
+	);
 
-    // Sanitize and Prepare Data
-    $data = array(
-        'studentid' => 0, // Default, will be updated when approved
-        'stdName' => sanitize_text_field($_POST['stdName']),
-        'stdNameBangla' => sanitize_text_field($_POST['stdNameBangla'] ?? ''),
-        'stdGender' => sanitize_text_field($_POST['stdGender']),
-        'stdBldGrp' => sanitize_text_field($_POST['stdBldGrp'] ?? ''),
-        'facilities' => sanitize_text_field($_POST['facilities'] ?? ''),
-        'stdImg' => esc_url_raw($_POST['stdImg'] ?? ''),
-        'stdFather' => sanitize_text_field($_POST['stdFather']),
-        'fatherLate' => isset($_POST['fatherLate']) ? 1 : 0,
-        'stdFatherProf' => sanitize_text_field($_POST['stdFatherProf'] ?? ''),
-        'stdMother' => sanitize_text_field($_POST['stdMother']),
-        'motherLate' => isset($_POST['motherLate']) ? 1 : 0,
-        'stdMotherProf' => sanitize_text_field($_POST['stdMotherProf'] ?? ''),
-        'stdParentIncome' => intval($_POST['stdParentIncome'] ?? 0),
-        'stdlocalGuardian' => sanitize_text_field($_POST['stdlocalGuardian'] ?? ''),
-        'stdGuardianNID' => sanitize_text_field($_POST['stdGuardianNID'] ?? ''),
-        'stdPhone' => sanitize_text_field($_POST['stdPhone']),
-        'stdPermanent' => sanitize_textarea_field($_POST['stdPermanent'] ?? ''),
-        'stdPresent' => sanitize_textarea_field($_POST['stdPresent'] ?? ''),
-        'stdBrith' => sanitize_text_field($_POST['stdBrith']),
-        'stdNationality' => sanitize_text_field($_POST['stdNationality'] ?? 'Bangladeshi'),
-        'stdReligion' => sanitize_text_field($_POST['stdReligion']),
-        'stdAdmitClass' => intval($_POST['stdAdmitClass']),
-        'stdAdmitYear' => sanitize_text_field($_POST['stdAdmitYear']),
-        'stdGroup' => isset($_POST['stdGroup']) && !empty($_POST['stdGroup']) ? intval($_POST['stdGroup']) : null,
-        'stdSection' => isset($_POST['stdSection']) && !empty($_POST['stdSection']) ? intval($_POST['stdSection']) : null,
-        'stdRoll' => isset($_POST['stdRoll']) ? sanitize_text_field($_POST['stdRoll']) : null,
-        'stdTcNumber' => isset($_POST['stdTcNumber']) ? sanitize_text_field($_POST['stdTcNumber']) : null,
-        'sscRoll' => isset($_POST['sscRoll']) ? sanitize_text_field($_POST['sscRoll']) : null,
-        'sscReg' => isset($_POST['sscReg']) ? sanitize_text_field($_POST['sscReg']) : null,
-        'stdPrevSchool' => isset($_POST['stdPrevSchool']) ? sanitize_text_field($_POST['stdPrevSchool']) : null,
-        'stdGPA' => isset($_POST['stdGPA']) ? sanitize_text_field($_POST['stdGPA']) : null,
-        'stdIntellectual' => isset($_POST['stdIntellectual']) ? sanitize_text_field($_POST['stdIntellectual']) : null,
-        'stdScholarsClass' => isset($_POST['stdScholarsClass']) ? sanitize_text_field($_POST['stdScholarsClass']) : null,
-        'stdScholarsYear' => isset($_POST['stdScholarsYear']) ? sanitize_text_field($_POST['stdScholarsYear']) : null,
-        'stdScholarsMemo' => isset($_POST['stdScholarsMemo']) ? sanitize_text_field($_POST['stdScholarsMemo']) : null,
-        'stdStatus' => 1,
-        'paymentPaid' => isset($_POST['paymentPaid']) ? sanitize_text_field($_POST['paymentPaid']) : null,
-        'paymentDue' => isset($_POST['paymentDue']) ? sanitize_text_field($_POST['paymentDue']) : null,
-        'stdNote' => isset($_POST['stdNote']) ? sanitize_textarea_field($_POST['stdNote']) : null,
-        'approve_status' => 'Submitted',
-        'payment_status' => 'Pending'
-    );
+	if ($update) {
+		$message = array('status' => 'success', 'message' => 'Successfully updated');
+	} else {
+		$message = array('status' => 'faild', 'message' => 'Something wrong please try again');
+	}
+}
 
-    // For updates, don't change created time or approval status
-    if (!$is_update) {
-        $data['stdCreatedAt'] = current_time('mysql');
-        $data['approve_status'] = 'Submitted';
-    }
+/*=================
+	Delete Subject
+==================*/
+if (isset($_POST['deleteStudent'])) {
+	$delete = $wpdb->update(
+		'ct_student',
+		array(
+			'stdStatus' => 0
+		),
+		array('studentid' => $_POST['id'])
+	);
 
-    if ($is_update) {
-        // Update existing application
-        $result = $wpdb->update('ct_online_application', $data, array('applicationid' => $application_id));
-        if ($result === false) {
-            error_log('Online application update error: ' . $wpdb->last_error);
-            $message = array('status' => 'error', 'text' => 'Update failed. Please try again or contact the office.');
-        } else {
-            $submitted_app_id = $application_id;
-            $message = array('status' => 'success', 'text' => 'Application updated successfully!');
-            $show_payment_section = false; // Don't show payment for updates
-        }
-    } else {
-        // Insert new application
-        $result = $wpdb->insert('ct_online_application', $data);
-        if ($result === false) {
-            print_r($wpdb->last_error);
-            error_log('Online application insert error: ' . $wpdb->last_error);
-            $message = array('status' => 'error', 'text' => 'Submission failed. Please try again or contact the office.');
-        } else {
-            $submitted_app_id = $wpdb->insert_id;
-            $message = array('status' => 'success', 'text' => 'Application submitted successfully!');
-            $show_payment_section = true;
-        }
-    }
-        
-        // Get admission fee for the class
-        $fee_data = $wpdb->get_row($wpdb->prepare(
-            "SELECT amount FROM ct_admission_fee_promoted WHERE class = %d AND is_active = 1",
-            $data['stdAdmitClass']
-        ));
-        
-        $admission_fee = $fee_data ? $fee_data->amount : 0;
-        
-        // Pass data to JS for immediate slip printing
-        $submitted_data = $data;
-        $submitted_data['applicationid'] = $submitted_app_id;
-        $submitted_data['admission_fee'] = $admission_fee;
-    }
+	if ($delete) {
+		$message = array('status' => 'success', 'message' => 'Successfully Deleted');
+	} else {
+		$message = array('status' => 'faild', 'message' => 'Something wrong please try again');
+	}
+}
+
+/*===============
+	Edit Subject
+================*/
+$editid = 0;
+if (isset($_POST['editStudent'])) {
+	$editid = $_POST['id'];
+	$edit = $wpdb->get_results("SELECT * FROM ct_student WHERE studentid = $editid");
+	$edit = $edit[0];
+}
+
+/*===============
+	View Application Slip
+================*/
+
 ?>
 
-<style>
-    :root {
-        --primary-color: #2563eb;
-        --secondary-color: #1e40af;
-        --success-color: #10b981;
-        --warning-color: #f59e0b;
-        --bg-color: #f8fafc;
-        --card-bg: #ffffff;
-        --text-main: #1e293b;
-        --text-muted: #64748b;
-        --border-color: #e2e8f0;
-    }
-
-    body {
-        background-color: var(--bg-color);
-        color: var(--text-main);
-        font-family: 'Inter', sans-serif;
-    }
-
-    .app-container {
-        max-width: 1000px;
-        margin: 40px auto;
-        padding: 0 20px;
-    }
-
-    .app-card {
-        background: var(--card-bg);
-        border-radius: 12px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        padding: 40px;
-        margin-bottom: 30px;
-    }
-
-    .page-header {
-        text-align: center;
-        margin-bottom: 50px;
-    }
-
-    .page-header h1 {
-        color: var(--primary-color);
-        font-weight: 700;
-        font-size: 32px;
-        margin-bottom: 10px;
-    }
-
-    .page-header p {
-        color: var(--text-muted);
-        font-size: 16px;
-    }
-
-    .section-header {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-        margin-bottom: 25px;
-        padding-bottom: 15px;
-        border-bottom: 2px solid var(--border-color);
-    }
-
-    .section-number {
-        background: var(--primary-color);
-        color: white;
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
-        font-size: 18px;
-    }
-
-    .section-title {
-        font-size: 22px;
-        font-weight: 600;
-        color: var(--text-main);
-    }
-
-    /* Search Section */
-    .search-box {
-        display: flex;
-        gap: 15px;
-        margin-bottom: 20px;
-    }
-
-    .search-input {
-        flex: 1;
-        padding: 12px 16px;
-        border: 2px solid var(--border-color);
-        border-radius: 8px;
-        font-size: 16px;
-        transition: border-color 0.2s;
-    }
-
-    .search-input:focus {
-        border-color: var(--primary-color);
-        outline: none;
-    }
-
-    .btn {
-        padding: 12px 24px;
-        border-radius: 8px;
-        font-weight: 600;
-        font-size: 15px;
-        cursor: pointer;
-        transition: all 0.2s;
-        border: none;
-        text-decoration: none;
-        display: inline-block;
-    }
-
-    .btn-primary {
-        background: var(--primary-color);
-        color: white;
-    }
-
-    .btn-primary:hover {
-        background: var(--secondary-color);
-    }
-
-    .btn-success {
-        background: var(--success-color);
-        color: white;
-    }
-
-    .btn-outline {
-        background: transparent;
-        border: 2px solid var(--primary-color);
-        color: var(--primary-color);
-    }
-
-    /* Class Cards */
-    .class-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 20px;
-    }
-
-    .class-card {
-        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-        color: white;
-        padding: 30px 20px;
-        border-radius: 12px;
-        text-align: center;
-        cursor: pointer;
-        transition: transform 0.2s, box-shadow 0.2s;
-    }
-
-    .class-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px rgba(37, 99, 235, 0.3);
-    }
-
-    .class-card.selected {
-        background: linear-gradient(135deg, var(--success-color), #059669);
-    }
-
-    .class-name {
-        font-size: 20px;
-        font-weight: 700;
-        margin-bottom: 8px;
-    }
-
-    .class-fee {
-        font-size: 14px;
-        opacity: 0.9;
-    }
-
-    /* Form Styles */
-    .form-section {
-        margin-bottom: 35px;
-        display: none;
-    }
-
-    .form-section.active {
-        display: block;
-    }
-
-    .section-subtitle {
-        font-size: 16px;
-        font-weight: 600;
-        color: var(--secondary-color);
-        margin-bottom: 20px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid var(--border-color);
-    }
-
-    .form-group {
-        margin-bottom: 20px;
-    }
-
-    .form-label {
-        display: block;
-        font-weight: 500;
-        margin-bottom: 8px;
-        color: var(--text-main);
-    }
-
-    .form-control {
-        width: 100%;
-        padding: 10px 14px;
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        font-size: 15px;
-        transition: border-color 0.2s, box-shadow 0.2s;
-    }
-
-    .form-control:focus {
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-        outline: none;
-    }
-
-    .alert {
-        padding: 15px 20px;
-        border-radius: 8px;
-        margin-bottom: 20px;
-        font-weight: 500;
-    }
-
-    .alert-success {
-        background-color: #dcfce7;
-        color: #166534;
-        border: 1px solid #bbf7d0;
-    }
-
-    .alert-error {
-        background-color: #fee2e2;
-        color: #991b1b;
-        border: 1px solid #fecaca;
-    }
-
-    .alert-info {
-        background-color: #dbeafe;
-        color: #1e40af;
-        border: 1px solid #bfdbfe;
-    }
-
-    /* Payment Section */
-    .payment-card {
-        background: linear-gradient(135deg, #f0fdf4, #dcfce7);
-        border: 2px solid var(--success-color);
-        border-radius: 12px;
-        padding: 30px;
-        text-align: center;
-    }
-
-    .payment-amount {
-        font-size: 48px;
-        font-weight: 700;
-        color: var(--success-color);
-        margin: 20px 0;
-    }
-
-    .payment-details {
-        background: white;
-        border-radius: 8px;
-        padding: 20px;
-        margin: 20px 0;
-        text-align: left;
-    }
-
-    .detail-row {
-        display: flex;
-        justify-content: space-between;
-        padding: 10px 0;
-        border-bottom: 1px solid var(--border-color);
-    }
-
-    .detail-row:last-child {
-        border-bottom: none;
-    }
-
-    .hidden {
-        display: none;
-    }
-
-    .loading {
-        opacity: 0.6;
-        pointer-events: none;
-    }
-
-    /* Print Styles */
-    @media print {
-        body * {
-            visibility: hidden;
-        }
-        #printable-slip, #printable-slip * {
-            visibility: visible;
-        }
-        #printable-slip {
-            position: absolute;
-            left: 0;
-            top: 0;
-        }
-    }
-</style>
-
-<div class="app-container">
-    
-    <div class="page-header">
-        <h1>Student Admission Portal</h1>
-        <p>Complete your application in simple steps</p>
-    </div>
-
-    <?php if ($message && $message['status'] == 'error'): ?>
-        <div class="alert alert-error"><?= $message['text'] ?></div>
-    <?php endif; ?>
-
-    <!-- Section 1: Search Existing Applications -->
-    <div class="app-card" id="search-section">
-        <div class="section-header">
-            <div class="section-number">1</div>
-            <div class="section-title">Search Your Application</div>
-        </div>
-        
-        <p style="color: var(--text-muted); margin-bottom: 20px;">
-            Already applied? Enter your phone number and date of birth to view, print, or update your application.
-        </p>
-
-        <div class="search-box">
-            <input 
-                type="tel" 
-                id="phoneSearch" 
-                class="search-input" 
-                placeholder="Enter your phone number (e.g., 01712345678)"
-                pattern="[0-9]{11}"
-                style="flex: 1;"
-            >
-            <input 
-                type="date" 
-                id="dobSearch" 
-                class="search-input" 
-                placeholder="Date of Birth"
-                style="flex: 1;"
-            >
-            <button class="btn btn-primary" onclick="searchApplication()">
-                <span class="dashicons dashicons-search"></span> Search
-            </button>
-        </div>
-
-        <div id="searchResults" class="hidden"></div>
-    </div>
-
-    <!-- Section 2: Select Class -->
-    <div class="app-card" id="class-section" <?= $show_payment_section ? 'style="display:none;"' : '' ?>>
-        <div class="section-header">
-            <div class="section-number">2</div>
-            <div class="section-title">Select Admission Class</div>
-        </div>
-
-        <p style="color: var(--text-muted); margin-bottom: 25px;">
-            Choose the class you want to apply for admission.
-        </p>
-
-        <div class="class-grid">
-            <?php
-            $classes = $wpdb->get_results("
-                SELECT c.classid, c.className, COALESCE(f.amount, 0) as fee
-                FROM ct_class c
-                INNER JOIN ct_admission_fee_promoted f ON c.classid = f.class AND f.is_active = 1
-                ORDER BY c.classid ASC
-            ");
-            
-            foreach ($classes as $class) {
-                echo '<div class="class-card" onclick="selectClass(' . $class->classid . ', \'' . esc_js($class->className) . '\', ' . $class->fee . ')">';
-                echo '<div class="class-name">' . esc_html($class->className) . '</div>';
-                if ($class->fee > 0) {
-                    echo '<div class="class-fee">Fee: ৳' . number_format($class->fee, 2) . '</div>';
-                }
-                echo '</div>';
-            }
-            ?>
-        </div>
-    </div>
-
-    <!-- Section 3: Application Form -->
-    <div class="app-card form-section" id="form-section" <?= $show_payment_section ? 'style="display:none;"' : '' ?>>
-        <div class="section-header">
-            <div class="section-number">3</div>
-            <div class="section-title">Complete Application Form</div>
-        </div>
-
-        <div class="alert alert-info" id="selectedClassInfo" style="display:none;">
-            <strong>Selected Class:</strong> <span id="selectedClassName"></span> | 
-            <strong>Admission Fee:</strong> ৳<span id="selectedClassFee"></span>
-        </div>
-
-        <form method="POST" id="applicationForm">
-            <input type="hidden" name="stdAdmitClass" id="stdAdmitClass" required>
-            <input type="hidden" name="applicationId" id="applicationId">
-            
-            <!-- Student Information -->
-            <div class="section-subtitle">Student Information</div>
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">Student Name (English) *</label>
-                        <input class="form-control" type="text" name="stdName" required>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">Student Name (Bangla)</label>
-                        <input class="form-control" type="text" name="stdNameBangla" placeholder="বাংলায় নাম">
-                    </div>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label class="form-label">Gender *</label>
-                        <select class="form-control" name="stdGender" required>
-                            <option value="1">Boy</option>
-                            <option value="0">Girl</option>
-                            <option value="2">Other</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label class="form-label">Blood Group</label>
-                        <select class="form-control" name="stdBldGrp">
-                            <option value="">Select...</option>
-                            <option value="A+">A+</option>
-                            <option value="A-">A-</option>
-                            <option value="B+">B+</option>
-                            <option value="B-">B-</option>
-                            <option value="AB+">AB+</option>
-                            <option value="AB-">AB-</option>
-                            <option value="O+">O+</option>
-                            <option value="O-">O-</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="col-md-4">
-                    <div class="form-group">
-                        <label class="form-label">Date of Birth *</label>
-                        <input class="form-control" type="date" name="stdBrith" required>
-                    </div>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">Religion *</label>
-                        <select class="form-control" name="stdReligion" required>
-                            <option value="Muslim">Muslim</option>
-                            <option value="Hinduism">Hinduism</option>
-                            <option value="Christian">Christian</option>
-                            <option value="Buddhist">Buddhist</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">Nationality</label>
-                        <input class="form-control" type="text" name="stdNationality" value="Bangladeshi">
-                    </div>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Student Photo (URL)</label>
-                <input class="form-control" type="text" name="stdImg" placeholder="Image URL (optional)">
-            </div>
-
-            <!-- Academic Information -->
-            <div class="section-subtitle">Academic Information</div>
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">Admission Year *</label>
-                        <select class="form-control" name="stdAdmitYear" required>
-                            <?php
-                            $currentYear = date('Y');
-                            echo "<option value='{$currentYear}' selected>{$currentYear}</option>";
-                            echo "<option value='" . ($currentYear + 1) . "'>" . ($currentYear + 1) . "</option>";
-                            ?>
-                        </select>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <!-- Group selection (shown for classes with groups) -->
-                    <div class="form-group" id="groupSelectWrapper" style="display:none;">
-                        <label class="form-label">Group *</label>
-                        <select id="groupSelect" class="form-control" name="stdGroup">
-                            <option value="">Select Group</option>
-                            <?php
-                            $groups = $wpdb->get_results("SELECT * FROM ct_group ORDER BY groupName");
-                            foreach ($groups as $group) {
-                                echo "<option value='{$group->groupId}'>{$group->groupName}</option>";
-                            }
-                            ?>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Guardian Information -->
-            <div class="section-subtitle">Guardian Information</div>
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">Father's Name *</label>
-                        <input class="form-control" type="text" name="stdFather" required>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">Father's Profession</label>
-                        <input class="form-control" type="text" name="stdFatherProf">
-                    </div>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">Mother's Name *</label>
-                        <input class="form-control" type="text" name="stdMother" required>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">Mother's Profession</label>
-                        <input class="form-control" type="text" name="stdMotherProf">
-                    </div>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">Contact Phone *</label>
-                        <input class="form-control" type="tel" name="stdPhone" required placeholder="017XXXXXXXX" pattern="[0-9]{11}">
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">Guardian NID</label>
-                        <input class="form-control" type="text" name="stdGuardianNID">
-                    </div>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">Local Guardian Name</label>
-                        <input class="form-control" type="text" name="stdlocalGuardian">
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">Parent Income (Monthly)</label>
-                        <input class="form-control" type="number" name="stdParentIncome" placeholder="Amount in Taka">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Address -->
-            <div class="section-subtitle">Address</div>
-            <div class="row">
-                <div  class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">Present Address</label>
-                        <textarea class="form-control" name="stdPresent" rows="3"></textarea>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">Permanent Address</label>
-                        <textarea class="form-control" name="stdPermanent" rows="3"></textarea>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Previous Academic Info (Optional) -->
-            <div class="section-subtitle">Previous Academic Info (Optional)</div>
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">Previous School</label>
-                        <input class="form-control" type="text" name="stdPrevSchool">
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="form-group">
-                        <label class="form-label">Previous GPA</label>
-                        <input class="form-control" type="text" name="stdGPA">
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="form-group">
-                        <label class="form-label">TC Number</label>
-                        <input class="form-control" type="text" name="stdTcNumber">
-                    </div>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">SSC Roll</label>
-                        <input class="form-control" type="text" name="sscRoll">
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <label class="form-label">SSC Registration</label>
-                        <input class="form-control" type="text" name="sscReg">
-                    </div>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label class="form-label">Additional Notes</label>
-                <textarea class="form-control" name="stdNote" rows="3" placeholder="Any special requirements or notes..."></textarea>
-            </div>
-
-            <div class="form-group" style="text-align: right; margin-top: 30px;">
-                <button type="submit" name="submitApplication" class="btn btn-primary" id="submitBtn">
-                    <span id="submitBtnText">Submit Application</span> →
-                </button>
-            </div>
-        </form>
-    </div>
-
-    <!-- Section 4: Payment Section -->
-    <?php if ($show_payment_section): ?>
-    <div class="app-card" id="payment-section">
-        <div class="section-header">
-            <div class="section-number">4</div>
-            <div class="section-title">Payment Information</div>
-        </div>
-
-        <div class="alert alert-success">
-            <strong>✓ Application Submitted Successfully!</strong><br>
-            Your Application ID is: <strong>APP-<?= str_pad($submitted_app_id, 6, '0', STR_PAD_LEFT) ?></strong>
-        </div>
-
-        <div class="payment-card">
-            <h3 style="color: var(--success-color); margin-top: 0;">Admission Fee</h3>
-            <div class="payment-amount">৳<?= number_format($admission_fee, 2) ?></div>
-
-            <div class="payment-details">
-                <div class="detail-row">
-                    <span><strong>Application ID:</strong></span>
-                    <span>APP-<?= str_pad($submitted_app_id, 6, '0', STR_PAD_LEFT) ?></span>
-                </div>
-                <div class="detail-row">
-                    <span><strong>Student Name:</strong></span>
-                    <span><?= esc_html($data['stdName']) ?></span>
-                </div>
-                <div class="detail-row">
-                    <span><strong>Class:</strong></span>
-                    <span><?php 
-                        $class = $wpdb->get_var($wpdb->prepare("SELECT className FROM ct_class WHERE classid = %d", $data['stdAdmitClass']));
-                        echo esc_html($class);
-                    ?></span>
-                </div>
-                <div class="detail-row">
-                    <span><strong>Payment Status:</strong></span>
-                    <span style="color: var(--warning-color); font-weight: 600;">Pending</span>
-                </div>
-            </div>
-
-            <div style="margin-top: 30px;">
-                <p style="color: var(--text-muted); margin-bottom: 15px;">
-                    Please complete the payment and submit proof to the school office.
-                </p>
-                <button onclick="window.print()" class="btn btn-primary" style="margin-right: 10px;">
-                    <span class="dashicons dashicons-printer"></span> Print Application
-                </button>
-                <a href="<?= get_permalink() ?>" class="btn btn-outline">
-                    Submit Another Application
-                </a>
-            </div>
-        </div>
-    </div>
-
-    <!-- Hidden Printable Slip -->
-    <div id="printable-slip" style="display: none;"></div>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const fullAppData = <?= json_encode(array_merge($data, ['applicationid' => $submitted_app_id])) ?>;
-            if(typeof renderSlip === 'function') {
-                renderSlip(fullAppData);
-            }
-        });
-    </script>
-    <?php endif; ?>
+<p id="theSiteURL" class="hidden"><?= get_template_directory_uri() ?></p>
+
+<div class="container maxAdminpages">
+
+	<!-- Slips List -->
+	<div id="slipList"></div>
+
+	<?php
+	if (isset($message)) {
+		?>
+				<div class="messageDiv">
+					<div class="alert <?= ($message['status'] == 'success') ? 'alert-success' : 'alert-danger'; ?>">
+						<?= $message['message'] ?>
+					</div>
+				</div>
+			<?php
+	}
+	?>
+
+	<h2>
+		Student
+		<?php if (!isset($_GET['option'])) { ?>
+			<a class="pull-right btn btn-success" href="<?= home_url() ?>/add-student?page=student&option=add">
+				<span class="dashicons dashicons-plus"></span> Add Student
+			</a>
+		<?php } else { ?>
+			<a class="pull-right btn btn-success" href="<?= home_url() ?>/add-student?page=student">
+				<span class="dashicons dashicons-groups"></span> Students
+			</a>
+		<?php } ?>
+	</h2><br>
+
+
+
+	<!-- 
+		Add Window
+	 -->
+		<form accept="" method="POST" class="applyForm">
+			<div class="panel panel-info">
+			  <div class="panel-heading">Administration </div>
+			  <div class="panel-body">
+					<div class="row">
+						<div class="col-md-6">
+							<div class="form-group">
+								<label>Payment Paid</label>
+								<input min="0" step="5" class="form-control" type="text" name="paymentPaid" placeholder="Payment Paid">
+							</div>
+
+							<div class="form-group">
+								<label>Payment Due</label>
+								<input min="0" step="5" class="form-control" type="text" name="paymentDue" placeholder="Payment Due">
+							</div>
+						</div>
+						<div class="col-md-6">
+							<div class="form-group">
+								<label>Note</label>
+								<textarea class="form-control" rows="4" name="stdNote" placeholder="Student Note"></textarea>
+							</div>
+						</div>
+					</div>
+			  </div>
+			</div>
+
+			<div class="panel panel-info">
+			  <div class="panel-heading">Personal and educational information</div>
+			  <div class="panel-body">
+					<div class="row">
+						<div class="col-md-6">
+
+							<div class="form-group">
+								<label>Student Name</label>
+								<input class="form-control" type="text" name="stdName" placeholder="Student Name" required>
+							</div>
+
+							<div class="form-group">
+								<label>Student Name (Bangla)</label>
+								<input class="form-control" type="text" name="stdNameBangla" placeholder="ছাত্রের নাম (বাংলা)">
+							</div>
+
+							<div class="form-group">
+								<label>Gender</label>
+								
+								<?php
+								// Get gender from POST or application data
+								$gender = $_POST['stdGender'] ?? ($application->stdGender ?? '1'); // Default to Boy (1) if not set
+
+								// Convert text values to numbers if needed
+								if (!is_numeric($gender)) {
+									$genderMap = ['Girl' => '0', 'Boy' => '1', 'Other' => '2'];
+									$gender = $genderMap[$gender] ?? '1'; // Default to Boy (1) if not found
+								}
+								?>
+								<select class="form-control" name="stdGender" required>
+									<option value="1" <?= $gender == '1' ? 'selected' : '' ?>>Boy</option>
+									<option value="0" <?= $gender == '0' ? 'selected' : '' ?>>Girl</option>
+									<option value="2" <?= $gender == '2' ? 'selected' : '' ?>>Other</option>
+								</select>
+							</div>
+							
+							<div class="form-group">
+								<label>Blood Group</label>
+								<select class="form-control" name="stdBldGrp" required>
+									<option disabled selected>Select Blood Group</option>
+									<option value="A+">A+</option>
+									<option value="A-">A-</option>
+									<option value="B+">B+</option>
+									<option value="B-">B-</option>
+									<option value="AB+">AB+</option>
+									<option value="AB-">AB-</option>
+									<option value="O+">O+</option>
+									<option value="O-">O-</option>
+								</select>
+							</div>
+
+							<div class="form-group">
+								<label>Student Photo</label><br>
+								<div class="mediaUploadHolder">
+					    		<button type="button" class="mediaUploader">Upload</button>
+					    		<span>
+					    			<?php echo (isset($edit)) ? "<img height='40' src='" . $edit->teacherImg . "'>" : ''; ?>
+					    		</span>
+
+									<input class="hidden teacherImg" type="text" name="stdImg" value="<?= isset($edit) ? $edit->stdImg : ''; ?>">
+				    		</div>
+							</div>
+
+							<div class="form-group">
+								<label>Date Of Birth</label>
+								<input class="form-control" type="date" name="stdBrith" placeholder="Date Of Birth" required>
+							</div>
+
+							<div class="form-group">
+								<label>Father Name</label>
+								<input class="form-control" type="text" name="stdFather" placeholder="Father Name" required>
+							</div>
+
+							<div class="form-group">
+								<label>Father Profession</label>
+								<input class="form-control" type="text" name="stdFatherProf" placeholder="Father Profession">
+							</div>
+
+							<div class="form-group">
+								<label>Mother Name</label>
+								<input class="form-control" type="text" name="stdMother" placeholder="Mother Name" required>
+							</div>
+
+							<div class="form-group">
+								<label>Mother Profession</label>
+								<input class="form-control" type="text" name="stdMotherProf" placeholder="Mother Profession">
+							</div>
+
+							<div class="form-group">
+								<label>Parental Annual Income</label>
+								<input class="form-control" type="text" name="stdParentIncome" placeholder="Parental annual income">
+							</div>
+
+							<div class="form-group">
+								<label>Local Guardian Name</label>
+								<input class="form-control" type="text" name="stdlocalGuardian" placeholder="Local Guardian Name">
+							</div>
+
+							<div class="form-group">
+								<label>Guardian NID</label>
+								<input class="form-control" type="text" name="stdGuardianNID" placeholder="Guardian NID Number">
+							</div>
+
+							<div class="form-group">
+								<label>Phone Number</label>
+								<input class="form-control" type="text" name="stdPhone" placeholder="Phone Number">
+							</div>
+
+							<div class="form-group">
+								<label>Permanent Address</label>
+								<input class="form-control" type="text" name="stdPermanent" placeholder="Permanent Address">
+							</div>
+
+
+						</div>
+
+						<div class="col-md-6">
+
+							<div class="form-group">
+								<label>Present Address</label>
+								<input class="form-control" type="text" name="stdPresent" placeholder="Present Address">
+							</div>
+
+							<div class="form-group">
+								<label>Nationality</label>
+								<input class="form-control" type="text" name="stdNationality" placeholder="Nationality">
+							</div>
+
+							<div class="form-group">
+								<label>Facilities</label>
+								<select class="form-control" name="facilities">
+									<option value="">None</option>
+									<option value="Disabled">Disabled</option>
+									<option value="FreedomFighterQuota">Freedom Fighter Quota</option>
+									<option value="Other">Other</option>
+								</select>
+							</div>
+
+							<div class="form-group">
+								<label>Religion</label>
+								<select class="form-control" name="stdReligion">
+									<option disabled selected>Select Religion</option>
+									<option value="Muslim">Muslim</option>
+									<option value="Hinduism">Hinduism</option>
+									<option value="Buddist">Buddist</option>
+									<option value="Christian">Christian</option>
+									<option value="other">Other</option>
+								</select>
+							</div>
+
+							<div class="row">
+								<div class="col-md-6">
+									<div class="form-group">
+										<label>Class*</label>
+										<select id="admitClass" class="form-control" name="stdAdmitClass" required>
+											<?php
+											$classes = $wpdb->get_results("SELECT classid,className FROM ct_class ORDER BY className ASC");
+											echo "<option disabled selected>Select a Class..</option>";
+											
+											foreach ($classes as $class) {
+												?>
+												<option value="<?= $class->classid ?>">
+													<?= $class->className ?>
+												</option>
+												<?php
+											}
+											?>
+                                        </select>
+                                    </div>
+								</div>
+
+								<div class="col-md-6">
+									<div class="form-group">
+										<label>Admission Year*</label>
+										<select id="admitYear" class="form-control" name="stdAdmitYear" required>
+											<option disabled selected>Select Year</option>
+												<?php
+												for ($i = date('Y'); $i >= 2000; $i--) {
+													?>
+													<option value="<?= $i; ?>"><?= $i; ?></option>
+													<?php
+												}
+												?>
+										</select>
+									</div>
+								</div>
+							</div>
+
+							<div class="row">
+								<div class="col-md-4">
+									<div class="form-group">
+										<label>Section (Optional)</label>
+										<select id="sectionSelect" class="form-control sectionSelect" name="stdSection" disabled>
+											<option disabled selected>Select a Class First</option>
+										</select>
+									</div>
+								</div>
+
+								<div class="col-md-4">
+									<div class="form-group">
+										<label>Group (Optional)</label>
+										<select class="form-control groupSelect" name="stdGroup">
+											<option value="">Select Group</option>
+											<?php
+												$groups = $wpdb->get_results("SELECT * FROM ct_group");
+												foreach ($groups as $group) {
+													?>
+													<option value='<?= $group->groupId ?>'>
+														<?= $group->groupName ?>
+													</option>
+													<?php
+												}
+											?>
+										</select>
+									</div>
+								</div>
+
+								<div class="col-md-4">
+									<div class="form-group">
+										<label>Roll (Optional)</label>
+										<input class="form-control" type="text" name="stdRoll" placeholder="Roll">
+									</div>
+								</div>
+							</div>
+
+							<!-- If Optional (Value will come by Ajax) -->
+							<div class="form-group optionalSubDiv">
+								
+							</div>
+							
+
+							<div class="form-group">
+								<label>Previous School Name</label>
+								<input class="form-control" type="text" name="stdPrevSchool" placeholder="Previous School Name">
+							</div>
+							<div class="form-group">
+								<label>TC Number</label>
+								<input class="form-control" type="text" name="stdTcNumber" placeholder="TC Number">
+							</div>
+							<hr>
+							<h4><strong>Past Annual / Public Examination Details</strong></h4>
+							<div class="row">
+								<div class="col-md-6">
+									<div class="form-group">
+										<label>Number / GPA</label>
+										<input class="form-control" type="text" name="stdGPA">
+									</div>
+								</div>
+								<div class="col-md-6">
+									<div class="form-group">
+										<label>Intellectual Position</label>
+										<input class="form-control" type="text" name="stdIntellectual">
+									</div>
+								</div>
+							</div>
+							<hr>
+							<h4><strong>If you get government scholarship</strong></h4>
+							<div class="row">
+								<div class="col-md-4">
+									<div class="form-group">
+										<label>In which class</label>
+										<input class="form-control" type="text" name="stdScholarsClass">
+									</div>
+								</div>
+								<div class="col-md-4">
+									<div class="form-group">
+										<label>Year</label>
+										<input class="form-control" type="text" name="stdScholarsYear">
+									</div>
+								</div>
+								<div class="col-md-4">
+									<div class="form-group">
+										<label><small>Memorandum No</small></label>
+										<input class="form-control" type="text" name="stdScholarsMemo">
+									</div>
+								</div>
+
+							</div>
+
+						</div>
+					</div>
+
+					<div class="form-group">
+						<input class="btn btn-secondary pull-right" type="submit" name="addStudent" value="Add">
+					</div>
+
+			  </div>
+			</div>
+
+		</form>
+	
 
 </div>
 
+
+<!-- Delete Modal-->
+<div id="deleteModal" class="modal fade" role="dialog">
+  <div class="modal-dialog modal-sm">
+
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <h4 class="modal-title">Delete Data</h4>
+      </div>
+      <div class="modal-body">
+        <p class="text-danger">You can't recover the data after delete.</p>
+      </div>
+      <div class="modal-footer">
+	      <form action="" method="POST">
+	      	<input type="hidden" name="id" class="id">
+        	<button type="button" class="btn btn-default pull-left" data-dismiss="modal">Close</button>
+        	<button type="submit" class="btn btn-danger" name="deleteTeacher">Delete</button>
+	      </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 <script type="text/javascript">
-(function($) {
-    let selectedClassId = null;
-    let selectedClassName = '';
-    let selectedClassFee = 0;
+  (function($) {
+    $('#admitClass').change(function() {
+      var $siteUrl = '<?= get_template_directory_uri() ?>';
 
-    // Select Class Function
-    window.selectClass = function(classId, className, fee) {
-        selectedClassId = classId;
-        selectedClassName = className;
-        selectedClassFee = fee;
+      $.ajax({
+        url: $siteUrl+"/inc/ajaxAction.php",
+        method: "POST",
+        data: { class : $(this).val(), type : 'getSection' },
+        dataType: "html"
+      }).done(function( msg ) {
+        $( "#sectionSelect" ).html( msg );
+        $( "#sectionSelect" ).prop('disabled', false);
+      });
+    });
 
-        // Reset to submit mode
-        $('#applicationId').val('');
-        $('#submitBtnText').text('Submit Application');
+		// Slip LocalStorage Management
+		function getSlips() {
+			let slips = localStorage.getItem('studentSlips');
+			return slips ? JSON.parse(slips) : [];
+		}
 
-        // Update UI
-        $('.class-card').removeClass('selected');
-        event.currentTarget.classList.add('selected');
+		function saveSlip(slip) {
+			let slips = getSlips();
+			slips.push(slip);
+			localStorage.setItem('studentSlips', JSON.stringify(slips));
+		}
 
-        // Show form section
-        $('#stdAdmitClass').val(classId);
-        $('#selectedClassName').text(className);
-        $('#selectedClassFee').text(fee.toFixed(2));
-        $('#selectedClassInfo').show();
-        $('#form-section').addClass('active').show();
+		function deleteSlip(idx) {
+			let slips = getSlips();
+			slips.splice(idx, 1);
+			localStorage.setItem('studentSlips', JSON.stringify(slips));
+			renderSlips();
+		}
 
-        // Scroll to form
-        $('html, body').animate({
-            scrollTop: $('#form-section').offset().top - 20
-        }, 500);
+			function printSlip(idx) {
+				let slips = getSlips();
+				let slip = slips[idx];
+				let win = window.open('', '', 'width=900,height=1000');
+				win.document.write('<html><head><title>Print Application Slip</title>');
+				win.document.write('<link href="https://fonts.googleapis.com/css?family=Quicksand:400,600,700" rel="stylesheet">');
+				win.document.write('<style>body{font-family:Quicksand,Arial,sans-serif;background:#f5f5f5;padding:20px;} .slip-main{max-width:900px;margin:0 auto;background:#fff;border:2px solid #2563eb;box-shadow:0 0 12px rgba(37,99,235,0.08);padding:0;} .slip-header{text-align:center;border-bottom:2px solid #2563eb;padding:24px 0 16px 0;} .slip-logo{max-width:80px;max-height:80px;margin-bottom:10px;} .slip-title{font-size:22px;font-weight:700;color:#2563eb;margin-top:10px;letter-spacing:1px;} .slip-inst-name{font-size:26px;font-weight:700;color:#1e293b;margin-bottom:6px;text-transform:uppercase;} .slip-inst-address{font-size:14px;color:#64748b;margin-bottom:5px;} .slip-ref{font-size:15px;color:#78350f;background:#fef3c7;border-left:4px solid #f59e0b;padding:8px 18px;margin:18px 0;border-radius:4px;display:inline-block;} .slip-part-label{background:#2563eb;color:#fff;padding:6px 18px;font-weight:600;font-size:14px;border-radius:4px;margin-bottom:18px;display:inline-block;letter-spacing:1px;} .slip-table{width:100%;border-collapse:collapse;margin-bottom:18px;} .slip-table th,.slip-table td{border:1px solid #c5d5e4;padding:8px 12px;font-size:15px;} .slip-table th{background:#f1f5f9;font-weight:700;color:#2563eb;} .slip-table td{color:#1e293b;} .slip-photo{float:right;width:110px;height:130px;border:2px solid #2563eb;border-radius:8px;background:#f1f5f9;margin-left:18px;margin-bottom:10px;overflow:hidden;} .slip-photo img{width:100%;height:100%;object-fit:cover;} .signature-area{display:flex;justify-content:space-between;margin-top:80px;} .signature-box{text-align:center;flex:0 0 200px;} .signature-line{border-top:2px solid #1e293b;margin-bottom:8px;padding-top:60px;} .signature-label{font-size:13px;font-weight:600;color:#475569;} .page-break{page-break-after:always;} @media print{body{background:#fff;padding:0;} .slip-main{box-shadow:none !important;border:2px solid #2563eb;} .print-btn{display:none !important;}} </style>');
+				win.document.write('</head><body>');
+				win.document.write('<div class="slip-main">');
+				// Applicant's Copy
+				win.document.write('<div style="padding:32px;">');
+				win.document.write('<div class="slip-header">');
+				win.document.write('<div class="slip-logo"></div>');
+				win.document.write('<div class="slip-inst-name">School Name</div>');
+				win.document.write('<div class="slip-inst-address"></div>');
+				win.document.write('<div class="slip-title">Admission Application Slip</div>');
+				win.document.write('</div>');
+				win.document.write('<div class="slip-part-label">Applicant\'s Copy</div>');
+				win.document.write('<div class="slip-ref">Application Reference No: <strong>APP-' + String(idx+1).padStart(6,'0') + '</strong></div>');
+				if (slip.stdImg) win.document.write('<div class="slip-photo"><img src="'+slip.stdImg+'" alt="Student Photo"></div>');
+				win.document.write('<table class="slip-table"><tr><th colspan="2">Personal Information</th></tr>');
+				win.document.write('<tr><td>Student Name (English)</td><td>'+ (slip.stdName||'') +'</td></tr>');
+				if (slip.stdNameBangla) win.document.write('<tr><td>Student Name (Bangla)</td><td>'+slip.stdNameBangla+'</td></tr>');
+				win.document.write('<tr><td>Gender</td><td>'+ (slip.stdGender||'') +'</td></tr>');
+				win.document.write('<tr><td>Date of Birth</td><td>'+ (slip.stdBrith||'') +'</td></tr>');
+				win.document.write('<tr><td>Religion</td><td>'+ (slip.stdReligion||'') +'</td></tr>');
+				if (slip.facilities) win.document.write('<tr><td>Facilities</td><td>'+slip.facilities+'</td></tr>');
+				win.document.write('</table>');
+				win.document.write('<table class="slip-table"><tr><th colspan="2">Academic Information</th></tr>');
+				win.document.write('<tr><td>Applying for Class</td><td>'+ (slip.stdAdmitClass||'') +'</td></tr>');
+				win.document.write('<tr><td>Admission Year</td><td>'+ (slip.stdAdmitYear||'') +'</td></tr>');
+				if (slip.stdPrevSchool) win.document.write('<tr><td>Previous School</td><td>'+slip.stdPrevSchool+'</td></tr>');
+				if (slip.stdGPA) win.document.write('<tr><td>Previous GPA</td><td>'+slip.stdGPA+'</td></tr>');
+				if (slip.stdTcNumber) win.document.write('<tr><td>TC Number</td><td>'+slip.stdTcNumber+'</td></tr>');
+				win.document.write('</table>');
+				win.document.write('<table class="slip-table"><tr><th colspan="2">Guardian Information</th></tr>');
+				win.document.write('<tr><td>Father\'s Name</td><td>'+ (slip.stdFather||'') +'</td></tr>');
+				win.document.write('<tr><td>Mother\'s Name</td><td>'+ (slip.stdMother||'') +'</td></tr>');
+				if (slip.stdlocalGuardian) win.document.write('<tr><td>Local Guardian</td><td>'+slip.stdlocalGuardian+'</td></tr>');
+				if (slip.stdGuardianNID) win.document.write('<tr><td>Guardian NID</td><td>'+slip.stdGuardianNID+'</td></tr>');
+				win.document.write('<tr><td>Contact Phone</td><td>'+ (slip.stdPhone||'') +'</td></tr>');
+				win.document.write('</table>');
+				win.document.write('<table class="slip-table"><tr><th colspan="2">Address</th></tr>');
+				win.document.write('<tr><td>Present Address</td><td>'+ (slip.stdPresent||'') +'</td></tr>');
+				win.document.write('<tr><td>Permanent Address</td><td>'+ (slip.stdPermanent||'') +'</td></tr>');
+				win.document.write('</table>');
+				if (slip.stdNote) win.document.write('<table class="slip-table"><tr><th>Additional Notes</th></tr><tr><td>'+slip.stdNote+'</td></tr></table>');
+				if (slip.paymentPaid || slip.paymentDue) {
+					win.document.write('<table class="slip-table"><tr><th colspan="2">Payment Information</th></tr>');
+					if (slip.paymentPaid) win.document.write('<tr><td>Payment Paid</td><td>'+slip.paymentPaid+'</td></tr>');
+					if (slip.paymentDue) win.document.write('<tr><td>Payment Due</td><td>'+slip.paymentDue+'</td></tr>');
+					win.document.write('</table>');
+				}
+				win.document.write('<div class="signature-area"><div class="signature-box"><div class="signature-label">Applicant/Guardian Signature</div></div><div class="signature-box"><div class="signature-label">Date: '+(new Date()).toLocaleDateString()+'</div></div></div>');
+				win.document.write('</div>');
+				win.document.write('<div class="page-break"></div>');
+				// Institute's Copy
+				win.document.write('<div style="padding:32px;">');
+				win.document.write('<div class="slip-header">');
+				win.document.write('<div class="slip-logo"></div>');
+				win.document.write('<div class="slip-inst-name">School Name</div>');
+				win.document.write('<div class="slip-inst-address"></div>');
+				win.document.write('<div class="slip-title">Admission Application Slip</div>');
+				win.document.write('</div>');
+				win.document.write('<div class="slip-part-label">Institute\'s Copy</div>');
+				win.document.write('<div class="slip-ref">Application Reference No: <strong>APP-' + String(idx+1).padStart(6,'0') + '</strong></div>');
+				if (slip.stdImg) win.document.write('<div class="slip-photo"><img src="'+slip.stdImg+'" alt="Student Photo"></div>');
+				win.document.write('<table class="slip-table"><tr><th colspan="2">Personal Information</th></tr>');
+				win.document.write('<tr><td>Student Name (English)</td><td>'+ (slip.stdName||'') +'</td></tr>');
+				if (slip.stdNameBangla) win.document.write('<tr><td>Student Name (Bangla)</td><td>'+slip.stdNameBangla+'</td></tr>');
+				win.document.write('<tr><td>Gender</td><td>'+ (slip.stdGender||'') +'</td></tr>');
+				win.document.write('<tr><td>Date of Birth</td><td>'+ (slip.stdBrith||'') +'</td></tr>');
+				win.document.write('<tr><td>Religion</td><td>'+ (slip.stdReligion||'') +'</td></tr>');
+				if (slip.facilities) win.document.write('<tr><td>Facilities</td><td>'+slip.facilities+'</td></tr>');
+				win.document.write('</table>');
+				win.document.write('<table class="slip-table"><tr><th colspan="2">Academic Information</th></tr>');
+				win.document.write('<tr><td>Applying for Class</td><td>'+ (slip.stdAdmitClass||'') +'</td></tr>');
+				win.document.write('<tr><td>Admission Year</td><td>'+ (slip.stdAdmitYear||'') +'</td></tr>');
+				if (slip.stdPrevSchool) win.document.write('<tr><td>Previous School</td><td>'+slip.stdPrevSchool+'</td></tr>');
+				if (slip.stdGPA) win.document.write('<tr><td>Previous GPA</td><td>'+slip.stdGPA+'</td></tr>');
+				if (slip.stdTcNumber) win.document.write('<tr><td>TC Number</td><td>'+slip.stdTcNumber+'</td></tr>');
+				win.document.write('</table>');
+				win.document.write('<table class="slip-table"><tr><th colspan="2">Guardian Information</th></tr>');
+				win.document.write('<tr><td>Father\'s Name</td><td>'+ (slip.stdFather||'') +'</td></tr>');
+				win.document.write('<tr><td>Mother\'s Name</td><td>'+ (slip.stdMother||'') +'</td></tr>');
+				if (slip.stdlocalGuardian) win.document.write('<tr><td>Local Guardian</td><td>'+slip.stdlocalGuardian+'</td></tr>');
+				if (slip.stdGuardianNID) win.document.write('<tr><td>Guardian NID</td><td>'+slip.stdGuardianNID+'</td></tr>');
+				win.document.write('<tr><td>Contact Phone</td><td>'+ (slip.stdPhone||'') +'</td></tr>');
+				win.document.write('</table>');
+				win.document.write('<table class="slip-table"><tr><th colspan="2">Address</th></tr>');
+				win.document.write('<tr><td>Present Address</td><td>'+ (slip.stdPresent||'') +'</td></tr>');
+				win.document.write('<tr><td>Permanent Address</td><td>'+ (slip.stdPermanent||'') +'</td></tr>');
+				win.document.write('</table>');
+				if (slip.stdNote) win.document.write('<table class="slip-table"><tr><th>Additional Notes</th></tr><tr><td>'+slip.stdNote+'</td></tr></table>');
+				if (slip.paymentPaid || slip.paymentDue) {
+					win.document.write('<table class="slip-table"><tr><th colspan="2">Payment Information</th></tr>');
+					if (slip.paymentPaid) win.document.write('<tr><td>Payment Paid</td><td>'+slip.paymentPaid+'</td></tr>');
+					if (slip.paymentDue) win.document.write('<tr><td>Payment Due</td><td>'+slip.paymentDue+'</td></tr>');
+					win.document.write('</table>');
+				}
+				win.document.write('<div class="signature-area"><div class="signature-box"><div class="signature-label">Received By</div></div><div class="signature-box"><div class="signature-label">Authorized Signature</div></div></div>');
+				win.document.write('</div>');
+				win.document.write('</div>');
+				win.document.write('</body></html>');
+				win.document.close();
+				win.print();
+			}
 
-        // Check if class has groups
-        checkClassHasGroups(classId);
-    };
+		function renderSlips() {
+			let slips = getSlips();
+			let html = '';
+			if (slips.length === 0) {
+				html = '<div class="alert alert-info">No saved slips found.</div>';
+			} else {
+				html = '<h3>Saved Slips</h3>';
+				slips.forEach(function(slip, idx) {
+					html += '<div class="panel panel-default" style="margin-bottom:10px;">';
+					html += '<div class="panel-heading">Slip #' + (idx+1) + '</div>';
+					html += '<div class="panel-body">';
+					html += '<strong>Name:</strong> ' + (slip.stdName || '') + '<br>';
+					html += '<strong>Class:</strong> ' + (slip.stdAdmitClass || '') + '<br>';
+					html += '<strong>Year:</strong> ' + (slip.stdAdmitYear || '') + '<br>';
+					html += '<strong>Phone:</strong> ' + (slip.stdPhone || '') + '<br>';
+					html += '<strong>Note:</strong> ' + (slip.stdNote || '') + '<br>';
+					html += '<button class="btn btn-primary btn-sm" onclick="printSlip(' + idx + ')">Print</button> ';
+					html += '<button class="btn btn-danger btn-sm" onclick="deleteSlip(' + idx + ')">Delete</button>';
+					html += '</div></div>';
+				});
+			}
+			$('#slipList').html(html);
+		}
 
-    // Reset Class Selection
-    window.resetClassSelection = function() {
-        $('.class-card').removeClass('selected');
-        $('#form-section').removeClass('active').hide();
-        $('#applicationForm')[0].reset();
-        
-        // Reset to submit mode
-        $('#applicationId').val('');
-        $('#submitBtnText').text('Submit Application');
-        
-        $('html, body').animate({
-            scrollTop: $('#class-section').offset().top - 20
-        }, 500);
-    };
+		// Expose print/delete globally for inline onclick
+		window.printSlip = printSlip;
+		window.deleteSlip = deleteSlip;
 
-    // Check if Class has Groups
-    function checkClassHasGroups(classId) {
-        const $siteUrl = '<?= get_template_directory_uri() ?>';
-        $.ajax({
-            url: $siteUrl + "/inc/ajaxAction.php",
-            method: "POST",
-            data: { class: classId, type: 'hasGroup' },
-            dataType: "text"
-        }).done(function(hasGroup) {
-            if (hasGroup === 'true') {
-                // Show group selection, hide section selection
-                $('#groupSelectWrapper').show();
-                $('#sectionSelectWrapper').hide();
-                $('#groupSelect').prop('required', true);
-                $('#sectionSelect').prop('required', false);
-            } else {
-                // Show section selection, hide group selection
-                $('#groupSelectWrapper').hide();
-                $('#sectionSelectWrapper').show();
-                $('#groupSelect').prop('required', false);
-                $('#sectionSelect').prop('required', false);
-                // Load sections for the class
-                loadSections(classId);
-            }
-        });
-    }
+		// On c:\xampp\htdocs\s3school\wp-content\themes\s3schoolManagment\templatesform submit, save slip data
+		$('.applyForm').on('submit', function(e) {
+			// Only save to localStorage if not submitting for backend
+			if (!e.originalEvent.submitter || e.originalEvent.submitter.name !== 'addStudent') return;
+			var formData = $(this).serializeArray();
+			var slip = {};
+			formData.forEach(function(item) {
+				slip[item.name] = item.value;
+			});
+			saveSlip(slip);
+			renderSlips();
+			// Optionally, prevent actual submit for demo:
+			// e.preventDefault();
+		});
 
-    // Load Sections for Class
-    function loadSections(classId) {
-        const $siteUrl = '<?= get_template_directory_uri() ?>';
-        $.ajax({
-            url: $siteUrl + "/inc/ajaxAction.php",
-            method: "POST",
-            data: { class: classId, type: 'getSection' },
-            dataType: "html"
-        }).done(function(msg) {
-            $("#sectionSelect").html(msg);
-        });
-    }
-
-    // Get Status Message and Color
-    function getStatusInfo(status) {
-        let message = '';
-        let color = '';
-        
-        switch(status) {
-            case 'Submitted':
-                message = 'Authority will review your application shortly.';
-                color = 'var(--warning-color)';
-                break;
-            case 'Under Review':
-                message = 'Authority is currently reviewing your application.';
-                color = 'var(--primary-color)';
-                break;
-            case 'Approved':
-                message = 'Your application is approved. If you haven\'t paid the admission fee, please complete the payment to be registered.';
-                color = 'var(--success-color)';
-                break;
-            case 'Registered':
-                message = 'You have completed all requirements. You can print your application slip.';
-                color = 'var(--success-color)';
-                break;
-            case 'Rejected':
-                message = 'Your application was not approved.';
-                color = '#dc2626'; // error color
-                break;
-            default:
-                message = status;
-                color = 'var(--text-muted)';
-        }
-        
-        return { message: message, color: color };
-    }
-
-    // Search Application
-    window.searchApplication = function() {
-        const phone = $('#phoneSearch').val().trim();
-        const dob = $('#dobSearch').val().trim();
-        
-        if (!phone || phone.length !== 11) {
-            alert('Please enter a valid 11-digit phone number');
-            return;
-        }
-        
-        if (!dob) {
-            alert('Please enter your date of birth');
-            return;
-        }
-
-        const $siteUrl = '<?= get_template_directory_uri() ?>';
-        const $results = $('#searchResults');
-        
-        $results.html('<div style="padding: 20px; text-align: center;">Searching...</div>').removeClass('hidden');
-
-        $.ajax({
-            url: $siteUrl + "/inc/ajaxAction.php",
-            method: "POST",
-            data: { phone: phone, dob: dob, type: 'searchApplicationByPhone' },
-            dataType: "json"
-        }).done(function(response) {
-            if (response.status === 'success' && response.data && response.data.length > 0) {
-                let html = '<div style="margin-top: 20px;">';
-                html += '<h4 style="color: var(--success-color); margin-bottom: 15px;">✓ Applications Found</h4>';
-                
-                response.data.forEach(function(app) {
-                    const statusInfo = getStatusInfo(app.approve_status);
-                    html += `
-                        <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid var(--primary-color);">
-                            <div style="display: flex; justify-content: space-between; align-items: start;">
-                                <div>
-                                    <h5 style="margin: 0 0 10px 0; color: var(--text-main);">${app.stdName}</h5>
-                                    <p style="margin: 5px 0; color: var(--text-muted);">
-                                        <strong>App ID:</strong> APP-${String(app.applicationid).padStart(6, '0')} | 
-                                        <strong>Class:</strong> ${app.className} | 
-                                        <strong>Status:</strong> ${app.approve_status}
-                                    </p>
-                                    <p style="margin: 5px 0; color: ${statusInfo.color}; font-weight: 500;">
-                                        ${statusInfo.message}
-                                    </p>
-                                    <p style="margin: 5px 0; color: var(--text-muted);">
-                                        <strong>Applied:</strong> ${new Date(app.stdCreatedAt).toLocaleDateString('en-GB')}
-                                    </p>
-                                </div>
-                                <div style="display: flex; gap: 10px;">
-                                    <button onclick="updateApplication(${app.applicationid})" class="btn btn-outline" style="padding: 8px 16px; font-size: 13px;">
-                                        <span class="dashicons dashicons-edit"></span> Update
-                                    </button>
-                                    <button onclick="printApplication(${app.applicationid})" class="btn btn-primary" style="padding: 8px 16px; font-size: 13px;">
-                                        <span class="dashicons dashicons-printer"></span> Print
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                });
-                
-                html += '</div>';
-                $results.html(html);
-            } else {
-                $results.html(`
-                    <div style="padding: 20px; text-align: center; color: var(--text-muted);">
-                        <p>No applications found for this phone number or Date of Birth is incorrect.</p>
-                        <p style="margin-top: 10px;">Please proceed to apply for a new admission below.</p>
-                    </div>
-                `);
-            }
-        }).fail(function() {
-            $results.html('<div style="padding: 20px; text-align: center; color: var(--danger-color);">Error searching. Please try again.</div>');
-        });
-    };
-
-    // Print Application
-    window.printApplication = function(appId) {
-        const $siteUrl = '<?= get_template_directory_uri() ?>';
-        
-        $.ajax({
-            url: $siteUrl + "/inc/ajaxAction.php",
-            method: "POST",
-            data: { applicationId: appId, type: 'getApplicationDetails' },
-            dataType: "json"
-        }).done(function(response) {
-            if (response.status === 'success') {
-                renderSlip(response.data);
-                setTimeout(() => {
-                    window.print();
-                }, 500);
-            } else {
-                alert('Error fetching application data');
-            }
-        }).fail(function() {
-            alert('Network error. Please try again.');
-        });
-    };
-
-    // Update Application
-    window.updateApplication = function(appId) {
-        const $siteUrl = '<?= get_template_directory_uri() ?>';
-        
-        $.ajax({
-            url: $siteUrl + "/inc/ajaxAction.php",
-            method: "POST",
-            data: { applicationId: appId, type: 'getApplicationDetails' },
-            dataType: "json"
-        }).done(function(response) {
-            if (response.status === 'success') {
-                populateFormForUpdate(response.data);
-            } else {
-                alert('Error fetching application data');
-            }
-        }).fail(function() {
-            alert('Network error. Please try again.');
-        });
-    };
-
-    // Populate Form for Update
-    function populateFormForUpdate(data) {
-        // Set application ID for update
-        $('#applicationId').val(data.applicationid);
-        
-        // Change button text
-        $('#submitBtnText').text('Update Application');
-        
-        // Populate form fields
-        $('input[name="stdName"]').val(data.stdName);
-        $('input[name="stdNameBangla"]').val(data.stdNameBangla || '');
-        $('select[name="stdGender"]').val(data.stdGender);
-        $('select[name="stdBldGrp"]').val(data.stdBldGrp || '');
-        $('input[name="stdImg"]').val(data.stdImg || '');
-        $('input[name="stdFather"]').val(data.stdFather);
-        $('input[name="fatherLate"]').prop('checked', data.fatherLate == 1);
-        $('input[name="stdFatherProf"]').val(data.stdFatherProf || '');
-        $('input[name="stdMother"]').val(data.stdMother);
-        $('input[name="motherLate"]').prop('checked', data.motherLate == 1);
-        $('input[name="stdMotherProf"]').val(data.stdMotherProf || '');
-        $('input[name="stdParentIncome"]').val(data.stdParentIncome || '');
-        $('input[name="stdlocalGuardian"]').val(data.stdlocalGuardian || '');
-        $('input[name="stdGuardianNID"]').val(data.stdGuardianNID || '');
-        $('input[name="stdPhone"]').val(data.stdPhone);
-        $('textarea[name="stdPermanent"]').val(data.stdPermanent || '');
-        $('textarea[name="stdPresent"]').val(data.stdPresent || '');
-        $('input[name="stdBrith"]').val(data.stdBrith);
-        $('input[name="stdNationality"]').val(data.stdNationality || 'Bangladeshi');
-        $('select[name="stdReligion"]').val(data.stdReligion);
-        $('input[name="stdAdmitClass"]').val(data.stdAdmitClass);
-        $('select[name="stdAdmitYear"]').val(data.stdAdmitYear);
-        $('select[name="stdGroup"]').val(data.stdGroup || '');
-        $('select[name="stdSection"]').val(data.stdSection || '');
-        $('input[name="stdRoll"]').val(data.stdRoll || '');
-        $('input[name="stdTcNumber"]').val(data.stdTcNumber || '');
-        $('input[name="sscRoll"]').val(data.sscRoll || '');
-        $('input[name="sscReg"]').val(data.sscReg || '');
-        $('input[name="stdPrevSchool"]').val(data.stdPrevSchool || '');
-        $('input[name="stdGPA"]').val(data.stdGPA || '');
-        $('input[name="stdIntellectual"]').val(data.stdIntellectual || '');
-        $('input[name="stdScholarsClass"]').val(data.stdScholarsClass || '');
-        $('input[name="stdScholarsYear"]').val(data.stdScholarsYear || '');
-        $('input[name="stdScholarsMemo"]').val(data.stdScholarsMemo || '');
-        $('textarea[name="stdNote"]').val(data.stdNote || '');
-        
-        // Show selected class info
-        const className = data.className || 'Unknown Class';
-        $('#selectedClassName').text(className);
-        $('#selectedClassInfo').show();
-        
-        // Show form section
-        $('#form-section').addClass('active').show();
-        
-        // Scroll to form
-        $('html, body').animate({
-            scrollTop: $('#form-section').offset().top - 20
-        }, 500);
-        
-        // Check if class has groups
-        checkClassHasGroups(data.stdAdmitClass);
-    };
-
-    // Render Slip HTML
-    window.renderSlip = function(data) {
-        const padId = (num) => String(num).padStart(6, '0');
-        const printDate = new Date().toLocaleDateString('en-GB');
-
-        const html = `
-            <div style="max-width: 800px; margin: 0 auto; border: 2px solid #000; padding: 30px;">
-                <div style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 20px; margin-bottom: 20px;">
-                    <div style="font-size: 28px; font-weight: 700; text-transform: uppercase; margin-bottom: 5px;">School Name</div>
-                    <div style="font-size: 14px; margin-bottom: 15px;">School Address</div>
-                    <div style="font-size: 20px; font-weight: 600; background: #000; color: #fff; display: inline-block; padding: 5px 20px; border-radius: 20px;">Admission Application Slip</div>
-                </div>
-                
-                <div style="display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 14px; font-weight: 600;">
-                    <span>App ID: APP-${padId(data.applicationid)}</span>
-                    <span>Date: ${printDate}</span>
-                </div>
-
-                <h4 style="background: #e5e7eb; padding: 5px 10px; margin: 15px 0 5px; font-size: 14px;">Student Information</h4>
-                <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 14px;">
-                    <tr><td style="border: 1px solid #ccc; padding: 8px 12px; background: #f3f4f6; width: 35%; font-weight: 600;">Name (English)</td><td style="border: 1px solid #ccc; padding: 8px 12px;">${data.stdName}</td></tr>
-                    ${data.stdNameBangla ? `<tr><td style="border: 1px solid #ccc; padding: 8px 12px; background: #f3f4f6; font-weight: 600;">Name (Bangla)</td><td style="border: 1px solid #ccc; padding: 8px 12px;">${data.stdNameBangla}</td></tr>` : ''}
-                    <tr><td style="border: 1px solid #ccc; padding: 8px 12px; background: #f3f4f6; font-weight: 600;">Gender</td><td style="border: 1px solid #ccc; padding: 8px 12px;">${data.stdGender == 1 ? 'Boy' : (data.stdGender == 0 ? 'Girl' : 'Other')}</td></tr>
-                    <tr><td style="border: 1px solid #ccc; padding: 8px 12px; background: #f3f4f6; font-weight: 600;">Date of Birth</td><td style="border: 1px solid #ccc; padding: 8px 12px;">${data.stdBrith}</td></tr>
-                    <tr><td style="border: 1px solid #ccc; padding: 8px 12px; background: #f3f4f6; font-weight: 600;">Religion</td><td style="border: 1px solid #ccc; padding: 8px 12px;">${data.stdReligion}</td></tr>
-                    <tr><td style="border: 1px solid #ccc; padding: 8px 12px; background: #f3f4f6; font-weight: 600;">Blood Group</td><td style="border: 1px solid #ccc; padding: 8px 12px;">${data.stdBldGrp || '-'}</td></tr>
-                </table>
-
-                <h4 style="background: #e5e7eb; padding: 5px 10px; margin: 15px 0 5px; font-size: 14px;">Guardian Information</h4>
-                <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 14px;">
-                    <tr><td style="border: 1px solid #ccc; padding: 8px 12px; background: #f3f4f6; width: 35%; font-weight: 600;">Father's Name</td><td style="border: 1px solid #ccc; padding: 8px 12px;">${data.stdFather}</td></tr>
-                    <tr><td style="border: 1px solid #ccc; padding: 8px 12px; background: #f3f4f6; font-weight: 600;">Mother's Name</td><td style="border: 1px solid #ccc; padding: 8px 12px;">${data.stdMother}</td></tr>
-                    <tr><td style="border: 1px solid #ccc; padding: 8px 12px; background: #f3f4f6; font-weight: 600;">Contact Phone</td><td style="border: 1px solid #ccc; padding: 8px 12px;">${data.stdPhone}</td></tr>
-                </table>
-
-                <div style="margin-top: 60px; display: flex; justify-content: space-between; text-align: center;">
-                    <div style="border-top: 1px solid #000; width: 200px; padding-top: 5px; font-size: 13px;">Guardian Signature</div>
-                    <div style="border-top: 1px solid #000; width: 200px; padding-top: 5px; font-size: 13px;">Authorized Signature</div>
-                </div>
-            </div>
-        `;
-        
-        $('#printable-slip').html(html).show();
-    };
-
-})(jQuery);
+		// Initial render
+		$(document).ready(function() {
+			renderSlips();
+		});
+  })( jQuery );
 </script>
 
 <?php get_footer(); ?>

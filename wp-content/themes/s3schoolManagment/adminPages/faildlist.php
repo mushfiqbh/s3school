@@ -3,20 +3,6 @@
 ** Template Name: Admin FaildList
 */
  global $wpdb,$s3sRedux;
-require_once __DIR__ . '/functions/teacher-access.php';
-
-$teacherAccess = s3s_get_teacher_access_context();
-$isTeacher = $teacherAccess['is_teacher'];
-$teacherRestrictions = $teacherAccess['restrictions'];
-$hasAssignedClass = $teacherAccess['has_assignment'];
-
-// Extract teacher restrictions for use in queries
-$teacherOfClass = '';
-$teacherOfSection = '';
-if ($hasAssignedClass && $teacherRestrictions) {
-	$teacherOfClass = $teacherRestrictions->teacherOfClass;
-	$teacherOfSection = $teacherRestrictions->teacherOfSection;
-}
 
 ?>
 
@@ -46,11 +32,8 @@ if ($hasAssignedClass && $teacherRestrictions) {
 					<label>Class</label>
 					<select id='resultClass' class="form-control" name="class" required>
 						<?php
-							if ($isTeacher && $hasAssignedClass && $teacherOfClass !== '') {
-								$classQuery = $wpdb->get_results( $wpdb->prepare( "SELECT classid,className FROM ct_class WHERE classid IN (SELECT examClass FROM ct_exam GROUP BY examClass ORDER BY className ASC) AND classid IN ($teacherOfClass)", null ) );
-							} else {
-								$classQuery = $wpdb->get_results( "SELECT classid,className FROM ct_class WHERE classid IN (SELECT examClass FROM ct_exam GROUP BY examClass ORDER BY className ASC)" );
-							}
+							$classQuery = $wpdb->get_results( "SELECT classid,className FROM ct_class WHERE classid IN (SELECT examClass FROM ct_exam GROUP BY examClass ORDER BY className ASC)" );
+							
 							echo "<option value=''>Select Class</option>";
 
 							foreach ($classQuery as $class) {
@@ -124,7 +107,7 @@ $totalpassed = 0;
 				LEFT JOIN ct_studentinfo ON ct_studentinfo.infoStdid = ct_studentPoint.spStdID AND ct_studentinfo.infoClass = $class AND ct_studentinfo.infoyear = '$year'
 				LEFT JOIN ct_section ON ct_studentinfo.infoSection = ct_section.sectionid
 				LEFT JOIN ct_result ON ct_student.studentid = ct_result.resStudentId
-				WHERE spYear = '$year' AND spClass = $class AND spExam = $exam AND spFaild = 0 AND spPoint != '0.00'";
+				WHERE spYear = '$year' AND spClass = $class AND spExam = $exam AND spFaild <= 6 AND spPoint != '0.00'";
 
 			if ($sec != '') { $pass .= " AND infoSection = $sec"; }
 			if ($grou != '') { $pass .= " AND infoGroup = $grou"; }
@@ -137,13 +120,13 @@ $totalpassed = 0;
 					LEFT JOIN ct_studentinfo ON ct_studentinfo.infoStdid = ct_studentPoint.spStdID AND ct_studentinfo.infoClass = $class AND ct_studentinfo.infoyear = '$year'
 					LEFT JOIN ct_section ON ct_studentinfo.infoSection = ct_section.sectionid
 					LEFT JOIN ct_result ON ct_student.studentid = ct_result.resStudentId
-					WHERE spYear = '$year' AND spClass = $class AND spExam = $exam AND spFaild != 0";
+					WHERE spYear = '$year' AND spClass = $class AND spExam = $exam  AND spFaild >= 7";
 
 				if ($sec != '') { $qry .= " AND infoSection = $sec"; }
 
 				if ($grou != '') { $qry .= " AND infoGroup = $grou"; }
 
-				$qry .= " GROUP BY spStdID ORDER BY spAbsent ASC, spFaild ASC, spPoint DESC, spTotalMark DESC, infoRoll ASC";
+				$qry .= " GROUP BY spStdID ORDER BY spAbsent, spFaild, spPoint DESC, spTotalMark DESC, infoRoll ASC";
 				// $qry .= " ORDER BY infoRoll ASC";
 			}else{
 				$exams = $wpdb->get_results("SELECT examid,examName,cgpaPercent FROM ct_studentPoint LEFT JOIN ct_exam ON spExam = examid WHERE spClass = $class AND spYear ='$year' GROUP BY spExam ORDER By examSirial");
@@ -151,7 +134,7 @@ $totalpassed = 0;
 					LEFT JOIN ct_student ON studentid = cgpaStudent
 					LEFT JOIN ct_studentinfo ON infoStdid = cgpaStudent AND infoClass = $class AND infoyear = '$year'
 					LEFT JOIN ct_section ON infoSection = sectionid
-					WHERE cgpaYear = '$year' AND cgpaClass = $class AND cgpaFaild != 0";
+					WHERE cgpaYear = '$year' AND cgpaClass = $class AND cgpaFaild >= 7";
 					if ($sec != '') { $qry .= " AND infoSection = $sec"; }
 					if ($grou != '') { $qry .= " AND infoGroup = $grou"; }
 					 $qry .= " GROUP BY cgpaStudent ORDER BY cgpaPosition";
@@ -243,17 +226,6 @@ $totalpassed = 0;
 // 											$subid = json_decode($student->infoOptionals);
 // 											$subid[] = $student->info4thSub;
 // 											$subid = implode (", ", $subid);
-
-											// $fourth = '';
-											// if (!empty($student->info4thSub)) {
-											// 	$tmp = json_decode($student->info4thSub, true);
-											// 	if (is_array($tmp)) {
-											// 		$fourth = $tmp[0];
-											// 	} elseif (!empty($tmp)) {
-											// 		$fourth = (string)$tmp;
-											// 	}
-											// }		
-
 											$subjects = $wpdb->get_results("SELECT SUM(subMCQ)+SUM(subCQ)+SUM(subPect)+SUM(subCa) AS totalSmark FROM ct_subject WHERE (subjectClass = $class AND subOptinal = 0 AND sub4th = 0) ")[0];
 										
 											?>
@@ -382,4 +354,296 @@ $totalpassed = 0;
     w.focus();
     return true;
   }
+</script>
+
+<?php
+// ===============================================================
+// FIX 409 CONFLICT - HANDLE AJAX ACTIONS LOCALLY (At End of File)
+// ===============================================================
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['type'])) {
+
+  // Clean output buffer to ensure JSON/HTML response is valid
+  while (ob_get_level()) {
+    ob_end_clean();
+  }
+
+  // ------------------------------------------
+  // Get Exams
+  // ------------------------------------------
+  if ($_POST['type'] == 'getExams') {
+    $class = $_POST['class'];
+    $exams = $wpdb->get_results("SELECT examid,examName FROM ct_exam WHERE examClass = '$class'");
+    if (empty($exams)) {
+      echo "<option value=''>No Exam for this Class</option>";
+    } else {
+      echo "<option value=''>Select An Exam</option>";
+    }
+    foreach ($exams as $exam) {
+      echo "<option value='{$exam->examid}'>{$exam->examName}</option>";
+    }
+    exit;
+  }
+
+  // ------------------------------------------
+  // Get Years
+  // ------------------------------------------
+  elseif ($_POST['type'] == 'getYears') {
+    $class = $_POST['class'];
+    $years = $wpdb->get_results("SELECT infoYear FROM ct_studentinfo WHERE infoClass = $class GROUP BY infoYear ORDER BY infoYear ASC");
+    if (empty($years)) {
+      echo "<option value=''>No Student In this class</option>";
+    } else {
+      echo "<option value=''>Year</option>";
+    }
+    foreach ($years as $year) {
+      echo "<option value='{$year->infoYear}'>{$year->infoYear}</option>";
+    }
+    exit;
+  }
+
+  // ------------------------------------------
+  // Get Section
+  // ------------------------------------------
+  elseif ($_POST['type'] == 'getSection') {
+    $class = $_POST['class'];
+    $sections_query = "SELECT sectionid,sectionName FROM ct_section WHERE forClass = '$class'";
+    
+    $sections_query .= " ORDER BY sectionName";
+    $sections = $wpdb->get_results($sections_query);
+
+    if (!empty($sections)) {
+      echo "<option value=''>Section</option>";
+      foreach ($sections as $section) {
+        echo "<option value='{$section->sectionid}'>{$section->sectionName}</option>";
+      }
+    } else {
+      echo "<option value=''>No sections available</option>";
+    }
+    exit;
+  }
+
+  // ------------------------------------------
+  // Get Groups
+  // ------------------------------------------
+  elseif ($_POST['type'] == 'getGroupsByClass') {
+    $class = $_POST['class'];
+    $groups_query = "SELECT DISTINCT ct_group.groupId, ct_group.groupName 
+            FROM ct_group 
+            INNER JOIN ct_studentinfo ON ct_studentinfo.infoGroup = ct_group.groupId 
+            WHERE ct_studentinfo.infoClass = '$class'";
+    
+    $groups_query .= " ORDER BY ct_group.groupName ASC";
+    $groups = $wpdb->get_results($groups_query);
+
+    echo "<option value=''>All Groups</option>";
+    foreach ($groups as $group) {
+      echo "<option value='{$group->groupId}'>{$group->groupName}</option>";
+    }
+    exit;
+  }
+
+  // ------------------------------------------
+  // Get Exam Subjects
+  // ------------------------------------------
+  elseif ($_POST['type'] == 'getExamSubject') {
+    $exam = intval($_POST['exam']);
+    $group = isset($_POST['group']) ? $_POST['group'] : '';
+    $subjects = [];
+
+    $subs = $wpdb->get_results("SELECT examSubjects FROM ct_exam WHERE examid = $exam");
+
+    if (!empty($subs[0]->examSubjects)) {
+      $subs = json_decode($subs[0]->examSubjects, true);
+    } else {
+      $subs = [];
+    }
+
+    if (!empty($subs)) {
+      $subs_escaped = array_map('intval', $subs);
+      $subjectQuery = "SELECT subjectid,subjectName FROM ct_subject 
+                WHERE subjectid IN (" . implode(',', $subs_escaped) . ")";
+
+      if (!empty($group)) {
+        $subjectQuery .= " AND (forGroup = 'all' OR forGroup = '$group' OR forGroup LIKE '%\"$group\"%')";
+      }
+
+      $subjectQuery .= " ORDER BY subjectName ASC";
+      $subjects = $wpdb->get_results($subjectQuery);
+    }
+
+    if (empty($subjects)) {
+      echo "<option value=''>No subject!</option>";
+    } else {
+      echo "<option value=''>Select Subject</option>";
+      foreach ($subjects as $subject) {
+        echo '<option value="' . $subject->subjectid . '">' . $subject->subjectName . '</option>';
+      }
+    }
+    exit;
+  }
+}
+
+if (isset($_POST['updateAllResult'])) {
+  $cq = $_POST['CQ'];
+  $mcq = $_POST['MCQ'];
+  $prc = $_POST['P'];
+  $ca = $_POST['ca'];
+  $response = false;
+  foreach ($_POST['id'] as $id) {
+    $update = $wpdb->update(
+      'ct_result',
+      array(
+        'resCQ'     => $cq[$id],
+        'resMCQ'     => $mcq[$id],
+        'resPrec'   => $prc[$id],
+        'resCa'   => $ca[$id],
+        'resTotal'   => isnum($cq[$id]) + isnum($mcq[$id]) + isnum($prc[$id]) + isnum($ca[$id])
+      ),
+      array('resultId' => $id)
+    );
+    if ($update) {
+      $response = $update;
+    }
+  }
+  if ($response) {
+    $message = array('status' => 'success', 'message' => 'Successfully updated');
+  } else {
+    $message = array('status' => 'faild', 'message' => 'Something wrong please try again');
+  }
+} ?>
+
+<script type="text/javascript">
+  // ==================================
+  // HANDLE AJAX ACTIONS LOCALLY
+  // ==================================
+  (function($) {
+    // Use current page as AJAX URL for standalone processing
+    var ajaxUrl = '';
+
+    $('#resultClass').change(function() {
+      var selectedClass = $(this).val();
+
+      // Fetch Exams
+      $.ajax({
+        url: ajaxUrl,
+        method: "POST",
+        data: {
+          class: selectedClass,
+          type: 'getExams'
+        },
+        dataType: "html"
+      }).done(function(msg) {
+        $("#resultExam").html(msg);
+        $("#resultExam").prop('disabled', false);
+        // Reset dependent dropdowns
+        $("#resultSubject").prop('disabled', true).html('<option disabled selected>Select exam First</option>');
+      });
+
+      // Fetch Years
+      $.ajax({
+        url: ajaxUrl,
+        method: "POST",
+        data: {
+          class: selectedClass,
+          type: 'getYears'
+        },
+        dataType: "html"
+      }).done(function(msg) {
+        $("#resultYear").html(msg);
+        $("#resultYear").prop('disabled', false);
+      });
+
+      // Fetch Sections
+      $.ajax({
+        url: ajaxUrl,
+        method: "POST",
+        data: {
+          class: selectedClass,
+          type: 'getSection'
+        },
+        dataType: "html"
+      }).done(function(msg) {
+        $("#resultSection").html(msg);
+        $("#resultSection").prop('disabled', false);
+      });
+
+      // Fetch All Groups
+      $.ajax({
+        url: ajaxUrl,
+        method: "POST",
+        data: {
+          class: selectedClass,
+          type: 'getGroupsByClass'
+        },
+        dataType: "html"
+      }).done(function(msg) {
+        $("#resultGroup").html(msg);
+        $("#resultGroup").prop('disabled', false);
+      });
+    });
+
+    // Fetch Subjects when Exam Changes
+    $('#resultExam').change(function() {
+      var selectedExam = $(this).val();
+      var selectedGroup = $('#resultGroup').val();
+
+      $.ajax({
+        url: ajaxUrl,
+        method: "POST",
+        data: {
+          exam: selectedExam,
+          group: selectedGroup,
+          type: 'getExamSubject'
+        },
+        dataType: "html"
+      }).done(function(msg) {
+        $("#resultSubject").html(msg);
+        $("#resultSubject").prop('disabled', false);
+      });
+    });
+
+    // Fetch Subjects when Group Changes
+    $('#resultGroup').change(function() {
+      var selectedExam = $('#resultExam').val();
+      var selectedGroup = $(this).val();
+
+      if (selectedExam) {
+        $.ajax({
+          url: ajaxUrl,
+          method: "POST",
+          data: {
+            exam: selectedExam,
+            group: selectedGroup,
+            type: 'getExamSubject'
+          },
+          dataType: "html"
+        }).done(function(msg) {
+          $("#resultSubject").html(msg);
+          $("#resultSubject").prop('disabled', false);
+        });
+      }
+    });
+
+    // Interactive validation for result inputs (Client-side only)
+    $('.resultInput').keyup(function(event) {
+      $this = $(this);
+      $val = $this.val();
+      $max = $this.data('max');
+
+      if ($val == '' || $val < ($max + 1) || $val == 'A' || $val == 'a') {
+        $this.css('border-color', '#ddd');
+        $this.removeClass('haserror');
+      } else {
+        $this.addClass('haserror');
+        $this.css('border-color', 'red');
+        $('.resultSubmit').prop('disabled', true);
+      }
+
+      if ($('.resultInput.haserror').length == 0) {
+        $('.resultSubmit').prop('disabled', false);
+      }
+    });
+
+  })(jQuery);
 </script>

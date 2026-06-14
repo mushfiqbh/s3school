@@ -1,6 +1,13 @@
 <?php 
 global $wpdb,$s3sRedux; 
 $convertPercent = 70;
+
+// Check if religionId column exists in ct_subject
+global $wpdb;
+$column_check = $wpdb->get_results("SHOW COLUMNS FROM `ct_subject` LIKE 'religionId'");
+if (empty($column_check)) {
+	$wpdb->query("ALTER TABLE `ct_subject` ADD `religionId` INT(11) NULL");
+}
 ?>
 
 <?php if ( ! is_admin() ) { get_header(); ?>
@@ -29,8 +36,10 @@ $convertPercent = 70;
 					<label>Class</label>
 					<select id='resultClass' class="form-control" name="class" required>
 						<?php
-							$classQuery = $wpdb->get_results( "SELECT classid,className FROM ct_class WHERE classid IN (SELECT examClass FROM ct_exam GROUP BY examClass ORDER BY className ASC)" );
-														
+
+								$classQuery = $wpdb->get_results( "SELECT classid,className FROM ct_class WHERE classid IN (SELECT examClass FROM ct_exam GROUP BY examClass ORDER BY className ASC)" );
+							
+							
 							echo "<option value=''>Select Class</option>";
 
 							foreach ($classQuery as $class) {
@@ -154,13 +163,13 @@ $convertPercent = 70;
 							$subjectCondition = "1=1";
 						} elseif($stat->subOptinal == 1 && $stat->sub4th == 1) {
 							// Both optional and 4th subject
-							$subjectCondition = "(si.infoOptionals LIKE '%\"" . $stat->subjectid . "\"%' OR si.info4thSub = " . $stat->subjectid . ")";
+							$subjectCondition = "(si.infoOptionals LIKE '%\"" . $stat->subjectid . "\"%' OR si.info4thSub LIKE '%\"" . $stat->subjectid . "\"%' OR si.info4thSub = '" . $stat->subjectid . "')";
 						} elseif($stat->subOptinal == 1) {
 							// Only optional
 							$subjectCondition = "si.infoOptionals LIKE '%\"" . $stat->subjectid . "\"%'";
 						} elseif($stat->sub4th == 1) {
-							// Only 4th subject
-							$subjectCondition = "si.info4thSub = " . $stat->subjectid;
+							// Only 4th subject - handle JSON format
+							$subjectCondition = "si.info4thSub LIKE '%\"" . $stat->subjectid . "\"%' OR si.info4thSub = '" . $stat->subjectid . "'";
 						}
 						
 					// Build religion condition based on subject's religionId
@@ -235,13 +244,27 @@ $convertPercent = 70;
 				$statsBySection[$sectionKey][] = $stat;
 			}
 			
+			// Sort sections by section name
+			ksort($statsBySection);
+			
 			// Display separate table for each section
 			foreach($statsBySection as $sectionName => $sectionStats):
 			?>
 			
-			<h4 style="margin-top: 20px; padding: 8px; background: #4472C4; color: #fff; border-radius: 4px;">
+			<h4 style="margin-top: 20px;padding: 8px;color: #4472C4;font-size: 24px;font-weight: 600;text-align: center;background: transparent;">
 				Section: <?= $sectionName ?>
+				<?php
+				// Build dynamic link for section students
+				$linkClass = isset($class) ? $class : '';
+				$linkSec = isset($sectionStats[0]->resSec) ? $sectionStats[0]->resSec : '';
+				$linkYear = isset($year) ? $year : '';
+				if ($linkClass && $linkSec && $linkYear) {
+					$linkUrl = "/admin-student/?stdclass={$linkClass}&sec={$linkSec}&stdyear={$linkYear}";
+					?>
+					<a href="<?= $linkUrl ?>" target="_blank" style="font-size: 16px; margin-left: 10px; color: #337ab7; text-decoration: underline;">View Students</a>
+				<?php } ?>
 			</h4>
+
 			
 			<div style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
 			<table class="table table-bordered table-striped">

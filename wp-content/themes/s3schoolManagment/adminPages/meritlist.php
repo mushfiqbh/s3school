@@ -2,13 +2,7 @@
 /*
 ** Template Name: Admin MeritList
 */ 
-	global $wpdb,$s3sRedux; 
-	require_once __DIR__ . '/functions/teacher-access.php';
-
-	$teacherAccess = s3s_get_teacher_access_context();
-	$isTeacher = $teacherAccess['is_teacher'];
-	$teacherRestrictions = $teacherAccess['restrictions'];
-	$hasAssignedClass = $teacherAccess['has_assignment'];
+	global $wpdb,$s3sRedux;
 ?>
 
 
@@ -33,16 +27,9 @@
 				<label>Class</label>
 				<select id='resultClass' class="form-control" name="class" required>
 					<?php
-
-						// If teacher, only show their assigned class when restrictions apply
-						if ($isTeacher && $hasAssignedClass && $teacherRestrictions) {
-							$classQuery = $wpdb->get_results( $wpdb->prepare(
-								"SELECT classid,className FROM ct_class WHERE classid = %d AND classid IN (SELECT examClass FROM ct_exam GROUP BY examClass ORDER BY className ASC)",
-								$teacherRestrictions->teacherOfClass
-							));
-						} else {
-							$classQuery = $wpdb->get_results( "SELECT classid,className FROM ct_class WHERE classid IN (SELECT examClass FROM ct_exam GROUP BY examClass ORDER BY className ASC)" );
-						}
+					
+					$classQuery = $wpdb->get_results( "SELECT classid,className FROM ct_class WHERE classid IN (SELECT examClass FROM ct_exam GROUP BY examClass ORDER BY className ASC)" );
+					
 						
 						echo "<option value=''>Select Class</option>";
 
@@ -123,35 +110,59 @@
 			if ($grou != '') { $qry .= " AND infoGroup = $grou"; }
 // 			if ($sec == '') { $qry .= " ORDER BY spPoint DESC,spTotalMark DESC,infoRoll"; }
 // 			else{ $qry .= " ORDER BY spPosition ASC"; }
-$qry .= " GROUP BY spStdID ORDER BY spPoint DESC,spTotalMark DESC,infoRoll";
+     $qry .= " GROUP BY spStdID ORDER BY spAbsent, spFaild, spPoint DESC,spTotalMark DESC,infoRoll";
 
-// $considered = "SELECT spStdID,stdName,infoRoll,withheld,spPoint,spTotalMark,spSubjTotal,sectionName,spFaild,spAbsent,spPosition,infoOptionals,info4thSub FROM ct_studentPoint
-// 				LEFT JOIN ct_student ON ct_student.studentid = ct_studentPoint.spStdID
-// 				LEFT JOIN ct_studentinfo ON ct_studentinfo.infoStdid = ct_studentPoint.spStdID AND ct_studentinfo.infoClass = $class AND ct_studentinfo.infoyear = '$year'
-// 				LEFT JOIN ct_section ON ct_studentinfo.infoSection = ct_section.sectionid
-//              LEFT JOIN ct_result ON ct_student.studentid = ct_result.resStudentId
-// 				WHERE spYear = '$year' AND spClass = $class AND spExam = $exam AND spFaild > 0 AND spFaild <= 2 AND spPoint != '0.00'";
-// if ($sec != '') { $considered .= " AND infoSection = $sec"; }
-// 			if ($grou != '') { $considered .= " AND infoGroup = $grou"; }
-// $considered .= "  ORDER BY spAbsent ASC, spFaild ASC, spPoint DESC, spTotalMark DESC, infoRoll ASC";
+      $considered = "SELECT spStdID,stdName,infoRoll,withheld,spPoint,spTotalMark,spSubjTotal,sectionName,spFaild,spAbsent,spPosition,infoOptionals,info4thSub FROM ct_studentPoint
+              LEFT JOIN ct_student ON ct_student.studentid = ct_studentPoint.spStdID
+              LEFT JOIN ct_studentinfo ON ct_studentinfo.infoStdid = ct_studentPoint.spStdID AND ct_studentinfo.infoClass = $class AND ct_studentinfo.infoyear = '$year'
+              LEFT JOIN ct_section ON ct_studentinfo.infoSection = ct_section.sectionid
+                  LEFT JOIN ct_result ON ct_student.studentid = ct_result.resStudentId
+              WHERE spYear = '$year' AND spClass = $class AND spExam = $exam AND spFaild > 0 AND spFaild <= 2 AND spPoint != '0.00'";
+      if ($sec != '') { $considered .= " AND infoSection = $sec"; }
+            if ($grou != '') { $considered .= " AND infoGroup = $grou"; }
+      $considered .= "  GROUP BY spStdID ORDER BY spAbsent, spFaild, spPoint DESC, spTotalMark DESC, infoRoll ASC";
 
-        $consideredStudents = null; //$wpdb->get_results( $considered );
-		$totalConsideredStudents = 0; //sizeof($consideredStudents);
+              $consideredStudents = $wpdb->get_results( $considered );
+          $totalConsideredStudents = sizeof($consideredStudents);
 		}else{
 			$exams = $wpdb->get_results("SELECT examid,examName,cgpaPercent FROM ct_studentPoint LEFT JOIN ct_exam ON spExam = examid WHERE spClass = $class AND spYear ='$year' GROUP BY spExam ORDER By examSirial");
-			$qry = "SELECT cgpaStudent,stdName,infoRoll,sectionName,cgpaPoint,cgpaPosition,cgpaSecPosi,infoOptionals,info4thSub FROM ct_cgpa
+			$qry = "SELECT cgpaStudent,stdName,infoRoll,sectionName,cgpaPoint,cgpaPosition,cgpaSecPosi,infoOptionals,info4thSub, cgpaFaild FROM ct_cgpa
 				LEFT JOIN ct_student ON studentid = cgpaStudent
 				LEFT JOIN ct_studentinfo ON infoStdid = cgpaStudent AND infoClass = $class AND infoyear = '$year'
 				LEFT JOIN ct_section ON infoSection = sectionid
 				WHERE cgpaYear = '$year' AND cgpaClass = $class AND cgpaFaild = 0";
-				if ($sec != '') { $qry .= " AND infoSection = $sec"; }
-				if ($grou != '') { $qry .= " AND infoGroup = $grou"; }
-				 $qry .= " GROUP BY cgpaStudent ORDER BY cgpaPosition";
+			if ($sec != '') { $qry .= " AND infoSection = $sec"; }
+			if ($grou != '') { $qry .= " AND infoGroup = $grou"; }
+			$qry .= " GROUP BY cgpaStudent ORDER BY cgpaPosition";
 			$allmarksQry = $wpdb->get_results("SELECT spStdID,spExam,spPoint FROM ct_studentPoint LEFT JOIN ct_exam ON spExam = examid  WHERE spClass = $class AND spYear ='$year' ORDER By examSirial");
 			$allmarks = array();
 			foreach ($allmarksQry as $marksQry) {
 				$allmarks[$marksQry->spStdID][$marksQry->spExam] = $marksQry->spPoint;
 			}
+			// Considered list for CGPA: students with total spFaild (across all exams) > 0 and <= 2
+			$allStudentIds = $wpdb->get_col("SELECT DISTINCT cgpaStudent FROM ct_cgpa WHERE cgpaYear = '$year' AND cgpaClass = $class");
+			$consideredStudents = array();
+			foreach ($allStudentIds as $studentId) {
+				// Build WHERE for section/group if needed
+				$whereInfo = "";
+				if ($sec != '') {
+					$whereInfo .= " AND infoSection = $sec";
+				}
+				if ($grou != '') {
+					$whereInfo .= " AND infoGroup = $grou";
+				}
+				// Get all spFaild for this student in this class/year
+				$faildSum = $wpdb->get_var("SELECT SUM(spFaild) FROM ct_studentPoint LEFT JOIN ct_studentinfo ON ct_studentinfo.infoStdid = ct_studentPoint.spStdID AND ct_studentinfo.infoClass = $class AND ct_studentinfo.infoyear = '$year' WHERE spStdID = $studentId AND spClass = $class AND spYear = '$year' $whereInfo");
+				if ($faildSum > 0 && $faildSum <= 2) {
+					// Get student info from ct_cgpa for display
+					$studentRow = $wpdb->get_row("SELECT cgpaStudent,stdName,infoRoll,sectionName,cgpaPoint,cgpaPosition,cgpaSecPosi,infoOptionals,info4thSub FROM ct_cgpa LEFT JOIN ct_student ON studentid = cgpaStudent LEFT JOIN ct_studentinfo ON infoStdid = cgpaStudent AND infoClass = $class AND infoyear = '$year' LEFT JOIN ct_section ON infoSection = sectionid WHERE cgpaYear = '$year' AND cgpaClass = $class AND cgpaStudent = $studentId");
+					if ($studentRow) {
+						$studentRow->totalFaild = $faildSum;
+						$consideredStudents[] = $studentRow;
+					}
+				}
+			}
+			$totalConsideredStudents = sizeof($consideredStudents);
 		}
 		$students = $wpdb->get_results( $qry );
 		$totalp = sizeof($students);
@@ -261,11 +272,12 @@ $qry .= " GROUP BY spStdID ORDER BY spPoint DESC,spTotalMark DESC,infoRoll";
 					  		</table>
 					  		</div>
 					  		
-					  	<?php if($consideredStudents){ ?>
-					  	<h3 style="text-align:center">Considered List (<?= $totalConsideredStudents ?>)</h3>
-					  	<br>
-					  	<div class="table-responsive">
-					  	<table style="width: 100%; text-align: center;" class="table table-bordered">
+						  <?php if($consideredStudents){ ?>
+						  <div style="page-break-before: always;"></div>
+						  <h3 style="text-align:center">Considered List (<?= $totalConsideredStudents ?>)</h3>
+						  <br>
+						  <div class="table-responsive">
+						  <table style="width: 100%; text-align: center;" class="table table-bordered">
 					  			<tr style="background: #FFE599;print-color-adjust: exact; -webkit-print-color-adjust: exact;">
 					  				<td>Student Name</td>
 					  				<td>ID</td>
@@ -334,22 +346,63 @@ $qry .= " GROUP BY spStdID ORDER BY spPoint DESC,spTotalMark DESC,infoRoll";
 					  				<th><?= ($sec != '') ? 'Class Position' : 'Section Position' ?></th>
 					  				<th><?= ($sec != '') ? 'Section Position' : 'Class Position' ?></th>
 					  			</tr>
-				  				<?php foreach ($students as $student) { ?>
-					  				<tr>
-					  					<td><small><?= $student->stdName ?></small></td>
-					  					<td><?= $student->infoRoll ?></td>
-					  					<td><?= $student->sectionName ?></td>
-					  					<?php foreach ($exams as $value) {  ?>
-						  					<td><?= @$allmarks[$student->cgpaStudent][$value->examid] ?></td>
-						  				<?php } ?>
-					  					<td><?= $student->cgpaPoint ?></td>
-					  					<td><?= pointToGrade($student->cgpaPoint) ?></td>
-					  					<td><?= ($sec != '') ? $student->cgpaPosition : $student->cgpaSecPosi ?></td>
-					  					<td><?= ($sec != '') ? $student->cgpaSecPosi : $student->cgpaPosition ?></td>
-					  				</tr>
-				  				<?php } ?>
-				  			</table>
-					  	<?php } ?>
+								<?php foreach ($students as $student) { ?>
+									<tr>
+										<td><small><?= $student->stdName ?></small></td>
+										<td><?= $student->infoRoll ?></td>
+										<td><?= $student->sectionName ?></td>
+										<?php foreach ($exams as $value) {  ?>
+											<td><?= @$allmarks[$student->cgpaStudent][$value->examid] ?></td>
+										<?php } ?>
+										<td><?= $student->cgpaPoint ?></td>
+										<td><?= pointToGrade($student->cgpaPoint) ?></td>
+										<td><?= ($sec != '') ? $student->cgpaPosition : $student->cgpaSecPosi ?></td>
+										<td><?= ($sec != '') ? $student->cgpaSecPosi : $student->cgpaPosition ?></td>
+									</tr>
+								<?php } ?>
+							</table>
+							<?php if($consideredStudents){ ?>
+							<div style="page-break-before: always;"></div>
+							<h3 style="text-align:center">Considered List (<?= $totalConsideredStudents ?>)</h3>
+							<br>
+							<div class="table-responsive">
+							<table style="width: 100%; text-align: center;" class="table table-bordered">
+									<tr style="background: #FFE599;print-color-adjust: exact; -webkit-print-color-adjust: exact;">
+										<td>Student Name</td>
+										<td>ID</td>
+										<?php if($sec == ''){ ?>
+											<td>Section</td>
+										<?php } ?>
+										<td>CGPA</td>
+										<td>Grade</td>
+										<td>Faild Subject</td>
+										<td><?= ($sec != '') ? 'Class Position' : 'Section Position' ?></td>
+										<td><?= ($sec != '') ? 'Section Position' : 'Class Position' ?></td>
+									</tr>
+									<?php
+										foreach($consideredStudents as $key => $student){
+											?>
+											<tr>
+												<td style="text-align: left;">
+													<?= $student->stdName ?>
+												</td>
+												<td><?= $student->infoRoll ?></td>
+												<?php if($sec == ''){ ?>
+													<td><?= $student->sectionName ?></td>
+												<?php } ?>
+												<td><?= $student->cgpaPoint ?></td>
+												<td><?= pointToGrade($student->cgpaPoint) ?></td>
+												<td><?= $student->cgpaFaild ?></td>
+												<td><?= ($sec != '') ? $student->cgpaPosition : $student->cgpaSecPosi ?></td>
+												<td><?= ($sec != '') ? $student->cgpaSecPosi : $student->cgpaPosition ?></td>
+											</tr>
+											<?php
+										}
+									?>
+							</table>
+							</div>
+							<?php } ?>
+						<?php } ?>
 					  </div>
 					</div>
 			  </div>

@@ -96,6 +96,8 @@ add_action('wp_enqueue_scripts', 'maxSchoolMngs_scripts');
 require_once ('redux/ReduxCore/framework.php');
 require_once ('redux/sample/config.php');
 require_once ('inc/dashboard_widget.php');
+require_once ('inc/payment-api.php');
+require_once ('inc/export-apis.php');
 
 function load_custom_wp_admin_style(){
   wp_enqueue_style('maxSchoolMng', 'https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css');
@@ -156,10 +158,6 @@ function maxAdminMenu(){
   add_submenu_page('managements', 'Student', 'Student', 'manage_options', 'student', 'studentManagement');
   function studentManagement(){  require_once ('adminPages/student.php'); }
 
-  /*Student Image Upload*/
-  add_submenu_page('managements', 'Upload Student Photos', 'Upload Student Photos', 'manage_options', 'upload_student_image', 'uploadStudentImage');
-  function uploadStudentImage(){  require_once ('adminPages/upload-student-image.php'); }
-
   /*Exam*/
   add_submenu_page('managements', 'Exam', 'Exam', 'manage_options', 'exam', 'examManagement');
   function examManagement(){  require_once ('adminPages/exam.php'); }
@@ -206,7 +204,7 @@ function maxAdminMenu(){
   /*Teacher ID Card*/
   add_submenu_page('managements', 'Teacher ID Card', 'Teacher ID Card', 'manage_options', 'teacheridcard', 'teacheridManagement');
   function teacheridManagement(){  require_once ('adminPages/teacheridCard.php'); }
-  
+
   /*Sit Card*/
   add_submenu_page('managements', 'Seat Card', 'Seat Card', 'manage_options', 'seatcard', 'seatManagement');
   function seatManagement(){  require_once ('adminPages/seatCard.php'); }
@@ -314,7 +312,7 @@ function isnum($val){
 
 /*pass Fail*/
 function passFail($subMark,$studentMark){
-  $perc = round((($subMark / 100)* 33));
+  $perc = floor((($subMark / 100)* 33));
   if($subMark == 0 || $perc <= $studentMark){
     return  true;
   }else{
@@ -340,7 +338,7 @@ function genPoint($subCQ,$subMCQ,$subPect,$subCa,$stdCQ,$stdMCQ,$stdPrec,$stdCa,
   $subTotal = $subCQ+$subMCQ+$subPect+$subCa;
   $stuTotal = $stdCQ+$stdMCQ+$stdPrec+$stdCa;
 
-  $total = round(($stuTotal/$subTotal)*100);
+  $total = floor((($stuTotal/$subTotal)*100));
 
   if($combine == 1){
     $subCQ = $subTotal;
@@ -493,7 +491,7 @@ function EXPORT_DATABASE($tables=false, $backup_name=false){
 
   $tablToDownload = array('ct_access','ct_attendance','ct_cgpa','ct_class','ct_exam','ct_group','ct_result','ct_revenue','ct_revenue_cat','ct_section','ct_student','ct_studentinfo','ct_studentPoint','ct_subject','ct_teacher');
   set_time_limit(3000); $mysqli = new mysqli($host,$user,$pass,$name); $mysqli->select_db($name); $mysqli->query("SET NAMES 'utf8'");
-  $queryTables = $mysqli->query('SHOW TABLES'); while($row = $queryTables->fetch_row()) { $target_tables[] = $row[0]; } if($tables !== false && is_array($tables)) { $target_tables = array_intersect( $target_tables, $tables); } 
+  $queryTables = $mysqli->query('SHOW TABLES'); while($row = $queryTables->fetch_row()) { $target_tables[] = $row[0]; } if($tables !== false) { $target_tables = array_intersect( $target_tables, $tables); } 
   $content = "SET SQL_MODE = \"NO_AUTO_VALUE_ON_ZERO\";\r\nSET time_zone = \"+00:00\";\r\n\r\n\r\n/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;\r\n/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;\r\n/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;\r\n/*!40101 SET NAMES utf8 */;\r\n--\r\n-- Database: `".$name."`\r\n--\r\n\r\n\r\n";
   foreach($target_tables as $table){
 
@@ -887,4 +885,108 @@ function get_student_demographics() {
         'christian' => 0,
         'other' => 0
     );
+}
+
+/**
+ * Generate Student UIDs
+ */
+function run_student_uid_generation() {
+    global $wpdb;
+    $applied_count = 0;
+    
+    // Get all classes that have a numeric uid_code
+    $classes = $wpdb->get_results("SELECT classid, uid_code FROM ct_class WHERE uid_code IS NOT NULL AND uid_code != ''");
+    
+    foreach ($classes as $class) {
+        $classid = $class->classid;
+        $prefix = $class->uid_code;
+
+        // Skip if prefix is not numeric
+        if (!ctype_digit($prefix)) {
+            continue;
+        }
+        
+        // Groups students by admit year to generate serial numbers starting from 101 for each year-class combination
+        $years = $wpdb->get_col($wpdb->prepare(
+            "SELECT DISTINCT stdCurntYear FROM ct_student WHERE stdCurrentClass = %d AND (uid IS NULL OR uid = '')",
+            $classid
+        ));
+        
+        foreach ($years as $year) {
+            $year_prefix = substr($year, 2, 2);
+            $full_prefix = $year_prefix . $prefix;
+
+            // Calculate starting serial based on existing UIDs for this class and year
+            $max_serial = $wpdb->get_var($wpdb->prepare(
+                "SELECT MAX(CAST(SUBSTRING(uid, %d) AS UNSIGNED)) 
+                 FROM ct_student 
+                 WHERE stdCurrentClass = %d 
+                 AND stdCurntYear = %s 
+                 AND uid LIKE %s",
+                strlen($full_prefix) + 1,
+                $classid, 
+                $year,
+                $full_prefix . '%'
+            ));
+
+            $serial = ($max_serial && $max_serial >= 101) ? ($max_serial + 1) : 101;
+            
+            // Get students for this class and year ordered by infoSection, infoGroup and infoRoll
+            $students = $wpdb->get_results($wpdb->prepare(
+                "SELECT s.studentid, s.stdCurntYear 
+                 FROM ct_student s
+                 LEFT JOIN ct_studentinfo i ON s.studentid = i.infoStdid 
+                    AND s.stdCurrentClass = i.infoClass 
+                    AND s.stdCurntYear = i.infoYear
+                 LEFT JOIN ct_section sec ON i.infoSection = sec.sectionid 
+                    AND i.infoClass = sec.forClass 
+                 WHERE s.stdCurrentClass = %d 
+                 AND s.stdCurntYear = %s 
+                 AND (s.uid IS NULL OR s.uid = '')
+                 ORDER BY sec.sectionName ASC, i.infoRoll ASC, i.infoGroup ASC, s.studentid ASC",
+                $classid, $year
+            ));
+            foreach ($students as $student) {
+                $uid = $year_prefix . $prefix . str_pad($serial, 3, '0', STR_PAD_LEFT);
+                
+                $wpdb->update(
+                    'ct_student',
+                    array('uid' => $uid),
+                    array('studentid' => $student->studentid)
+                );
+                
+                $serial++;
+                $applied_count++;
+            }
+        }
+    }
+    return $applied_count;
+}
+
+/**
+ * Update Class UID Codes
+ */
+function update_class_uid_codes($uid_codes) {
+    global $wpdb;
+    $error_msg = "";
+    foreach ($uid_codes as $classid => $code) {
+        if ($code == '') continue;
+        
+        $current_val = $wpdb->get_var($wpdb->prepare("SELECT uid_code FROM ct_class WHERE classid = %d", $classid));
+        if (!empty($current_val)) continue;
+        
+        if (!ctype_digit($code) || strlen($code) != 2) {
+            $error_msg .= "Code '$code' must be exactly 2 digits. ";
+            continue;
+        }
+        
+        $is_duplicate = $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM ct_class WHERE uid_code = %s", $code));
+        if ($is_duplicate > 0) {
+            $error_msg .= "Code '$code' is already assigned to another class. ";
+            continue;
+        }
+        
+        $wpdb->update('ct_class', array('uid_code' => $code), array('classid' => $classid));
+    }
+    return $error_msg;
 }

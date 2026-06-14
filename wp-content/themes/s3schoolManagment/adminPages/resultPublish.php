@@ -2,23 +2,8 @@
 /**
 * Template Name: Admin ResultPublish
 */
-global $wpdb, $s3sRedux;
+global $wpdb;
 $convertPercent = 70;
-
-require_once __DIR__ . '/functions/teacher-access.php';
-
-$teacherAccess = s3s_get_teacher_access_context();
-$isTeacher = $teacherAccess['is_teacher'];
-$teacherRestrictions = $teacherAccess['restrictions'];
-$hasAssignedClass = $teacherAccess['has_assignment'];
-
-$teacherOfClass = '';
-$teacherOfSection = '';
-if ($hasAssignedClass && $teacherRestrictions) {
-	$teacherOfClass = $teacherRestrictions->teacherOfClass;
-	$teacherOfSection = $teacherRestrictions->teacherOfSection;
-}
-
 /*=================
 	Publish 
 =================*/
@@ -73,7 +58,6 @@ if (isset($_POST['publisRes'])) {
 		foreach ($combines as $combin) {
 			$absentCk = array();
 			if($combin->subPaper == 1){
-			    $sub4th = $combin->resSub4th;
 				$havecon = false;
                 if($combin->subCa > 0){
                     $subTot1 = (isnum($combin->subMCQ)+isnum($combin->subCQ)+isnum($combin->subPect))*$convertPercent/100 + $combin->subCa;
@@ -136,13 +120,8 @@ if (isset($_POST['publisRes'])) {
 				$absentCk[] = $combin->resPrec;
 				// $absentCk[] = $combin->resCa;
 				
-				// $totalobtain += $obtain;
-				if($sub4th == 1){
-				    $subjTotalComb = $subTot1 + $subTot2;
-    				$totalobtain += ($obtain > (($subjTotalComb/100)*40) ) ? $obtain-(($subjTotalComb/100)*40) : 0 ;
-    			}else{
-    				$totalobtain += $obtain;
-    			}
+				$totalobtain += $obtain;
+				
 			
 				if( $havecon ){
 				    if($combin->subCa > 0){
@@ -154,7 +133,7 @@ if (isset($_POST['publisRes'])) {
 					$conbinePoint = $genRes['point'];
 					if(in_array('a', $absentCk) || in_array('A', $absentCk)){ $combinegrade = 'F'; }
 
-					if($combinegrade == 'F'){ if($combin->resSub4th != 1){ $spFaild++; } }
+					if($combinegrade == 'F'){ $spFaild++; }
 
 				}else{
 					if($combin->resSub4th != 1){ $spFaild++; }
@@ -164,7 +143,6 @@ if (isset($_POST['publisRes'])) {
 				if(in_array('a', $absentCk) || in_array('A', $absentCk)){ $spAbsent++; }
 				if($combin->resSub4th == 1){ if($conbinePoint > 2){ $totalPoin += ($conbinePoint-2); }}
 				else{ $mainSubj++; $totalPoin += $conbinePoint; }
-	
 				
 			}
 			
@@ -254,7 +232,7 @@ SET TBL1.cgpaPosition = TBL2.rowNum;
 	$allClsPoss = array();
 	$allPosi = $wpdb->get_results("SELECT `spid` FROM `ct_studentPoint`
 		LEFT JOIN ct_studentinfo ON infoStdid = spStdID AND infoClass = $class AND infoYear = '$year'
-		WHERE `spClass` = $class AND `spExam` = $exam AND `spYear` = '$year' ORDER BY spAbsent,spFaild, spPoint DESC,spTotalMark DESC,infoRoll ASC");
+		WHERE `spClass` = $class AND `spExam` = $exam AND `spYear` = '$year' ORDER BY spFaild, spPoint DESC,spTotalMark DESC,infoRoll ASC");
 	foreach ($allPosi as $key => $value) {
 		$allClsPoss[$key+1] = $value->spid;
 	}
@@ -270,7 +248,7 @@ SET TBL1.cgpaPosition = TBL2.rowNum;
 
 		if($sec != '')
 			$qury11 .= " AND infoSection = $sec";
-		$qury11 .= " ORDER BY spAbsent,spFaild,spPoint DESC,spTotalMark DESC,infoRoll ASC";
+		$qury11 .= " ORDER BY spFaild,spPoint DESC,spTotalMark DESC,infoRoll ASC";
 
 		$positions = $wpdb->get_results($qury11);
 		$posi = 0;
@@ -331,12 +309,8 @@ if (isset($_POST['unpublisRes'])) {
 				  			<div class="panel panel-success">
 								  <div class="panel-heading"><h4 style="margin:0"><?= $resYear ?></h4></div>
 								  <div class="panel-body">
-									<?php 
-								   	if ($isTeacher && $hasAssignedClass && !empty($teacherOfClass)) {
-								  		$classes = $wpdb->get_results( $wpdb->prepare( "SELECT resClass,className FROM `ct_result` LEFT JOIN ct_class ON ct_result.resClass = ct_class.classid WHERE resultYear = %s AND status = 0 AND resClass IN ($teacherOfClass) GROUP BY resClass ORDER BY resClass ASC", $resYear ) );
-								  	} else {
-									  		$classes = $wpdb->get_results( $wpdb->prepare( "SELECT resClass,className FROM `ct_result` LEFT JOIN ct_class ON ct_result.resClass = ct_class.classid WHERE resultYear = %s AND status = 0 GROUP BY resClass ORDER BY resClass ASC", $resYear ) );
-								  	}
+									 	<?php 
+									  	$classes = $wpdb->get_results( "SELECT resClass,className FROM `ct_result` LEFT JOIN ct_class ON ct_result.resClass = ct_class.classid WHERE resultYear = '$resYear' AND status = 0 GROUP BY resClass ORDER BY resClass ASC" );
 									  	foreach ($classes as $class) {
 									  		$resClass = $class->resClass;
 									  		?>
@@ -397,12 +371,8 @@ if (isset($_POST['unpublisRes'])) {
 				  			<div class="panel panel-success">
 								  <div class="panel-heading"><h4 style="margin:0"><?= $resYear ?></h4></div>
 								  <div class="panel-body">
-								 	<?php 
-								  	if ($isTeacher && $hasAssignedClass && !empty($teacherOfClass)) {
-								  		$classes = $wpdb->get_results( $wpdb->prepare( "SELECT resClass,className FROM `ct_result` LEFT JOIN ct_class ON ct_result.resClass = ct_class.classid WHERE resultYear = %s AND status = 1 AND resClass IN ($teacherOfClass) GROUP BY resClass ORDER BY resClass ASC", $resYear ) );
-								  	} else {
-									  		$classes = $wpdb->get_results( $wpdb->prepare( "SELECT resClass,className FROM `ct_result` LEFT JOIN ct_class ON ct_result.resClass = ct_class.classid WHERE resultYear = %s AND status = 1 GROUP BY resClass ORDER BY resClass ASC", $resYear ) );
-									  	}
+									 	<?php 
+									  	$classes = $wpdb->get_results( "SELECT resClass,className FROM `ct_result` LEFT JOIN ct_class ON ct_result.resClass = ct_class.classid WHERE resultYear = '$resYear' AND status = 1 GROUP BY resClass ORDER BY resClass ASC" );
 									  	foreach ($classes as $class) {
 									  		$resClass = $class->resClass;
 									  		?>

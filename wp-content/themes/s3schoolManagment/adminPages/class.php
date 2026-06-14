@@ -4,6 +4,11 @@
 */
 global $wpdb;
 
+/*
+ALTER TABLE ct_class ADD COLUMN haveShift TINYINT(1) DEFAULT 0;
+ALTER TABLE ct_student ADD COLUMN stdShift VARCHAR(20) DEFAULT '';
+*/
+
 /*=================
 	Add Class
 =================*/
@@ -17,6 +22,7 @@ if (isset($_POST['addClass'])) {
 			'have4thSub' 			=> $_POST['have4thSub'],
 			'havecgpa' 			=> $_POST['havecgpa'],
 			'havegroup' 			=> $_POST['havegroup'],
+			'haveShift' 			=> $_POST['haveShift'],
 			'combineMark' 		=> $_POST['combineMark'],
 			'session' 				=> $_POST['session'],
 			'classNote' 			=> $_POST['classNote'],
@@ -40,6 +46,7 @@ if (isset($_POST['updateClass'])) {
 			'have4thSub' 			=> $_POST['have4thSub'],
 			'havecgpa' 			=> $_POST['havecgpa'],
 			'havegroup' 			=> $_POST['havegroup'],
+			'haveShift' 			=> $_POST['haveShift'],
 			'combineMark' 		=> $_POST['combineMark'],
 			'session' 				=> $_POST['session'],
 			'classNote' 			=> $_POST['classNote'],
@@ -64,8 +71,8 @@ if (isset($_POST['deleteClass'])) {
 	Edit Class
 =================*/
 $editid = 0;
-$dont4th = $optionNo = $combineMarkN = $sessionY = $havecgpay = $nogroup = 'checked';
-$optionYes =  $have4th = $combineMarkY = $sessionS = $havecgpan = $havegroup = '';
+$dont4th = $optionNo = $combineMarkN = $sessionY = $havecgpay = $nogroup = $noshift = 'checked';
+$optionYes =  $have4th = $combineMarkY = $sessionS = $havecgpan = $havegroup = $haveshift = '';
 if (isset($_POST['editClass'])) {
 	$editid = $_POST['id'];
 	$edit = $wpdb->get_results( "SELECT * FROM ct_class WHERE classid = $editid" );
@@ -74,6 +81,7 @@ if (isset($_POST['editClass'])) {
 	if($edit->haveOptionalSub == 1){ $optionYes = 'checked'; $optionNo = ''; }
 	if($edit->have4thSub == 1){ $have4th = 'checked'; $dont4th = ''; }
 	if($edit->havegroup == 1){ $havegroup = 'checked'; $nogroup = '';}
+	if($edit->haveShift == 1){ $haveshift = 'checked'; $noshift = '';}
 	if($edit->combineMark == 1){ $combineMarkY = 'checked'; $combineMarkN = ''; }
 	if($edit->session != 'year'){ $sessionS = 'checked'; $sessionY = ''; }
 	if($edit->havecgpa != '1'){ $havecgpan = 'checked'; $havecgpay = ''; }
@@ -173,6 +181,15 @@ if (isset($_POST['editClass'])) {
 				    			<input type="radio" name="havegroup" value="0" <?= $nogroup ?>> No
 				    		</label>
 				    	</div>
+				    	<div class="form-group col-md-6">
+				    		<label>Has Shift?</label><br>
+				    		<label class="labelRadio">
+				    			<input type="radio" name="haveShift" value="1" <?= $haveshift ?>> Yes
+				    		</label>
+				    		<label class="labelRadio">
+				    			<input type="radio" name="haveShift" value="0" <?= $noshift ?>> No
+				    		</label>
+				    	</div>
 			    	</div>
 
 			    	<div class="form-group">
@@ -240,6 +257,10 @@ if (isset($_POST['editClass'])) {
 													<td>
 														<b>Has Group:</b>
 														<?php echo ($class->havegroup) ? "Yes" : "No"; ?>
+													</td>
+													<td>
+														<b>Has Shift:</b>
+														<?php echo (isset($class->haveShift) && $class->haveShift) ? "Yes" : "No"; ?>
 													</td>
 												</tr>
 												<tr>

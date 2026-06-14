@@ -3,12 +3,8 @@
 * Template Name: Admin Result Summery
 */
 global $wpdb,$s3sRedux; 
-require_once __DIR__ . '/functions/teacher-access.php';
 
-$teacherAccess = s3s_get_teacher_access_context();
-$isTeacher = $teacherAccess['is_teacher'];
-$teacherRestrictions = $teacherAccess['restrictions'];
-$hasAssignedClass = $teacherAccess['has_assignment'];
+$considerable_failed_subjects = 4;
 ?>
 
 <?php if ( ! is_admin() ) { get_header(); ?>
@@ -24,8 +20,8 @@ $hasAssignedClass = $teacherAccess['has_assignment'];
 	<div class="panel panel-info">
 		<div class="panel-heading">
 			<h3>
-				Result Summery<br>
-				<small>Find Out Result Summery</small>
+				Result Summary<br>
+				<small>Find Out Result Summary</small>
 			</h3>
 		</div>
 		<div class="panel-body">
@@ -36,17 +32,7 @@ $hasAssignedClass = $teacherAccess['has_assignment'];
 					<label>Class</label>
 					<select id='resultClass' class="form-control" name="class" required>
 						<?php
-
-							// If teacher, only show their assigned class when assignments exist
-							if ($isTeacher && $hasAssignedClass && $teacherRestrictions) {
-								$classQuery = $wpdb->get_results( $wpdb->prepare(
-									"SELECT classid,className FROM ct_class WHERE classid = %d AND classid IN (SELECT examClass FROM ct_exam GROUP BY examClass ORDER BY className ASC)",
-									$teacherRestrictions->teacherOfClass
-								));
-							} else {
 								$classQuery = $wpdb->get_results( "SELECT classid,className FROM ct_class WHERE classid IN (SELECT examClass FROM ct_exam GROUP BY examClass ORDER BY className ASC)" );
-							}
-							
 							echo "<option value=''>Select Class</option>";
 
 							foreach ($classQuery as $class) {
@@ -157,7 +143,7 @@ $hasAssignedClass = $teacherAccess['has_assignment'];
 				  			<img height="80px" style="position: absolute;left: 10px;top: 10px" src="<?= $s3sRedux['instLogo']['url'] ?>">
 		  					<h2 style="margin: 5px 0 5px 0;font-size: 23px;"><b><?= $s3sRedux['institute_name'] ?></b></h2>
 					  		<p style="color:#2b5591; font-size: 14px; margin: 0;"><?= $s3sRedux['institute_address'] ?></p>
-					  		<h4 style="margin: 5px;">Result Summery</h4>
+					  		<h4 style="margin: 5px;">Result Summary</h4>
 					  		<h3 style="margin: 5px;"><?= $info->examName ?></h3>
 				  		</div>
 
@@ -171,13 +157,14 @@ $hasAssignedClass = $teacherAccess['has_assignment'];
 					  		</tbody>
 					  	</table>
 					  	
-					  	<h4>Result Summery</h4>
+					  	<h4>Result Summary</h4>
 					  	<table>
 					  		<thead>
 					  			<tr>
 					  				<th>SL No</th>
-					  				<th>Total Student:</th>
+					  				<th>Total Student</th>
 					  				<th>Pass</th>
+					  				<th>Considered</th>
 					  				<th>Fail</th>
 					  				<th>A+</th>
 					  				<th>A</th>
@@ -191,7 +178,8 @@ $hasAssignedClass = $teacherAccess['has_assignment'];
 					  		<tbody>
 					  			<?php
 					  				$qry = "SELECT SUM(IF(`spFaild` = 0, 1, 0)) AS pas,
-                                        SUM(IF(`spFaild` > 0, 1, 0)) AS fail,
+                                        SUM(IF(`spFaild` > 0 AND `spFaild` <= $considerable_failed_subjects, 1, 0)) AS considered,
+                                        SUM(IF(`spFaild` > $considerable_failed_subjects, 1, 0)) AS fail,
                                         SUM(IF(`spPoint` >= 5 AND `spFaild` = 0, 1, 0)) AS aplus,
                                         SUM(IF(`spPoint` >= 4 AND `spPoint` < 5 AND `spFaild` = 0, 1, 0)) AS a,
                                         SUM(IF(`spPoint` >= 3.5 AND `spPoint` < 4 AND `spFaild` = 0, 1, 0)) AS aminus,
@@ -206,7 +194,7 @@ $hasAssignedClass = $teacherAccess['has_assignment'];
                         
                         $summerydata = $wpdb->get_results($qry)[0];
                         
-                        $totalstd = $summerydata->pas + $summerydata->fail;
+                        $totalstd = $summerydata->pas + $summerydata->considered + $summerydata->fail;
 
 					  			?>
 					  			<tr>
@@ -215,6 +203,10 @@ $hasAssignedClass = $teacherAccess['has_assignment'];
 					  				<td>
 					  					<div><?= $summerydata->pas ?></div>
 					  					<?= $totalstd != 0 ? number_format((float)($summerydata->pas/$totalstd)*100, 2, '.', '') : 0; ?>%
+					  				</td>
+					  				<td>
+					  					<div><?= $summerydata->considered ?></div>
+					  					<?= $totalstd != 0 ? number_format((float)($summerydata->considered/$totalstd)*100, 2, '.', '') : 0; ?>%
 					  				</td>
 					  				<td>
 					  					<div><?= $summerydata->fail ?></div>
@@ -244,14 +236,14 @@ $hasAssignedClass = $teacherAccess['has_assignment'];
 					  	</table>
 							
 							<br>
-					  	<h4 >Faild Summery</h4>
+					  	<h4 >Failed Summary</h4>
 					  	<?php
 
 
 
 			  				$qry = "SELECT `spFaild`,COUNT(*) AS sub,  GROUP_CONCAT(ct_studentinfo.infoRoll ORDER BY ct_studentinfo.infoRoll ASC) AS infoRolls FROM ct_studentPoint
 									LEFT JOIN ct_studentinfo ON ct_studentinfo.infoStdid = ct_studentPoint.spStdID AND ct_studentinfo.infoClass = $class AND ct_studentinfo.infoyear = '$year'
-									WHERE spYear = '$year' AND spClass = $class AND spExam = $exam AND spFaild > 0";
+									WHERE spYear = '$year' AND spClass = $class AND spExam = $exam AND spFaild > $considerable_failed_subjects";
 			  				if ($sec != '') { $qry .= " AND infoSection = $sec"; }
 			  				$qry .= " GROUP BY `spFaild`";
 			  				$failSum = $wpdb->get_results($qry);
@@ -313,7 +305,7 @@ $hasAssignedClass = $teacherAccess['has_assignment'];
 				  			<img height="80px" style="position: absolute;left: 10px;top: 10px" src="<?= $s3sRedux['instLogo']['url'] ?>">
 		  					<h2 style="margin: 5px 0 5px 0;font-size: 23px;"><b><?= $s3sRedux['institute_name'] ?></b></h2>
 					  		<p style="color:#2b5591; font-size: 14px; margin: 0;"><?= $s3sRedux['institute_address'] ?></p>
-					  		<h4 style="margin: 5px;">Result Summery</h4>
+					  		<h4 style="margin: 5px;">Result Summary</h4>
 					  		<h3 style="margin: 5px;"><?= $info->examName ?></h3>
 				  		</div>
 
@@ -327,7 +319,7 @@ $hasAssignedClass = $teacherAccess['has_assignment'];
 					  		</tbody>
 					  	</table>
 		
-					  	<h4>Subjects based Result Summery</h4>
+					  	<h4>Subjects based Result Summary</h4>
 					  	<table>
 					  		<thead>
 						  		<tr>
@@ -467,7 +459,7 @@ $hasAssignedClass = $teacherAccess['has_assignment'];
                                     spYear = '$year' 
                                     AND spClass = $class 
                                     AND spExam = $exam 
-                                    AND spFaild > 0
+                                    AND spFaild >= 3
                             ";
                             
                             if ($sec != '') {
@@ -480,35 +472,35 @@ $hasAssignedClass = $teacherAccess['has_assignment'];
                             
                             $faillist = $wpdb->get_results($qry);
                             
-                            // $qry = "
-                            //     SELECT 
-                            //         GROUP_CONCAT(ct_studentinfo.infoRoll ORDER BY ct_studentinfo.infoRoll ASC) AS infoRolls
-                            //     FROM 
-                            //         ct_studentPoint
-                            //     LEFT JOIN 
-                            //         ct_studentinfo 
-                            //         ON ct_studentinfo.infoStdid = ct_studentPoint.spStdID 
-                            //         AND ct_studentinfo.infoClass = $class 
-                            //         AND ct_studentinfo.infoyear = '$year'
-                            //     LEFT JOIN 
-                            //         ct_section 
-                            //         ON ct_section.sectionid = ct_studentinfo.infoSection
-                            //     WHERE 
-                            //         spYear = '$year' 
-                            //         AND spClass = $class 
-                            //         AND spExam = $exam 
-                            //         AND spFaild > 0 AND spFaild <= 2 AND spPoint != '0.00'
-                            // ";
+                            $qry = "
+                                SELECT 
+                                    GROUP_CONCAT(ct_studentinfo.infoRoll ORDER BY ct_studentinfo.infoRoll ASC) AS infoRolls
+                                FROM 
+                                    ct_studentPoint
+                                LEFT JOIN 
+                                    ct_studentinfo 
+                                    ON ct_studentinfo.infoStdid = ct_studentPoint.spStdID 
+                                    AND ct_studentinfo.infoClass = $class 
+                                    AND ct_studentinfo.infoyear = '$year'
+                                LEFT JOIN 
+                                    ct_section 
+                                    ON ct_section.sectionid = ct_studentinfo.infoSection
+                                WHERE 
+                                    spYear = '$year' 
+                                    AND spClass = $class 
+                                    AND spExam = $exam 
+                                    AND spFaild > 0 AND spFaild <= $considerable_failed_subjects AND spPoint != '0.00'
+                            ";
                             
-                            // if ($sec != '') {
-                            //     $qry .= " AND ct_studentinfo.infoSection = $sec";
-                            // }
+                            if ($sec != '') {
+                                $qry .= " AND ct_studentinfo.infoSection = $sec";
+                            }
                             
-                            // $qry .= "
-                            //     GROUP BY ct_studentinfo.infoSection
-                            // ";
+                            $qry .= "
+                                GROUP BY ct_studentinfo.infoSection
+                            ";
                             
-                            // $consideredlist = $wpdb->get_results($qry);
+                            $consideredlist = $wpdb->get_results($qry);
                             
                             // subject wise faillist
                             	$qry = "SELECT `spFaild`,COUNT(*) AS sub,  GROUP_CONCAT(ct_studentinfo.infoRoll ORDER BY ct_studentinfo.infoRoll ASC) AS infoRolls FROM ct_studentPoint
@@ -549,12 +541,14 @@ $hasAssignedClass = $teacherAccess['has_assignment'];
 					  			</tr>
 					  		</tbody>
 					  	</table>
-				  	<h4>Passed List:</h4>
-					  	<span><?= str_replace(',', ', <wbr>', @$passlist[0]->infoRolls) ?>
-</span><br>
-					  	
+		
+					  	<h4>Passed List:</h4>
+					  	<span><?= str_replace(',', ', <wbr>',$passlist[0]->infoRolls)?></span><br>
+					  	<h4>Considered List:</h4>
+					  	<span><?= str_replace(',', ', <wbr>',$consideredlist[0]->infoRolls)?></span><br>
 					  	<h4>Failed List:</h4>
-					  	<span><?=str_replace(',', ', <wbr>', @$faillist[0]->infoRolls)?></span><br>
+					  	<span><?= str_replace(',', ', <wbr>',$faillist[0]->infoRolls)?></span><br>
+					  	
 					  	<?php if (!empty($subjectWiseFailed)) : ?>
 					  	<h4>Subject Wise Failed List:</h4>
                         <table border="1" cellpadding="10" cellspacing="0">
@@ -567,7 +561,7 @@ $hasAssignedClass = $teacherAccess['has_assignment'];
                             </thead>
                             <tbody>
                                 <?php foreach ($subjectWiseFailed as $row) : ?>
-                                    <tr>
+									<tr>
                                         <td><?php echo htmlspecialchars($row->spFaild). ' Sub'; ?></td>
                                         <td><?php echo htmlspecialchars($row->sub); ?></td>
                                         <td><?=  str_replace(',', ', <wbr>',$row->infoRolls); ?></td>
@@ -618,7 +612,8 @@ $hasAssignedClass = $teacherAccess['has_assignment'];
 			indexLabel: "{label} - {y}",
 			dataPoints: [
 			{ y: <?= $summerydata->pas ?>, label: "Pass <?= $totalstd != 0 ? number_format((float)($summerydata->pas/$totalstd)*100, 2, '.', '') : 0; ?>%", indexLabelLineColor: "#0f0" },
-			{ y: <?= $summerydata->fail ?>, label: "Fail <?= $totalstd != 0 ? number_format((float)($summerydata->fail/$totalstd)*100, 2, '.', '') : 0; ?>%", indexLabelLineColor: "#f00" }
+			{ y: <?= $summerydata->fail ?>, label: "Fail <?= $totalstd != 0 ? number_format((float)($summerydata->fail/$totalstd)*100, 2, '.', '') : 0; ?>%", indexLabelLineColor: "#f00" },
+			{ y: <?= $summerydata->considered ?>, label: "Considered <?= $totalstd != 0 ? number_format((float)($summerydata->considered/$totalstd)*100, 2, '.', '') : 0; ?>%", indexLabelLineColor: "#00f" }
 			]
 		}]
 	});
@@ -627,7 +622,7 @@ $hasAssignedClass = $teacherAccess['has_assignment'];
 	var chart2 = new CanvasJS.Chart("resSummery",{
 		animationEnabled: true,
 		title: {
-			text: "Summery"
+			text: "Summary"
 		},
 		data: [{
 			type: "column",
@@ -648,7 +643,7 @@ $hasAssignedClass = $teacherAccess['has_assignment'];
 
 	var chart3 = new CanvasJS.Chart("failfailchart",{
 		title: {
-			text: "Summery"
+			text: "Summary"
 		},
 		animationEnabled: true,
 		data: [{
@@ -673,7 +668,7 @@ $hasAssignedClass = $teacherAccess['has_assignment'];
 	var chart4 = new CanvasJS.Chart("failSummery",{
 		animationEnabled: true,
 		title: {
-			text: "Summery"
+			text: "Summary"
 		},
 		data: [{
 			type: "column",
@@ -743,4 +738,296 @@ $hasAssignedClass = $teacherAccess['has_assignment'];
 
 
 
+</script>
+
+<?php
+// ===============================================================
+// FIX 409 CONFLICT - HANDLE AJAX ACTIONS LOCALLY (At End of File)
+// ===============================================================
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['type'])) {
+
+  // Clean output buffer to ensure JSON/HTML response is valid
+  while (ob_get_level()) {
+    ob_end_clean();
+  }
+
+  // ------------------------------------------
+  // Get Exams
+  // ------------------------------------------
+  if ($_POST['type'] == 'getExams') {
+    $class = $_POST['class'];
+    $exams = $wpdb->get_results("SELECT examid,examName FROM ct_exam WHERE examClass = '$class'");
+    if (empty($exams)) {
+      echo "<option value=''>No Exam for this Class</option>";
+    } else {
+      echo "<option value=''>Select An Exam</option>";
+    }
+    foreach ($exams as $exam) {
+      echo "<option value='{$exam->examid}'>{$exam->examName}</option>";
+    }
+    exit;
+  }
+
+  // ------------------------------------------
+  // Get Years
+  // ------------------------------------------
+  elseif ($_POST['type'] == 'getYears') {
+    $class = $_POST['class'];
+    $years = $wpdb->get_results("SELECT infoYear FROM ct_studentinfo WHERE infoClass = $class GROUP BY infoYear ORDER BY infoYear ASC");
+    if (empty($years)) {
+      echo "<option value=''>No Student In this class</option>";
+    } else {
+      echo "<option value=''>Year</option>";
+    }
+    foreach ($years as $year) {
+      echo "<option value='{$year->infoYear}'>{$year->infoYear}</option>";
+    }
+    exit;
+  }
+
+  // ------------------------------------------
+  // Get Section
+  // ------------------------------------------
+  elseif ($_POST['type'] == 'getSection') {
+    $class = $_POST['class'];
+    $sections_query = "SELECT sectionid,sectionName FROM ct_section WHERE forClass = '$class'";
+    
+    $sections_query .= " ORDER BY sectionName";
+    $sections = $wpdb->get_results($sections_query);
+
+    if (!empty($sections)) {
+      echo "<option value=''>Section</option>";
+      foreach ($sections as $section) {
+        echo "<option value='{$section->sectionid}'>{$section->sectionName}</option>";
+      }
+    } else {
+      echo "<option value=''>No sections available</option>";
+    }
+    exit;
+  }
+
+  // ------------------------------------------
+  // Get Groups
+  // ------------------------------------------
+  elseif ($_POST['type'] == 'getGroupsByClass') {
+    $class = $_POST['class'];
+    $groups_query = "SELECT DISTINCT ct_group.groupId, ct_group.groupName 
+            FROM ct_group 
+            INNER JOIN ct_studentinfo ON ct_studentinfo.infoGroup = ct_group.groupId 
+            WHERE ct_studentinfo.infoClass = '$class'";
+    
+    $groups_query .= " ORDER BY ct_group.groupName ASC";
+    $groups = $wpdb->get_results($groups_query);
+
+    echo "<option value=''>All Groups</option>";
+    foreach ($groups as $group) {
+      echo "<option value='{$group->groupId}'>{$group->groupName}</option>";
+    }
+    exit;
+  }
+
+  // ------------------------------------------
+  // Get Exam Subjects
+  // ------------------------------------------
+  elseif ($_POST['type'] == 'getExamSubject') {
+    $exam = intval($_POST['exam']);
+    $group = isset($_POST['group']) ? $_POST['group'] : '';
+    $subjects = [];
+
+    $subs = $wpdb->get_results("SELECT examSubjects FROM ct_exam WHERE examid = $exam");
+
+    if (!empty($subs[0]->examSubjects)) {
+      $subs = json_decode($subs[0]->examSubjects, true);
+    } else {
+      $subs = [];
+    }
+
+    if (!empty($subs)) {
+      $subs_escaped = array_map('intval', $subs);
+      $subjectQuery = "SELECT subjectid,subjectName FROM ct_subject 
+                WHERE subjectid IN (" . implode(',', $subs_escaped) . ")";
+
+      if (!empty($group)) {
+        $subjectQuery .= " AND (forGroup = 'all' OR forGroup = '$group' OR forGroup LIKE '%\"$group\"%')";
+      }
+
+      $subjectQuery .= " ORDER BY subjectName ASC";
+      $subjects = $wpdb->get_results($subjectQuery);
+    }
+
+    if (empty($subjects)) {
+      echo "<option value=''>No subject!</option>";
+    } else {
+      echo "<option value=''>Select Subject</option>";
+      foreach ($subjects as $subject) {
+        echo '<option value="' . $subject->subjectid . '">' . $subject->subjectName . '</option>';
+      }
+    }
+    exit;
+  }
+}
+
+if (isset($_POST['updateAllResult'])) {
+  $cq = $_POST['CQ'];
+  $mcq = $_POST['MCQ'];
+  $prc = $_POST['P'];
+  $ca = $_POST['ca'];
+  $response = false;
+  foreach ($_POST['id'] as $id) {
+    $update = $wpdb->update(
+      'ct_result',
+      array(
+        'resCQ'     => $cq[$id],
+        'resMCQ'     => $mcq[$id],
+        'resPrec'   => $prc[$id],
+        'resCa'   => $ca[$id],
+        'resTotal'   => isnum($cq[$id]) + isnum($mcq[$id]) + isnum($prc[$id]) + isnum($ca[$id])
+      ),
+      array('resultId' => $id)
+    );
+    if ($update) {
+      $response = $update;
+    }
+  }
+  if ($response) {
+    $message = array('status' => 'success', 'message' => 'Successfully updated');
+  } else {
+    $message = array('status' => 'faild', 'message' => 'Something wrong please try again');
+  }
+} ?>
+
+<script type="text/javascript">
+  // ==================================
+  // HANDLE AJAX ACTIONS LOCALLY
+  // ==================================
+  (function($) {
+    // Use current page as AJAX URL for standalone processing
+    var ajaxUrl = '';
+
+    $('#resultClass').change(function() {
+      var selectedClass = $(this).val();
+
+      // Fetch Exams
+      $.ajax({
+        url: ajaxUrl,
+        method: "POST",
+        data: {
+          class: selectedClass,
+          type: 'getExams'
+        },
+        dataType: "html"
+      }).done(function(msg) {
+        $("#resultExam").html(msg);
+        $("#resultExam").prop('disabled', false);
+        // Reset dependent dropdowns
+        $("#resultSubject").prop('disabled', true).html('<option disabled selected>Select exam First</option>');
+      });
+
+      // Fetch Years
+      $.ajax({
+        url: ajaxUrl,
+        method: "POST",
+        data: {
+          class: selectedClass,
+          type: 'getYears'
+        },
+        dataType: "html"
+      }).done(function(msg) {
+        $("#resultYear").html(msg);
+        $("#resultYear").prop('disabled', false);
+      });
+
+      // Fetch Sections
+      $.ajax({
+        url: ajaxUrl,
+        method: "POST",
+        data: {
+          class: selectedClass,
+          type: 'getSection'
+        },
+        dataType: "html"
+      }).done(function(msg) {
+        $("#resultSection").html(msg);
+        $("#resultSection").prop('disabled', false);
+      });
+
+      // Fetch All Groups
+      $.ajax({
+        url: ajaxUrl,
+        method: "POST",
+        data: {
+          class: selectedClass,
+          type: 'getGroupsByClass'
+        },
+        dataType: "html"
+      }).done(function(msg) {
+        $("#resultGroup").html(msg);
+        $("#resultGroup").prop('disabled', false);
+      });
+    });
+
+    // Fetch Subjects when Exam Changes
+    $('#resultExam').change(function() {
+      var selectedExam = $(this).val();
+      var selectedGroup = $('#resultGroup').val();
+
+      $.ajax({
+        url: ajaxUrl,
+        method: "POST",
+        data: {
+          exam: selectedExam,
+          group: selectedGroup,
+          type: 'getExamSubject'
+        },
+        dataType: "html"
+      }).done(function(msg) {
+        $("#resultSubject").html(msg);
+        $("#resultSubject").prop('disabled', false);
+      });
+    });
+
+    // Fetch Subjects when Group Changes
+    $('#resultGroup').change(function() {
+      var selectedExam = $('#resultExam').val();
+      var selectedGroup = $(this).val();
+
+      if (selectedExam) {
+        $.ajax({
+          url: ajaxUrl,
+          method: "POST",
+          data: {
+            exam: selectedExam,
+            group: selectedGroup,
+            type: 'getExamSubject'
+          },
+          dataType: "html"
+        }).done(function(msg) {
+          $("#resultSubject").html(msg);
+          $("#resultSubject").prop('disabled', false);
+        });
+      }
+    });
+
+    // Interactive validation for result inputs (Client-side only)
+    $('.resultInput').keyup(function(event) {
+      $this = $(this);
+      $val = $this.val();
+      $max = $this.data('max');
+
+      if ($val == '' || $val < ($max + 1) || $val == 'A' || $val == 'a') {
+        $this.css('border-color', '#ddd');
+        $this.removeClass('haserror');
+      } else {
+        $this.addClass('haserror');
+        $this.css('border-color', 'red');
+        $('.resultSubmit').prop('disabled', true);
+      }
+
+      if ($('.resultInput.haserror').length == 0) {
+        $('.resultSubmit').prop('disabled', false);
+      }
+    });
+
+  })(jQuery);
 </script>

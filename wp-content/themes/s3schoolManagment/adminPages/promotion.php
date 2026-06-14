@@ -3,20 +3,6 @@
 ** Template Name: Admin Promotion
 */ 
  global $wpdb; global $s3sRedux;
-require_once __DIR__ . '/functions/teacher-access.php';
-
-$teacherAccess = s3s_get_teacher_access_context();
-$isTeacher = $teacherAccess['is_teacher'];
-$teacherRestrictions = $teacherAccess['restrictions'];
-$hasAssignedClass = $teacherAccess['has_assignment'];
-
-// Extract teacher restrictions for use in queries
-$teacherOfClass = '';
-$teacherOfSection = '';
-if ($hasAssignedClass && $teacherRestrictions) {
-	$teacherOfClass = $teacherRestrictions->teacherOfClass;
-	$teacherOfSection = $teacherRestrictions->teacherOfSection;
-}
 
  
 if (isset($_POST['promotStu'])) {
@@ -29,7 +15,6 @@ if (isset($_POST['promotStu'])) {
 		$infoYear = $_POST['infoYear'];
 		$toSection = $_POST['promotsection'];
 		$prvSection = $_GET['section'];
-		$toGroup = $_GET['to_group'] || 0;
 
 
 		foreach ($_POST['promotion'] as $stdid) {
@@ -43,7 +28,7 @@ if (isset($_POST['promotStu'])) {
     	$info4thSub = isset($info4thSub[0]) ? $info4thSub[0]->subjectid : '';
 
 
-    	if($prevOpt != '' && sizeof(json_decode($prevOpt)) > 0){
+    if ($prevOpt !== '' && is_array(json_decode($prevOpt, true)) && sizeof(json_decode($prevOpt, true)) > 0) {
     		$oldOpt = json_decode($prevOpt);
 
     		$infoOptSub = $wpdb->get_results("SELECT subjectid FROM `ct_subject` WHERE subjectClass = $toClass AND subid IN (SELECT subid FROM `ct_subject` WHERE subjectid IN (".implode (", ", $oldOpt)."))");
@@ -62,7 +47,7 @@ if (isset($_POST['promotStu'])) {
 	      'infoStdid' => $stdid,
 	      'infoClass' => $toClass,
 	      'infoSection' =>  $toSection,
-	      'infoGroup' =>  $_POST['infoGroup'][$stdid] != 0?$_POST['infoGroup'][$stdid] :$toGroup,
+	      'infoGroup' =>  $_POST['infoGroup'][$stdid],
 	      'infoRoll' => $newroll,
 	      'infoYear' => $infoYear,
 	      'infoOptionals' => $infoOptSub,
@@ -78,6 +63,85 @@ if (isset($_POST['promotStu'])) {
 	}
 }
 
+// ==========================================
+// AJAX ACTIONS - LOCAL HANDLER
+// ==========================================
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['type'])) {
+  while (ob_get_level()) { ob_end_clean(); }
+
+  // ------------------------------------------
+  // Get Exams
+  // ------------------------------------------
+  if ($_POST['type'] == 'getExams') {
+    $class = $_POST['class'];
+    $exams = $wpdb->get_results("SELECT examid,examName FROM ct_exam WHERE examClass = '$class'");
+    if (empty($exams)) { echo "<option value=''>No Exam for this Class</option>"; }
+    else { echo "<option value=''>Select An Exam</option>"; }
+    foreach ($exams as $exam) { echo "<option value='{$exam->examid}'>{$exam->examName}</option>"; }
+    exit;
+  }
+
+  // ------------------------------------------
+  // Get Years
+  // ------------------------------------------
+  elseif ($_POST['type'] == 'getYears') {
+    $class = $_POST['class'];
+    $years = $wpdb->get_results("SELECT infoYear FROM ct_studentinfo WHERE infoClass = $class GROUP BY infoYear ORDER BY infoYear ASC");
+    if (empty($years)) { echo "<option value=''>No Student In this class</option>"; }
+    else { echo "<option value=''>Year</option>"; }
+    foreach ($years as $year) { echo "<option value='{$year->infoYear}'>{$year->infoYear}</option>"; }
+    exit;
+  }
+
+  // ------------------------------------------
+  // Get Sections
+  // ------------------------------------------
+  elseif ($_POST['type'] == 'getSection') {
+    $class = $_POST['class'];
+    $sections = $wpdb->get_results("SELECT sectionid,sectionName FROM ct_section WHERE forClass = '$class' ORDER BY sectionName");
+    if (!empty($sections)) {
+      echo "<option value=''>Section</option>";
+      foreach ($sections as $section) { echo "<option value='{$section->sectionid}'>{$section->sectionName}</option>"; }
+    } else {
+      echo "<option value=''>No sections available</option>";
+    }
+    exit;
+  }
+
+  // ------------------------------------------
+  // Get Groups
+  // ------------------------------------------
+  elseif ($_POST['type'] == 'getGroupsByClass') {
+    $class = $_POST['class'];
+    $groups = $wpdb->get_results("SELECT DISTINCT ct_group.groupId, ct_group.groupName FROM ct_group INNER JOIN ct_studentinfo ON ct_studentinfo.infoGroup = ct_group.groupId WHERE ct_studentinfo.infoClass = '$class' ORDER BY ct_group.groupName ASC");
+    echo "<option value=''>All Groups</option>";
+    foreach ($groups as $group) { echo "<option value='{$group->groupId}'>{$group->groupName}</option>"; }
+    exit;
+  }
+
+  // ------------------------------------------
+  // Get Exam Subjects
+  // ------------------------------------------
+  elseif ($_POST['type'] == 'getExamSubject') {
+    $exam = intval($_POST['exam']);
+    $group = isset($_POST['group']) ? $_POST['group'] : '';
+    $subs = $wpdb->get_var("SELECT examSubjects FROM ct_exam WHERE examid = $exam");
+    $subs_arr = !empty($subs) ? json_decode($subs, true) : [];
+    if (!empty($subs_arr)) {
+      $subs_escaped = array_map('intval', $subs_arr);
+      $subjectQuery = "SELECT subjectid,subjectName FROM ct_subject WHERE subjectid IN (" . implode(',', $subs_escaped) . ")";
+      if (!empty($group)) { $subjectQuery .= " AND (forGroup = 'all' OR forGroup = '$group' OR forGroup LIKE '%\"$group\"%')"; }
+      $subjectQuery .= " ORDER BY subjectName ASC";
+      $subjects = $wpdb->get_results($subjectQuery);
+      if (empty($subjects)) { echo "<option value=''>No subject!</option>"; }
+      else {
+        echo "<option value=''>Select Subject</option>";
+        foreach ($subjects as $subject) { echo '<option value="' . $subject->subjectid . '">' . $subject->subjectName . '</option>'; }
+      }
+    } else { echo "<option value=''>No subject!</option>"; }
+    exit;
+  }
+}
 ?>
 
 <?php if ( ! is_admin() ) { get_header(); ?>
@@ -107,11 +171,8 @@ if (isset($_POST['promotStu'])) {
 							<label>Class</label>
 							<select id='resultClass' class="form-control" name="class" required>
 								<?php
-									if ($isTeacher && $hasAssignedClass && $teacherOfClass !== '') {
-										$classQuery = $wpdb->get_results( $wpdb->prepare( "SELECT classid,className FROM ct_class WHERE classid IN (SELECT examClass FROM ct_exam GROUP BY examClass ORDER BY className ASC) AND classid IN ($teacherOfClass)", null ) );
-									} else {
-										$classQuery = $wpdb->get_results( "SELECT classid,className FROM ct_class WHERE classid IN (SELECT examClass FROM ct_exam GROUP BY examClass ORDER BY className ASC)" );
-									}
+
+									$classQuery = $wpdb->get_results( "SELECT classid,className FROM ct_class WHERE classid IN (SELECT examClass FROM ct_exam GROUP BY examClass ORDER BY className ASC)" );
 									echo "<option value=''>Select Class</option>";
 
 									foreach ($classQuery as $class) {
@@ -134,24 +195,6 @@ if (isset($_POST['promotStu'])) {
 								<option disabled selected>Select Class First</option>
 							</select>
 						</div>
-						
-						<div class="form-group ">
-        					<label>Group</label>
-        					<select id="resultGroup" class="form-control" name="grou">
-        						<option value="">Select Group</option>
-        						<?php
-                    	            $groups = $wpdb->get_results("SELECT * FROM ct_group");
-                    	            foreach ($groups as $groups) {
-                    	              $selected = ($edit->infoGroup == $groups->groupId) ? 'selected' : '';
-                    	              ?>
-                    	              <option value='<?= $groups->groupId ?>' <?= $selected ?>>
-                    	                <?= $groups->groupName ?>
-                    	              </option>
-                    	              <?php
-                    	            }
-                    	          ?>
-        					</select>
-        				</div>
 
 						<div class="form-group">
 							<label>Year</label>
@@ -183,7 +226,6 @@ if (isset($_POST['promotStu'])) {
 			  		$exam 		= $_GET['exam'];
 			  		$section 	= isset($_GET['section']) ? $_GET['section'] : '';
 			  		$roll 		= isset($_GET['roll']) ? $_GET['roll'] : '';
-			  		$grou 	= $_GET['grou'];
 
 			  		if (isset($_GET['syear'])) {
 
@@ -197,7 +239,6 @@ if (isset($_POST['promotStu'])) {
 
 							$querry .= ($roll != "") ? " AND infoRoll = $roll" : '';
 							$querry .= ($section != "") ? " AND infoSection = $section" : '';
-							$querry .= ($grou != "") ? " AND infoGroup = $grou" : '';
 							$querry .= " ORDER BY spPosition";
 							$groupsBy = $wpdb->get_results($querry);
 			  		}
@@ -245,29 +286,17 @@ if (isset($_POST['promotStu'])) {
 		                  } ?>
 										</select>
 									</div>
-									<div class="form-group ">
-                    					<label>Group</label>
-                    					<select id="resultToGroup" class="form-control" name="to_group">
-                    						<option value="">Select Group</option>
-                    						<?php
-                                	            $groups = $wpdb->get_results("SELECT * FROM ct_group");
-                                	            foreach ($groups as $groups) {
-                                	              $selected = ($edit->infoGroup == $groups->groupId) ? 'selected' : '';
-                                	              ?>
-                                	              <option value='<?= $groups->groupId ?>' <?= $selected ?>>
-                                	                <?= $groups->groupName ?>
-                                	              </option>
-                                	              <?php
-                                	            }
-                                	          ?>
-                    					</select>
-                    				</div>
 									<div class="form-group">
 										<label> Add additional</label>
 										<input id="addAdditional" style="width: 80px" class="form-control" type="number" >
 									</div>
-								
-									
+
+									<div class="form-group">
+										<label> Start from</label>
+										<input id="reorderStart" style="width: 80px" class="form-control" type="number" value="1" min="1">
+									</div>
+									<button type="button" id="reorderRoll" class="btn btn-info" style="margin-right: 8px;">Reorder Roll</button>
+
 			  					<input class="btn btn-success pull-right" type="submit" name="promotStu" value="Promote">
 			  				</div>
 			  				<br>
@@ -339,71 +368,197 @@ if (isset($_POST['promotStu'])) {
 </div>
 <?php get_footer(); } ?>
 
-<p id="theSiteURL" class="hidden"><?= get_template_directory_uri() ?></p>
 <script type="text/javascript">
-	(function($) {
-		$('#addAdditional').change(function(event) {
-			$value = +$(this).val();
-			$( ".assignRoll" ).each(function( index ) {
-			  $(this).val(+$(this).data('position')+$value);
-			});
-		});
+  // ==================================
+  // HANDLE AJAX ACTIONS LOCALLY
+  // ==================================
+  (function($) {
+    // Use current page as AJAX URL for standalone processing
+    var ajaxUrl = '';
 
-	  var $siteUrl = $('#theSiteURL').text();
+    // Change Roll based on additional value
+    $('#addAdditional').change(function(event) {
+      var value = +$(this).val();
+      $( ".assignRoll" ).each(function( index ) {
+        $(this).val(+$(this).data('position') + value);
+      });
+    });
 
-		$('#proClass').change(function() {
-			$.ajax({
-	      url: $siteUrl+"/inc/ajaxAction.php",
-	      method: "POST",
-	      data: { class : $(this).val(), type : 'getSection' },
-	      dataType: "html"
-	    }).done(function( msg ) {
-	      $( "#proSec" ).html( msg );
-	      $( "#proSec" ).prop('disabled', false);
-	    });
-		});
+    // Reorder Assign Roll for selected rows, starting from the value in #reorderStart
+    $('#reorderRoll').click(function() {
+      var start = parseInt($('#reorderStart').val(), 10);
+      if (isNaN(start) || start < 1) { start = 1; }
+      var n = start;
+      $('input.assignRoll').each(function() {
+        var $roll = $(this);
+        var $row = $roll.closest('tr');
+        var $sel = $row.find('input.stdSel');
+        if ($sel.length && $sel.is(':checked')) {
+          $roll.val(n);
+          n++;
+        } else {
+          $roll.val('');
+        }
+      });
+    });
 
+    // Fetch Sections for Promotion Class
+    $('#proClass').change(function() {
+      $.ajax({
+        url: ajaxUrl,
+        method: "POST",
+        data: { class : $(this).val(), type : 'getSection' },
+        dataType: "html"
+      }).done(function( msg ) {
+        $( "#proSec" ).html( msg );
+        $( "#proSec" ).prop('disabled', false);
+      });
+    });
 
-		$('#resultClass').change(function() {
-	    $.ajax({
-	      url: $siteUrl+"/inc/ajaxAction.php",
-	      method: "POST",
-	      data: { class : $(this).val(), type : 'getExams' },
-	      dataType: "html"
-	    }).done(function( msg ) {
-	      $( "#resultExam" ).html( msg );
-	      $( "#resultExam" ).prop('disabled', false);
-	    });
+    // Fetch dependent dropdowns for Result Class
+    $('#resultClass').change(function() {
 
-	    $.ajax({
-	      url: $siteUrl+"/inc/ajaxAction.php",
-	      method: "POST",
-	      data: { class : $(this).val(), type : 'getYears' },
-	      dataType: "html"
-	    }).done(function( msg ) {
-	      $( "#resultYear" ).html( msg );
-	      $( "#resultYear" ).prop('disabled', false);
-	    });
+      var selectedClass = $(this).val();
 
-	    $.ajax({
-	      url: $siteUrl+"/inc/ajaxAction.php",
-	      method: "POST",
-	      data: { class : $(this).val(), type : 'getSection' },
-	      dataType: "html"
-	    }).done(function( msg ) {
-	      $( "#resultSection" ).html( msg );
-	      $( "#resultSection" ).prop('disabled', false);
-	    });
-	  });
-	})( jQuery );
-	
-	function print(divId) {
+      // Fetch Exams
+      $.ajax({
+        url: ajaxUrl,
+        method: "POST",
+        data: {
+          class: selectedClass,
+          type: 'getExams'
+        },
+        dataType: "html"
+      }).done(function(msg) {
+        $("#resultExam").html(msg);
+        $("#resultExam").prop('disabled', false);
+        // Reset dependent dropdowns
+        $("#resultSubject").prop('disabled', true).html('<option disabled selected>Select exam First</option>');
+      });
+
+      // Fetch Years
+      $.ajax({
+        url: ajaxUrl,
+        method: "POST",
+        data: {
+          class: selectedClass,
+          type: 'getYears'
+        },
+        dataType: "html"
+      }).done(function(msg) {
+        $("#resultYear").html(msg);
+        $("#resultYear").prop('disabled', false);
+      });
+
+      // Fetch Sections
+      $.ajax({
+        url: ajaxUrl,
+        method: "POST",
+        data: {
+          class: selectedClass,
+          type: 'getSection'
+        },
+        dataType: "html"
+      }).done(function(msg) {
+        $("#resultSection").html(msg);
+        $("#resultSection").prop('disabled', false);
+      });
+
+      // Fetch All Groups
+      $.ajax({
+        url: ajaxUrl,
+        method: "POST",
+        data: {
+          class: selectedClass,
+          type: 'getGroupsByClass'
+        },
+        dataType: "html"
+      }).done(function(msg) {
+        $("#resultGroup").html(msg);
+        $("#resultGroup").prop('disabled', false);
+      });
+    });
+
+    // Fetch Subjects when Exam Changes
+    $('#resultExam').change(function() {
+      var selectedExam = $(this).val();
+      var selectedGroup = $('#resultGroup').val();
+
+      $.ajax({
+        url: ajaxUrl,
+        method: "POST",
+        data: {
+          exam: selectedExam,
+          group: selectedGroup,
+          type: 'getExamSubject'
+        },
+        dataType: "html"
+      }).done(function(msg) {
+        $("#resultSubject").html(msg);
+        $("#resultSubject").prop('disabled', false);
+      });
+    });
+
+    // Fetch Subjects when Group Changes
+    $('#resultGroup').change(function() {
+      var selectedExam = $('#resultExam').val();
+      var selectedGroup = $(this).val();
+
+      if (selectedExam) {
+        $.ajax({
+          url: ajaxUrl,
+          method: "POST",
+          data: {
+            exam: selectedExam,
+            group: selectedGroup,
+            type: 'getExamSubject'
+          },
+          dataType: "html"
+        }).done(function(msg) {
+          $("#resultSubject").html(msg);
+          $("#resultSubject").prop('disabled', false);
+        });
+      }
+    });
+
+    // Interactive validation for result inputs (Client-side only)
+    $('.resultInput').keyup(function(event) {
+      $this = $(this);
+      $val = $this.val();
+      $max = $this.data('max');
+
+      if ($val == '' || $val < ($max + 1) || $val == 'A' || $val == 'a') {
+        $this.css('border-color', '#ddd');
+        $this.removeClass('haserror');
+      } else {
+        $this.addClass('haserror');
+        $this.css('border-color', 'red');
+        $('.resultSubmit').prop('disabled', true);
+      }
+
+      if ($('.resultInput.haserror').length == 0) {
+        $('.resultSubmit').prop('disabled', false);
+      }
+    });
+
+    // Select All Checkbox
+    $('#selectAll').change(function() {
+      if ($(this).is(':checked')) {
+        $('.stdSel').prop('checked', true);
+      } else {
+        $('.stdSel').prop('checked', false);
+      }
+    });
+
+  })(jQuery);
+
+  function print(divId) {
     var printContents = document.getElementById(divId).innerHTML;
     w = window.open();
     w.document.write(printContents);
     w.document.write('<scr' + 'ipt type="text/javascript">' + 'window.onload = function() { window.print(); window.close(); };' + '</sc' + 'ript>');
-    w.document.close(); // necessary for IE >= 10
-    w.focus(); // necessary for IE >= 10
+    w.document.close();
+    w.focus();
     return true;
   }
 </script>

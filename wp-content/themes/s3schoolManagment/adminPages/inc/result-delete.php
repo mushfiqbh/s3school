@@ -1,69 +1,4 @@
 <?php
-	require_once dirname(__DIR__) . '/functions/teacher-access.php';
-
-	$current_user = wp_get_current_user();
-	$teacherAccess = s3s_get_teacher_access_context();
-	$is_teacher = $teacherAccess['is_teacher'];
-	$teacher_record = $teacherAccess['teacher'];
-	$restrictions_enabled = s3s_teacher_restrictions_enabled();
-	$teacher_assignments = array(
-		'subjects' => array(),
-		'sections' => array(),
-		'classes' => array(),
-		'class_teacher_class' => null,
-		'class_teacher_section' => null
-	);
-	$teacher_has_assigned_classes = false;
-	$teacher_has_any_assignment = false;
-	$delete_message = '';
-
-	if ($restrictions_enabled && $is_teacher && $teacher_record) {
-		$assigned_subjects = json_decode($teacher_record->tecAssignSub, true);
-		$assigned_subjects = is_array($assigned_subjects) ? array_filter(array_map('intval', $assigned_subjects)) : array();
-
-		$assigned_sections = json_decode($teacher_record->assignSection, true);
-		$assigned_sections = is_array($assigned_sections) ? array_filter($assigned_sections) : array();
-
-		$assigned_classes = array();
-		if (!empty($assigned_subjects)) {
-			$subjects_data = $wpdb->get_results(
-				"SELECT DISTINCT subjectClass FROM ct_subject WHERE subjectid IN (" . implode(',', $assigned_subjects) . ")"
-			);
-			if ($subjects_data) {
-				$assigned_classes = array_map('intval', array_column($subjects_data, 'subjectClass'));
-			}
-		}
-
-		if (!empty($teacher_record->teacherOfClass)) {
-			$assigned_classes[] = (int) $teacher_record->teacherOfClass;
-		}
-
-		$assigned_classes = array_values(array_unique($assigned_classes));
-
-		$teacher_assignments = array(
-			'subjects' => $assigned_subjects,
-			'sections' => $assigned_sections,
-			'classes' => $assigned_classes,
-			'class_teacher_class' => !empty($teacher_record->teacherOfClass) ? (int) $teacher_record->teacherOfClass : null,
-			'class_teacher_section' => !empty($teacher_record->teacherOfSection) ? (int) $teacher_record->teacherOfSection : null
-		);
-
-		$teacher_has_assigned_classes = !empty($assigned_classes);
-		$teacher_has_any_assignment = $teacher_has_assigned_classes || !empty($assigned_sections) || !empty($assigned_subjects);
-	}
-
-	if (!$restrictions_enabled) {
-		$teacher_assignments = array(
-			'subjects' => array(),
-			'sections' => array(),
-			'classes' => array(),
-			'class_teacher_class' => null,
-			'class_teacher_section' => null
-		);
-		$teacher_has_assigned_classes = false;
-		$teacher_has_any_assignment = false;
-	}
-
 	if (isset($_POST['deleteRes'])) {
 
 		$class = $_POST['class'];
@@ -73,92 +8,116 @@
 		$subject = $_POST['subject'];
 		$students = $_POST['promotion'];
 
-		$teacher_classes = !empty($teacher_assignments['classes']) ? array_map('intval', $teacher_assignments['classes']) : array();
-		if ($restrictions_enabled && $is_teacher && $teacher_has_any_assignment && (empty($teacher_classes) || !in_array((int) $class, $teacher_classes, true))) {
-			$delete_message = "<div class='alert alert-danger'>You do not have access to delete results for this class.</div>";
-		} elseif (sizeof($students) > 0) {
+		if(sizeof($students) > 0){
 			$qrry = "DELETE FROM `ct_result` WHERE resStudentId IN (" . implode(',', $students) .") AND resClass = $class AND resultYear = '$year' AND resExam = $exam";
 			$qrry .= ($sec != '') ? " AND resSec = $sec" :'';
 			$qrry .= ($subject != '') ? " AND resSubject = $subject" :'';
 			$delete = $wpdb->query( $qrry );
 			$message = ms3message($delete, 'Delete');
-		}
+ 		}
 	}
 
 ?>
-
 <style>
-.compact-filter-form {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 10px;
-	align-items: flex-end;
-	margin-bottom: 20px;
-}
+    .panel {
+      overflow: visible;
+    }
 
-.filter-row {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 10px;
-	align-items: flex-end;
-	width: 100%;
-}
+    .panel-body {
+      width: 100%;
+    }
 
-.filter-field {
-	flex: 1 1 auto;
-	min-width: 140px;
-	max-width: 200px;
-	display: flex;
-	flex-direction: column;
-}
-
-.filter-field label {
-	margin-bottom: 3px;
-	font-size: 13px;
-	font-weight: 500;
-	white-space: nowrap;
-}
-
-.filter-field .form-control {
-	height: 32px;
-	padding: 4px 8px;
-	font-size: 13px;
-	width: 100%;
-}
-
-.filter-field.row-break {
-	flex-basis: 100%;
-	height: 0;
-	min-width: 100%;
-	max-width: 100%;
-	width: 100%;
-	margin: 0;
-	padding: 0;
-}
-
-.filter-btn {
-	max-width: 100px;
-	min-width: 80px;
-}
-
-@media (max-width: 768px) {
-	.filter-field {
-		flex: 1 1 calc(50% - 5px);
-		min-width: calc(50% - 5px);
-		max-width: calc(50% - 5px);
-	}
-	.filter-field.row-break {
-		display: none;
-	}
-}
-
-@media (max-width: 480px) {
-	.filter-field {
-		flex: 1 1 100%;
-		min-width: 100%;
-		max-width: 100%;
-	}
-}
+    .compact-filter-form {
+        background: #f9f9f9;
+        padding: 15px;
+        border-radius: 4px;
+    }
+    
+    .compact-filter-form .filter-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: flex-end;
+    }
+    
+    .compact-filter-form .filter-field {
+        flex: 1 1 auto;
+        min-width: 140px;
+        max-width: 200px;
+    }
+    
+    .compact-filter-form .filter-field.row-break {
+        flex-basis: 100%;
+        width: 100%;
+        height: 0;
+        min-width: 100%;
+        max-width: 100%;
+        margin: 0;
+        padding: 0;
+        border: none;
+        overflow: hidden;
+    }
+    
+    .compact-filter-form .filter-field label {
+        display: block;
+        font-size: 12px;
+        font-weight: 600;
+        margin-bottom: 3px;
+        color: #555;
+    }
+    
+    .compact-filter-form .filter-field select,
+    .compact-filter-form .filter-field input {
+        width: 100%;
+        padding: 6px 8px;
+        font-size: 13px;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+        height: 32px;
+    }
+    
+    .compact-filter-form .filter-field select:focus,
+    .compact-filter-form .filter-field input:focus {
+        border-color: #5bc0de;
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(91, 192, 222, 0.1);
+    }
+    
+    .compact-filter-form .filter-btn {
+        flex: 0 0 auto;
+        min-width: 100px;
+    }
+    
+    .compact-filter-form .filter-btn button,
+    .compact-filter-form .filter-btn input[type="submit"] {
+        width: 100%;
+        height: 32px;
+        padding: 6px 12px;
+        font-size: 13px;
+        line-height: 1.2;
+    }
+    
+    @media (max-width: 768px) {
+        .compact-filter-form .filter-field {
+            flex: 1 1 calc(50% - 5px);
+            max-width: none;
+        }
+        
+        .compact-filter-form .filter-field.row-break {
+            display: none;
+        }
+        
+        .compact-filter-form .filter-btn {
+            flex: 1 1 100%;
+            min-width: 100%;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .compact-filter-form .filter-field {
+            flex: 1 1 100%;
+        }
+    }
 </style>
 
 <div class="panel panel-info">
@@ -167,9 +126,10 @@
 	</div>
 	<div class="panel-body">
 		<form action="" method="GET" class="compact-filter-form">
+			<input type="hidden" name="page" value="result">
+			<input type="hidden" name="view" value="delete">
+
 			<div class="filter-row">
-				<input type="hidden" name="page" value="result">
-				<input type="hidden" name="view" value="delete">
 				<div class="filter-field">
 					<label>Class *</label>
 					<select id='resultClass' class="form-control" name="class" required>
@@ -177,27 +137,12 @@
 
 					$classQuery = $wpdb->get_results("SELECT classid,className FROM ct_class WHERE classid IN (SELECT examClass FROM ct_exam GROUP BY examClass ORDER BY className ASC)");
 
-					if ($is_teacher && $teacher_has_any_assignment) {
-						if (!empty($teacher_assignments['classes'])) {
-							$allowed_classes = array_map('intval', $teacher_assignments['classes']);
-							$classQuery = array_filter($classQuery, function ($class) use ($allowed_classes) {
-								return in_array((int) $class->classid, $allowed_classes, true);
-							});
-						} else {
-							$classQuery = array();
-						}
-					}
-
 					echo "<option value=''>Select Class</option>";
 
 					foreach ($classQuery as $class) {
 						echo "<option value='" . $class->classid . "'>" . $class->className . "</option>";
 					}
-
-					if ($restrictions_enabled && $is_teacher && $teacher_has_any_assignment && !$teacher_has_assigned_classes) {
-						echo "<option value='' disabled>No classes assigned to you</option>";
-					}
-							?>
+					?>
 					</select>
 				</div>
 
@@ -205,6 +150,24 @@
 					<label>Section</label>
 					<select id="resultSection" class="form-control" name="sec" disabled>
 						<option disabled selected>Select Class First</option>
+					</select>
+				</div>
+
+				<div class="filter-field">
+					<label>Group</label>
+					<select id="resultGroup" class="form-control" name="grou">
+					<option value="">Select Group</option>
+					<?php
+					$groups = $wpdb->get_results("SELECT * FROM ct_group");
+					foreach ($groups as $groups) {
+						$selected = ($edit->infoGroup == $groups->groupId) ? 'selected' : '';
+					?>
+						<option value='<?= $groups->groupId ?>' <?= $selected ?>>
+							<?= $groups->groupName ?>
+						</option>
+					<?php
+					}
+					?>
 					</select>
 				</div>
 
@@ -220,24 +183,6 @@
 				</div>
 
 				<div class="filter-field">
-					<label>Group</label>
-					<select id="resultGroup" class="form-control" name="grou">
-						<option value="">Select Group</option>
-						<?php
-						$groups = $wpdb->get_results("SELECT * FROM ct_group");
-						foreach ($groups as $groups) {
-							$selected = ($edit->infoGroup == $groups->groupId) ? 'selected' : '';
-						?>
-							<option value='<?= $groups->groupId ?>' <?= $selected ?>>
-								<?= $groups->groupName ?>
-							</option>
-						<?php
-						}
-						?>
-					</select>
-				</div>
-
-				<div class="filter-field">
 					<label>Gender</label>
 					<select class="form-control" name="gender">
 						<option value="">All Genders</option>
@@ -248,32 +193,32 @@
 				</div>
 
 				<!-- Row Break for Desktop -->
-				<div class="filter-field row-break"></div>
+				<div class="filter-field row-break"></div>                
+
+        <div class="filter-field">
+            <label>Exam *</label>
+            <select id="resultExam" class="form-control" name="exam" required disabled>
+                <option disabled selected>Select Class First</option>
+            </select>
+        </div>
 
 				<div class="filter-field">
-					<label>Year/Session *</label>
-					<select id='resultYear' class="form-control" name="syear" required disabled>
-						<option disabled selected>Select Class First</option>
-					</select>
-				</div>
+            <label>Year/Session</label>
+            <select id='resultYear' class="form-control" name="syear" required disabled>
+                <option disabled selected>Select Class First</option>
+            </select>
+        </div>
 
-				<div class="filter-field">
-					<label>Exam *</label>
-					<select id="resultExam" class="form-control" name="exam" required disabled>
-						<option disabled selected>Select Class First</option>
-					</select>
-				</div>
+        <div class="filter-field">
+            <label>Subject *</label>
+            <select id='resultSubject' class="form-control" name="subject" required disabled>
+                <option disabled selected>Select exam First</option>
+            </select>
+        </div>
 
-				<div class="filter-field">
-					<label>Subject</label>
-					<select id='resultSubject' class="form-control" name="subject" disabled>
-						<option disabled selected>Select exam First</option>
-					</select>
-				</div>
-
-				<div class="filter-field filter-btn">
-					<input class="form-control btn-success" type="submit" name="" value="Go">
-				</div>
+        <div class="filter-field filter-btn">
+            <input class="form-control btn-success" type="submit" name="" value="Go">
+        </div>
 			</div>
 		</form>
 	</div>
@@ -290,35 +235,7 @@ if(isset($_GET['exam'])):
 	$class 	= $_GET['class'];
 	$sec 		= isset($_GET['sec']) ? $_GET['sec'] : '' ;
 	$sub 		= isset($_GET['subject']) ? $_GET['subject'] : '' ;
-	$group 	= isset($_GET['group']) ? $_GET['group'] : ''; // Get selected group
-
-	if ($is_teacher && $teacher_has_any_assignment) {
-		$teacher_classes = !empty($teacher_assignments['classes']) ? array_map('intval', $teacher_assignments['classes']) : array();
-		if (empty($teacher_classes) || !in_array((int) $class, $teacher_classes, true)) {
-			echo "<div class='panel panel-danger'><div class='panel-body'><h4 class='text-danger'>You do not have access to this class.</h4></div></div>";
-			return;
-		}
-	}
-
-	// Religion subCode mapping
-	$religionMap = array(
-		'Muslim'    => 111,
-		'Hinduism'  => 112,
-		'Buddist'   => 113,
-		'Christian' => 114
-	);
-
-	$religionFilter = '';
-	if ($sub != '') {
-		$subject_info = $wpdb->get_row("SELECT subCode FROM ct_subject WHERE subjectid = $sub");
-		$subCode = $subject_info->subCode ?? null;
-		if ($subCode && in_array($subCode, array_values($religionMap))) {
-			$religion = array_search($subCode, $religionMap);
-			$religionFilter = " AND ct_student.stdReligion = '$religion'";
-		}
-	}
-
-
+	
 	?>
 
 		<div id="printArea" class="col-md-12">
@@ -339,7 +256,7 @@ if(isset($_GET['exam'])):
 
 				if($sub != ''){ $qrey .= " LEFT JOIN ct_subject ON ct_subject.subjectid = $sub"; }
 					
-				$qrey .= " WHERE stdCurntYear = '$year' AND stdCurrentClass = $class" . $religionFilter;
+				$qrey .= " WHERE stdCurntYear = '$year' AND stdCurrentClass = $class " . $religionFilter;
 
 				if($sec != ''){ $qrey .= " AND infoSection = $sec"; }
 
@@ -466,4 +383,296 @@ endif; ?>
 
     });
   })( jQuery );
+</script>
+
+<?php
+// ===============================================================
+// FIX 409 CONFLICT - HANDLE AJAX ACTIONS LOCALLY (At End of File)
+// ===============================================================
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['type'])) {
+
+  // Clean output buffer to ensure JSON/HTML response is valid
+  while (ob_get_level()) {
+    ob_end_clean();
+  }
+
+  // ------------------------------------------
+  // Get Exams
+  // ------------------------------------------
+  if ($_POST['type'] == 'getExams') {
+    $class = $_POST['class'];
+    $exams = $wpdb->get_results("SELECT examid,examName FROM ct_exam WHERE examClass = '$class'");
+    if (empty($exams)) {
+      echo "<option value=''>No Exam for this Class</option>";
+    } else {
+      echo "<option value=''>Select An Exam</option>";
+    }
+    foreach ($exams as $exam) {
+      echo "<option value='{$exam->examid}'>{$exam->examName}</option>";
+    }
+    exit;
+  }
+
+  // ------------------------------------------
+  // Get Years
+  // ------------------------------------------
+  elseif ($_POST['type'] == 'getYears') {
+    $class = $_POST['class'];
+    $years = $wpdb->get_results("SELECT infoYear FROM ct_studentinfo WHERE infoClass = $class GROUP BY infoYear ORDER BY infoYear ASC");
+    if (empty($years)) {
+      echo "<option value=''>No Student In this class</option>";
+    } else {
+      echo "<option value=''>Year</option>";
+    }
+    foreach ($years as $year) {
+      echo "<option value='{$year->infoYear}'>{$year->infoYear}</option>";
+    }
+    exit;
+  }
+
+  // ------------------------------------------
+  // Get Section
+  // ------------------------------------------
+  elseif ($_POST['type'] == 'getSection') {
+    $class = $_POST['class'];
+    $sections_query = "SELECT sectionid,sectionName FROM ct_section WHERE forClass = '$class'";
+    
+    $sections_query .= " ORDER BY sectionName";
+    $sections = $wpdb->get_results($sections_query);
+
+    if (!empty($sections)) {
+      echo "<option value=''>Section</option>";
+      foreach ($sections as $section) {
+        echo "<option value='{$section->sectionid}'>{$section->sectionName}</option>";
+      }
+    } else {
+      echo "<option value=''>No sections available</option>";
+    }
+    exit;
+  }
+
+  // ------------------------------------------
+  // Get Groups
+  // ------------------------------------------
+  elseif ($_POST['type'] == 'getGroupsByClass') {
+    $class = $_POST['class'];
+    $groups_query = "SELECT DISTINCT ct_group.groupId, ct_group.groupName 
+            FROM ct_group 
+            INNER JOIN ct_studentinfo ON ct_studentinfo.infoGroup = ct_group.groupId 
+            WHERE ct_studentinfo.infoClass = '$class'";
+    
+    $groups_query .= " ORDER BY ct_group.groupName ASC";
+    $groups = $wpdb->get_results($groups_query);
+
+    echo "<option value=''>All Groups</option>";
+    foreach ($groups as $group) {
+      echo "<option value='{$group->groupId}'>{$group->groupName}</option>";
+    }
+    exit;
+  }
+
+  // ------------------------------------------
+  // Get Exam Subjects
+  // ------------------------------------------
+  elseif ($_POST['type'] == 'getExamSubject') {
+    $exam = intval($_POST['exam']);
+    $group = isset($_POST['group']) ? $_POST['group'] : '';
+    $subjects = [];
+
+    $subs = $wpdb->get_results("SELECT examSubjects FROM ct_exam WHERE examid = $exam");
+
+    if (!empty($subs[0]->examSubjects)) {
+      $subs = json_decode($subs[0]->examSubjects, true);
+    } else {
+      $subs = [];
+    }
+
+    if (!empty($subs)) {
+      $subs_escaped = array_map('intval', $subs);
+      $subjectQuery = "SELECT subjectid,subjectName FROM ct_subject 
+                WHERE subjectid IN (" . implode(',', $subs_escaped) . ")";
+
+      if (!empty($group)) {
+        $subjectQuery .= " AND (forGroup = 'all' OR forGroup = '$group' OR forGroup LIKE '%\"$group\"%')";
+      }
+
+      $subjectQuery .= " ORDER BY subjectName ASC";
+      $subjects = $wpdb->get_results($subjectQuery);
+    }
+
+    if (empty($subjects)) {
+      echo "<option value=''>No subject!</option>";
+    } else {
+      echo "<option value=''>Select Subject</option>";
+      foreach ($subjects as $subject) {
+        echo '<option value="' . $subject->subjectid . '">' . $subject->subjectName . '</option>';
+      }
+    }
+    exit;
+  }
+}
+
+if (isset($_POST['updateAllResult'])) {
+  $cq = $_POST['CQ'];
+  $mcq = $_POST['MCQ'];
+  $prc = $_POST['P'];
+  $ca = $_POST['ca'];
+  $response = false;
+  foreach ($_POST['id'] as $id) {
+    $update = $wpdb->update(
+      'ct_result',
+      array(
+        'resCQ'     => $cq[$id],
+        'resMCQ'     => $mcq[$id],
+        'resPrec'   => $prc[$id],
+        'resCa'   => $ca[$id],
+        'resTotal'   => isnum($cq[$id]) + isnum($mcq[$id]) + isnum($prc[$id]) + isnum($ca[$id])
+      ),
+      array('resultId' => $id)
+    );
+    if ($update) {
+      $response = $update;
+    }
+  }
+  if ($response) {
+    $message = array('status' => 'success', 'message' => 'Successfully updated');
+  } else {
+    $message = array('status' => 'faild', 'message' => 'Something wrong please try again');
+  }
+} ?>
+
+<script type="text/javascript">
+  // ==================================
+  // HANDLE AJAX ACTIONS LOCALLY
+  // ==================================
+  (function($) {
+    // Use current page as AJAX URL for standalone processing
+    var ajaxUrl = '';
+
+    $('#resultClass').change(function() {
+      var selectedClass = $(this).val();
+
+      // Fetch Exams
+      $.ajax({
+        url: ajaxUrl,
+        method: "POST",
+        data: {
+          class: selectedClass,
+          type: 'getExams'
+        },
+        dataType: "html"
+      }).done(function(msg) {
+        $("#resultExam").html(msg);
+        $("#resultExam").prop('disabled', false);
+        // Reset dependent dropdowns
+        $("#resultSubject").prop('disabled', true).html('<option disabled selected>Select exam First</option>');
+      });
+
+      // Fetch Years
+      $.ajax({
+        url: ajaxUrl,
+        method: "POST",
+        data: {
+          class: selectedClass,
+          type: 'getYears'
+        },
+        dataType: "html"
+      }).done(function(msg) {
+        $("#resultYear").html(msg);
+        $("#resultYear").prop('disabled', false);
+      });
+
+      // Fetch Sections
+      $.ajax({
+        url: ajaxUrl,
+        method: "POST",
+        data: {
+          class: selectedClass,
+          type: 'getSection'
+        },
+        dataType: "html"
+      }).done(function(msg) {
+        $("#resultSection").html(msg);
+        $("#resultSection").prop('disabled', false);
+      });
+
+      // Fetch All Groups
+      $.ajax({
+        url: ajaxUrl,
+        method: "POST",
+        data: {
+          class: selectedClass,
+          type: 'getGroupsByClass'
+        },
+        dataType: "html"
+      }).done(function(msg) {
+        $("#resultGroup").html(msg);
+        $("#resultGroup").prop('disabled', false);
+      });
+    });
+
+    // Fetch Subjects when Exam Changes
+    $('#resultExam').change(function() {
+      var selectedExam = $(this).val();
+      var selectedGroup = $('#resultGroup').val();
+
+      $.ajax({
+        url: ajaxUrl,
+        method: "POST",
+        data: {
+          exam: selectedExam,
+          group: selectedGroup,
+          type: 'getExamSubject'
+        },
+        dataType: "html"
+      }).done(function(msg) {
+        $("#resultSubject").html(msg);
+        $("#resultSubject").prop('disabled', false);
+      });
+    });
+
+    // Fetch Subjects when Group Changes
+    $('#resultGroup').change(function() {
+      var selectedExam = $('#resultExam').val();
+      var selectedGroup = $(this).val();
+
+      if (selectedExam) {
+        $.ajax({
+          url: ajaxUrl,
+          method: "POST",
+          data: {
+            exam: selectedExam,
+            group: selectedGroup,
+            type: 'getExamSubject'
+          },
+          dataType: "html"
+        }).done(function(msg) {
+          $("#resultSubject").html(msg);
+          $("#resultSubject").prop('disabled', false);
+        });
+      }
+    });
+
+    // Interactive validation for result inputs (Client-side only)
+    $('.resultInput').keyup(function(event) {
+      $this = $(this);
+      $val = $this.val();
+      $max = $this.data('max');
+
+      if ($val == '' || $val < ($max + 1) || $val == 'A' || $val == 'a') {
+        $this.css('border-color', '#ddd');
+        $this.removeClass('haserror');
+      } else {
+        $this.addClass('haserror');
+        $this.css('border-color', 'red');
+        $('.resultSubmit').prop('disabled', true);
+      }
+
+      if ($('.resultInput.haserror').length == 0) {
+        $('.resultSubmit').prop('disabled', false);
+      }
+    });
+
+  })(jQuery);
 </script>

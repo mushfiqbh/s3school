@@ -1,3 +1,4 @@
+
 <?php
 
 /**
@@ -5,6 +6,7 @@
  */
 global $s3sRedux;
 $convertPercent = 70;
+
 
 get_header(); ?>
 
@@ -429,7 +431,7 @@ get_header(); ?>
 
 																		$optfind = $wpdb->get_results( "SELECT subjectName FROM `ct_result`
 																			LEFT JOIN ct_subject ON ct_result.resSubject = ct_subject.subjectid
-																			WHERE resClass = $class AND resExam = $exam AND resultYear = '$year' AND resStudentId = $stdnt AND resSub4th = 1 ORDER BY sub4th,subOptinal,subCode ASC" );
+																			WHERE resClass = $class AND resExam = $exam AND resultYear = '$year' AND resStudentId = $stdnt AND resSub4th = 1 AND assessment=0 ORDER BY sub4th,subOptinal,subCode ASC" );
 																		
 																		$assessment = $wpdb->get_results( "SELECT *, subjectName FROM `ct_result`
 																			LEFT JOIN ct_subject ON ct_result.resSubject = ct_subject.subjectid
@@ -694,93 +696,6 @@ get_header(); ?>
 																				</tr>
 																			<?php
 																		}
-																		if ($showAssessment) {
-																			$showAssessment = false;
-																			$resTotal = $assessment[0]->resTotal;
-																			$subjTotal =  $assessment[0]->subMCQ + $assessment[0]->subCQ + $assessment[0]->subPect + $assessment[0]->subCa;
-
-																			if(in_array('a', $absentCk) || in_array('A', $absentCk)){ 
-																				$grade = 'Ab';
-																				$point = '0.00';
-																			}else{
-																			    if($assessment[0]->subCa){
-																				    $genRes = genPointWithPercent($assessment[0]->subCQ,$assessment[0]->subMCQ,$assessment[0]->subPect,$assessment[0]->subCa,$assessment[0]->resCQ,$assessment[0]->resMCQ,$assessment[0]->resPrec,$assessment[0]->resCa,$assessment[0]->subCombineMark);
-																			    }else{
-       																				$genRes = genPoint($assessment[0]->subCQ,$assessment[0]->subMCQ,$assessment[0]->subPect,$assessment[0]->subCa,$assessment[0]->resCQ,$assessment[0]->resMCQ,$assessment[0]->resPrec,$assessment[0]->resCa,$assessment[0]->subCombineMark);
- 
-																			    }
-																				$grade = $genRes['grade'];
-																				$point = $genRes['point'];
-																			}
-																			
-																			
-																				$totalobtain += $resTotal;
-																			
-
-
-																			$allsubjTotal += $subjTotal;
-
-																			$highest = $wpdb->get_results( "SELECT MAX(`resTotal`) as max FROM `ct_result`	WHERE resClass = $class AND resExam = $exam AND resultYear = '$year' AND resSubject = ".$assessment[0]->subjectid );
-
-																			?>
-																			<tr class="text-left">
-																				<th colspan="10">
-																					<div class="text-left" style="background:rgba(238, 238, 238, .5);padding: 3px 10px;">
-																						<?= $assessment[0]->subjectName?>
-																					</div>
-																				</th>
-																			</tr>
-																			<tr style="background:rgba(238, 238, 238, .5)">
-																							<th>Name </th>
-																							<th>Marks</th>
-																							<th>Highest Marks</th>
-																							<th colspan="4">Obtain Marks</th>
-																							<th>Total</th>
-																							<th>Grade Point</th>
-																							<th>LG</th>
-																					
-																			</tr>
-																			<tr>
-																			<?php
-																				$highest = $wpdb->get_results( "SELECT MAX(`resMCQ`) as max FROM `ct_result`	WHERE resClass = $class AND resExam = $exam AND resultYear = '$year' AND resSubject = ".$assessment[0]->subjectid );
-																			?>
-																				<td>Attendence</td>
-																				<td><?= $assessment[0]->subMCQ?></td>
-																				<td><?= $highest[0]->max?></td>
-																				<td colspan="4"><?= $assessment[0]->resMCQ?></td>
-																				<td rowspan="4"><?= $resTotal?></td>
-																				<td rowspan="4"><?= $point?></td>
-																				<td rowspan="4"><?= $grade?></td>
-																			</tr>
-																			<tr>
-																			<?php
-																				$highest = $wpdb->get_results( "SELECT MAX(`resCQ`) as max FROM `ct_result`	WHERE resClass = $class AND resExam = $exam AND resultYear = '$year' AND resSubject = ".$assessment[0]->subjectid );
-																			?>
-																				<td>Hand Writing</td>
-																				<td><?= $assessment[0]->subCQ?></td>
-																				<td><?= $highest[0]->max?></td>
-																				<td colspan="4"><?= $assessment[0]->resCQ?></td>
-																			</tr>
-																			<tr>
-																			<?php
-																				$highest = $wpdb->get_results( "SELECT MAX(`resPrec`) as max FROM `ct_result`	WHERE resClass = $class AND resExam = $exam AND resultYear = '$year' AND resSubject = ".$assessment[0]->subjectid );
-																			?>
-																				<td>Neat & Clean</td>
-																				<td><?= $assessment[0]->subPect?></td>
-																				<td><?= $highest[0]->max?></td>
-																				<td colspan="4"><?= $assessment[0]->resPrec?></td>
-																			</tr>
-																			<tr>
-																			<?php
-																				$highest = $wpdb->get_results( "SELECT MAX(`resCa`) as max FROM `ct_result`	WHERE resClass = $class AND resExam = $exam AND resultYear = '$year' AND resSubject = ".$assessment[0]->subjectid );
-																			?>
-																				<td>Uniform</td>
-																				<td><?= $assessment[0]->subCa?></td>
-																				<td><?= $highest[0]->max?></td>
-																				<td colspan="4"><?= $assessment[0]->resCa?></td>
-																			</tr>
-																			<?php
-																		}
 																	?>
 																</tbody>
 
@@ -792,13 +707,80 @@ get_header(); ?>
 																			<?php }else {?>
 																		<th colspan="3">Obtain Marks: <?= $totalobtain ?></th>
 																			<?php }?>
-																		<th colspan="4">Merit Position: <?= ($totalgrade == 'F') ? 'Fail' : $meritPosition ?></th>
+																		<th colspan="4">Merit Position: <?= ($totalgrade == 'F') ? ($studentPoint[0]->spFaild <= 4 ? "Fail (Considerable)" : "Fail") : $meritPosition ?></th>
 																	</tr>
 																</tfoot>
 															</table>
 														
 
 															<br>
+															
+															<?php
+																if ($showAssessment) {
+																	$showAssessment = false;
+																	$resTotal = $assessment[0]->resTotal;
+																	$subjTotal =  $assessment[0]->subMCQ + $assessment[0]->subCQ + $assessment[0]->subPect + $assessment[0]->subCa;
+
+																	if(in_array('a', $absentCk) || in_array('A', $absentCk)){ 
+																		$grade = 'Ab';
+																		$point = '0.00';
+																	}else{
+																		if($assessment[0]->subCa){
+																			$genRes = genPointWithPercent($assessment[0]->subCQ,$assessment[0]->subMCQ,$assessment[0]->subPect,$assessment[0]->subCa,$assessment[0]->resCQ,$assessment[0]->resMCQ,$assessment[0]->resPrec,$assessment[0]->resCa,$assessment[0]->subCombineMark);
+																		}else{
+																			$genRes = genPoint($assessment[0]->subCQ,$assessment[0]->subMCQ,$assessment[0]->subPect,$assessment[0]->subCa,$assessment[0]->resCQ,$assessment[0]->resMCQ,$assessment[0]->resPrec,$assessment[0]->resCa,$assessment[0]->subCombineMark);
+
+																		}
+																		$grade = $genRes['grade'];
+																		$point = $genRes['point'];
+																	}
+																	
+																	
+																	$totalobtain += $resTotal;														
+
+
+																	$allsubjTotal += $subjTotal;
+
+																	$highest = $wpdb->get_results( "SELECT MAX(`resTotal`) as max FROM `ct_result`	WHERE resClass = $class AND resExam = $exam AND resultYear = '$year' AND resSubject = ".$assessment[0]->subjectid );
+
+																	?>
+																	<style>
+																		.table-assessment{
+																			width: 100%;
+																			margin-bottom: 10px;
+																			font-size: small;
+																			border-collapse: collapse;
+																		}
+																		.table-assessment td, .table-assessment th{
+																			border: 1px solid #000;
+																			padding: 2.5px 5px;
+																			text-align: center;
+																		}
+																	</style>
+
+																	<table class="table-assessment">
+																		<tr style="background:rgba(238, 238, 238, .5)">
+																			<th>Assessment Subject</th>
+																			<th>Mark</th>
+																			<th>Obtain Mark</th>
+																			<th>Highest Mark</th>
+																			<th>Grade Point</th>
+																			<th>LG</th>
+																		</tr>																	
+																		<tr>
+																			<td><?= $assessment[0]->subjectName ?></td>
+																			<td><?= $subjTotal ?></td>
+																			<td><?= $resTotal ?></td>
+																			<td><?= $highest[0]->max ?></td>
+																			<td><?= $point ?></td>
+																			<td><?= $grade ?></td>
+																		</tr>
+																	</table>
+																	<?php
+																}
+															?>
+
+
 															<table style="border:0 !important;width: 100%">
 																<tr>
 																	<td style="width: 49%;border:0 !important;">
@@ -900,7 +882,7 @@ get_header(); ?>
 
 <script type="text/javascript">
 	(function($) {
-		$url = "<?= get_template_directory_uri() ?>/inc/ajaxAction.php";
+		$url = "";
 		$('#classck').change(function() {
 			$.ajax({
 		    url: $url,
@@ -941,4 +923,337 @@ get_header(); ?>
     return true;
   }
 
+</script>
+
+<?php
+// ===============================================================
+// FIX 409 CONFLICT - HANDLE AJAX ACTIONS LOCALLY (At End of File)
+// ===============================================================
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['type'])) {
+
+  // Clean output buffer to ensure JSON/HTML response is valid
+  while (ob_get_level()) {
+    ob_end_clean();
+  }
+
+  // ------------------------------------------
+  // Get Exams
+  // ------------------------------------------
+  if ($_POST['type'] == 'getExams') {
+    $class = $_POST['class'];
+    $exams = $wpdb->get_results("SELECT examid,examName FROM ct_exam WHERE examClass = '$class'");
+    if (empty($exams)) {
+      echo "<option value=''>No Exam for this Class</option>";
+    } else {
+      echo "<option value=''>Select An Exam</option>";
+    }
+    foreach ($exams as $exam) {
+      echo "<option value='{$exam->examid}'>{$exam->examName}</option>";
+    }
+    exit;
+  }
+
+  // ------------------------------------------
+  // Get Years
+  // ------------------------------------------
+  elseif ($_POST['type'] == 'getYears') {
+    $class = $_POST['class'];
+    $years = $wpdb->get_results("SELECT infoYear FROM ct_studentinfo WHERE infoClass = $class GROUP BY infoYear ORDER BY infoYear ASC");
+    if (empty($years)) {
+      echo "<option value=''>No Student In this class</option>";
+    } else {
+      echo "<option value=''>Year</option>";
+    }
+    foreach ($years as $year) {
+      echo "<option value='{$year->infoYear}'>{$year->infoYear}</option>";
+    }
+    exit;
+  }
+
+  // ------------------------------------------
+  // Get Section
+  // ------------------------------------------
+  elseif ($_POST['type'] == 'getSection') {
+    $class = $_POST['class'];
+    $sections_query = "SELECT sectionid,sectionName FROM ct_section WHERE forClass = '$class'";
+
+    if ($restrictions_enabled && $is_teacher) {
+      $allowed_sections = $teacher_assignments['sections'];
+
+      // Add class teacher section if applicable
+      if ($teacher_assignments['class_teacher_class'] == $class && !empty($teacher_assignments['class_teacher_section'])) {
+        $allowed_sections[] = $teacher_assignments['class_teacher_section'];
+      }
+
+      if (!empty($allowed_sections)) {
+        $has_all = in_array('all', $allowed_sections);
+        if (!$has_all) {
+          $sections_query .= " AND sectionid IN (" . implode(',', array_map('intval', $allowed_sections)) . ")";
+        }
+      } elseif (!$teacher_has_assigned_classes) {
+        // Logic gap: if teacher has no section assigned but has class assigned? 
+        // Assuming sections list follows restrictions
+      }
+    }
+
+    $sections_query .= " ORDER BY sectionName";
+    $sections = $wpdb->get_results($sections_query);
+
+    if (!empty($sections)) {
+      echo "<option value=''>Section</option>";
+      foreach ($sections as $section) {
+        echo "<option value='{$section->sectionid}'>{$section->sectionName}</option>";
+      }
+    } else {
+      echo "<option value=''>No sections available</option>";
+    }
+    exit;
+  }
+
+  // ------------------------------------------
+  // Get Groups
+  // ------------------------------------------
+  elseif ($_POST['type'] == 'getGroupsByClass') {
+    $class = $_POST['class'];
+    $groups_query = "SELECT DISTINCT ct_group.groupId, ct_group.groupName 
+            FROM ct_group 
+            INNER JOIN ct_studentinfo ON ct_studentinfo.infoGroup = ct_group.groupId 
+            WHERE ct_studentinfo.infoClass = '$class'";
+
+    // Apply teacher restrictions if enabled
+    if ($restrictions_enabled && $is_teacher && !empty($teacher_assignments['subjects'])) {
+      $groups_query .= " AND ct_studentinfo.infoGroup IN (
+                SELECT DISTINCT forGroup 
+                FROM ct_subject 
+                WHERE subjectid IN (" . implode(',', $teacher_assignments['subjects']) . ") 
+                AND subjectClass = '$class'
+                AND forGroup != 'all'
+            )";
+    }
+
+    $groups_query .= " ORDER BY ct_group.groupName ASC";
+    $groups = $wpdb->get_results($groups_query);
+
+    echo "<option value=''>All Groups</option>";
+    foreach ($groups as $group) {
+      echo "<option value='{$group->groupId}'>{$group->groupName}</option>";
+    }
+    exit;
+  }
+
+  // ------------------------------------------
+  // Get Exam Subjects
+  // ------------------------------------------
+  elseif ($_POST['type'] == 'getExamSubject') {
+    $exam = intval($_POST['exam']);
+    $group = isset($_POST['group']) ? $_POST['group'] : '';
+    $subjects = [];
+
+    $subs = $wpdb->get_results("SELECT examSubjects FROM ct_exam WHERE examid = $exam");
+
+    if (!empty($subs[0]->examSubjects)) {
+      $subs = json_decode($subs[0]->examSubjects, true);
+    } else {
+      $subs = [];
+    }
+
+    // Teacher Restrictions
+    if ($restrictions_enabled && $is_teacher) {
+      $exam_class = $wpdb->get_var($wpdb->prepare("SELECT examClass FROM ct_exam WHERE examid = %d", $exam));
+      $is_class_teacher = ($teacher_assignments['class_teacher_class'] == $exam_class);
+
+      // If not class teacher, restrict subjects
+      if (!$is_class_teacher && !empty($teacher_assignments['subjects'])) {
+        $subs = array_intersect($subs, $teacher_assignments['subjects']);
+      }
+    }
+
+    if (!empty($subs)) {
+      $subs_escaped = array_map('intval', $subs);
+      $subjectQuery = "SELECT subjectid,subjectName FROM ct_subject 
+                WHERE subjectid IN (" . implode(',', $subs_escaped) . ")";
+
+      if (!empty($group)) {
+        $subjectQuery .= " AND (forGroup = 'all' OR forGroup = '$group' OR forGroup LIKE '%\"$group\"%')";
+      }
+
+      $subjectQuery .= " ORDER BY subjectName ASC";
+      $subjects = $wpdb->get_results($subjectQuery);
+    }
+
+    if (empty($subjects)) {
+      echo "<option value=''>No subject!</option>";
+    } else {
+      echo "<option value=''>Select Subject</option>";
+      foreach ($subjects as $subject) {
+        echo '<option value="' . $subject->subjectid . '">' . $subject->subjectName . '</option>';
+      }
+    }
+    exit;
+  }
+}
+
+if (isset($_POST['updateAllResult'])) {
+  $cq = $_POST['CQ'];
+  $mcq = $_POST['MCQ'];
+  $prc = $_POST['P'];
+  $ca = $_POST['ca'];
+  $response = false;
+  foreach ($_POST['id'] as $id) {
+    $update = $wpdb->update(
+      'ct_result',
+      array(
+        'resCQ'     => $cq[$id],
+        'resMCQ'     => $mcq[$id],
+        'resPrec'   => $prc[$id],
+        'resCa'   => $ca[$id],
+        'resTotal'   => isnum($cq[$id]) + isnum($mcq[$id]) + isnum($prc[$id]) + isnum($ca[$id])
+      ),
+      array('resultId' => $id)
+    );
+    if ($update) {
+      $response = $update;
+    }
+  }
+  if ($response) {
+    $message = array('status' => 'success', 'message' => 'Successfully updated');
+  } else {
+    $message = array('status' => 'faild', 'message' => 'Something wrong please try again');
+  }
+} ?>
+
+<script type="text/javascript">
+  // ==================================
+  // HANDLE AJAX ACTIONS LOCALLY
+  // ==================================
+  (function($) {
+    // Use current page as AJAX URL for standalone processing
+    var ajaxUrl = '';
+
+    $('#resultClass').change(function() {
+      var selectedClass = $(this).val();
+
+      // Fetch Exams
+      $.ajax({
+        url: ajaxUrl,
+        method: "POST",
+        data: {
+          class: selectedClass,
+          type: 'getExams'
+        },
+        dataType: "html"
+      }).done(function(msg) {
+        $("#resultExam").html(msg);
+        $("#resultExam").prop('disabled', false);
+        // Reset dependent dropdowns
+        $("#resultSubject").prop('disabled', true).html('<option disabled selected>Select exam First</option>');
+      });
+
+      // Fetch Years
+      $.ajax({
+        url: ajaxUrl,
+        method: "POST",
+        data: {
+          class: selectedClass,
+          type: 'getYears'
+        },
+        dataType: "html"
+      }).done(function(msg) {
+        $("#resultYear").html(msg);
+        $("#resultYear").prop('disabled', false);
+      });
+
+      // Fetch Sections
+      $.ajax({
+        url: ajaxUrl,
+        method: "POST",
+        data: {
+          class: selectedClass,
+          type: 'getSection'
+        },
+        dataType: "html"
+      }).done(function(msg) {
+        $("#resultSection").html(msg);
+        $("#resultSection").prop('disabled', false);
+      });
+
+      // Fetch All Groups
+      $.ajax({
+        url: ajaxUrl,
+        method: "POST",
+        data: {
+          class: selectedClass,
+          type: 'getGroupsByClass'
+        },
+        dataType: "html"
+      }).done(function(msg) {
+        $("#resultGroup").html(msg);
+        $("#resultGroup").prop('disabled', false);
+      });
+    });
+
+    // Fetch Subjects when Exam Changes
+    $('#resultExam').change(function() {
+      var selectedExam = $(this).val();
+      var selectedGroup = $('#resultGroup').val();
+
+      $.ajax({
+        url: ajaxUrl,
+        method: "POST",
+        data: {
+          exam: selectedExam,
+          group: selectedGroup,
+          type: 'getExamSubject'
+        },
+        dataType: "html"
+      }).done(function(msg) {
+        $("#resultSubject").html(msg);
+        $("#resultSubject").prop('disabled', false);
+      });
+    });
+
+    // Fetch Subjects when Group Changes
+    $('#resultGroup').change(function() {
+      var selectedExam = $('#resultExam').val();
+      var selectedGroup = $(this).val();
+
+      if (selectedExam) {
+        $.ajax({
+          url: ajaxUrl,
+          method: "POST",
+          data: {
+            exam: selectedExam,
+            group: selectedGroup,
+            type: 'getExamSubject'
+          },
+          dataType: "html"
+        }).done(function(msg) {
+          $("#resultSubject").html(msg);
+          $("#resultSubject").prop('disabled', false);
+        });
+      }
+    });
+
+    // Interactive validation for result inputs (Client-side only)
+    $('.resultInput').keyup(function(event) {
+      $this = $(this);
+      $val = $this.val();
+      $max = $this.data('max');
+
+      if ($val == '' || $val < ($max + 1) || $val == 'A' || $val == 'a') {
+        $this.css('border-color', '#ddd');
+        $this.removeClass('haserror');
+      } else {
+        $this.addClass('haserror');
+        $this.css('border-color', 'red');
+        $('.resultSubmit').prop('disabled', true);
+      }
+
+      if ($('.resultInput.haserror').length == 0) {
+        $('.resultSubmit').prop('disabled', false);
+      }
+    });
+
+  })(jQuery);
 </script>

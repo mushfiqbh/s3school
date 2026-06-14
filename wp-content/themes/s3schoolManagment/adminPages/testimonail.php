@@ -4,13 +4,13 @@
 */
 global $wpdb;
 global $s3sRedux;
-// fetch instLogo, principalSignature and testimonial reference from db
-$query = "SELECT option_name, option_value FROM sm_options WHERE option_name IN ('instLogo', 'principalSign', 'testimonial_ref')";
+// fetch instLogo, principalSignature, testimonial reference and pads from db
+$query = "SELECT option_name, option_value FROM sm_options WHERE option_name IN ('instLogo', 'principalSign', 'testimonial_ref', 'institute_name', 'institute_address', 'estd_year', 'institute_eiin', 'inst_head_name', 'inst_head_title', 'testimonial_prepared_by', 'testimonial_pad', 'board_name_1', 'board_name_2')";
 $results = $wpdb->get_results($query);
 foreach ($results as $row) {
 	$optionValue = isset($row->option_value) ? maybe_unserialize($row->option_value) : '';
 
-	if (in_array($row->option_name, ['instLogo', 'principalSign'], true)) {
+	if (in_array($row->option_name, ['instLogo', 'principalSign', 'testimonial_pad'], true)) {
 		$imageUrl = '';
 		if (is_array($optionValue) && isset($optionValue['url']) && !empty($optionValue['url'])) {
 			$imageUrl = $optionValue['url'];
@@ -20,12 +20,14 @@ foreach ($results as $row) {
 
 		// Convert relative path to full URL if needed
 		if (!empty($imageUrl) && strpos($imageUrl, 'http') !== 0) {
-			$imageUrl = home_url($imageUrl);
+			$imageUrl = home_url('/' . ltrim($imageUrl, '/'));
 		}
 
 		$s3sRedux[$row->option_name] = $imageUrl;
 	} elseif ($row->option_name === 'testimonial_ref') {
 		$s3sRedux[$row->option_name] = max(1, (int) $optionValue);
+	} else {
+		$s3sRedux[$row->option_name] = $optionValue;
 	}
 }
 
@@ -67,13 +69,13 @@ require_once __DIR__ . '/functions/html-utils.php';
 							<div class="panel-heading">
 								<ul class="nav nav-tabs" id="testimonialTypeTabs" role="tablist" aria-label="Testimonial types">
 									<li class="nav-item <?= $currentTestimonialType === 'regular' ? 'active' : '' ?>">
-										<a class="nav-link <?= $currentTestimonialType === 'regular' ? 'active' : '' ?>" href="#testimonial-form" data-testimonial-type="regular" role="tab" aria-controls="testimonial-form" aria-selected="<?= $currentTestimonialType === 'regular' ? 'true' : 'false' ?>">Regular Testimonial</a>
+										<a class="nav-link <?= $currentTestimonialType === 'regular' ? 'active' : '' ?>" href="?page=testimonail&testimonial_type=regular" role="tab" aria-selected="<?= $currentTestimonialType === 'regular' ? 'true' : 'false' ?>">Regular Testimonial</a>
 									</li>
 									<li class="nav-item <?= $currentTestimonialType === 'board' ? 'active' : '' ?>">
-										<a class="nav-link <?= $currentTestimonialType === 'board' ? 'active' : '' ?>" href="#testimonial-form" data-testimonial-type="board" role="tab" aria-controls="testimonial-form" aria-selected="<?= $currentTestimonialType === 'board' ? 'true' : 'false' ?>">Board Testimonial</a>
+										<a class="nav-link <?= $currentTestimonialType === 'board' ? 'active' : '' ?>" href="?page=testimonail&testimonial_type=board" role="tab" aria-selected="<?= $currentTestimonialType === 'board' ? 'true' : 'false' ?>">Board Testimonial</a>
 									</li>
 									<li class="nav-item <?= $currentTestimonialType === 'technical' ? 'active' : '' ?>">
-										<a class="nav-link <?= $currentTestimonialType === 'technical' ? 'active' : '' ?>" href="#testimonial-form" data-testimonial-type="technical" role="tab" aria-controls="testimonial-form" aria-selected="<?= $currentTestimonialType === 'technical' ? 'true' : 'false' ?>">Technical Board Testimonial</a>
+										<a class="nav-link <?= $currentTestimonialType === 'technical' ? 'active' : '' ?>" href="?page=testimonail&testimonial_type=technical" role="tab" aria-selected="<?= $currentTestimonialType === 'technical' ? 'true' : 'false' ?>">Technical Board Testimonial</a>
 									</li>
 								</ul>
 							</div>
@@ -145,11 +147,13 @@ require_once __DIR__ . '/functions/html-utils.php';
 												<label>Class</label>
 												<select class="resultClass form-control" name="class" required>
 													<?php
+													$selectedClass = isset($_GET['class']) ? (int) $_GET['class'] : 0;
 													$classQuery = $wpdb->get_results("SELECT classid,className FROM ct_class WHERE classid IN (SELECT examClass FROM ct_exam GROUP BY examClass ORDER BY className ASC)");
 													echo "<option value=''>Select Class</option>";
 
 													foreach ($classQuery as $class) {
-														echo "<option value='" . $class->classid . "'>" . $class->className . "</option>";
+														$sel = ((int) $class->classid === $selectedClass) ? ' selected' : '';
+														echo "<option value='" . $class->classid . "'" . $sel . ">" . $class->className . "</option>";
 													}
 													?>
 												</select>
@@ -157,52 +161,115 @@ require_once __DIR__ . '/functions/html-utils.php';
 
 											<div class="form-group ">
 												<label>Section</label>
-												<select class="resultSection" class="form-control" name="section" required disabled>
-													<option disabled selected>Select Class</option>
+												<select class="resultSection form-control" name="section" required <?= $selectedClass ? '' : 'disabled' ?>>
+													<?php
+													if ($selectedClass) {
+														$sections = $wpdb->get_results($wpdb->prepare("SELECT sectionid,sectionName FROM ct_section WHERE forClass = %d", $selectedClass));
+														$selectedSection = isset($_GET['section']) ? (int) $_GET['section'] : 0;
+														if (empty($sections)) {
+															echo "<option value=''>No sections available</option>";
+														} else {
+															echo "<option value=''>Section</option>";
+														}
+														foreach ($sections as $section) {
+															$sel = ((int) $section->sectionid === $selectedSection) ? ' selected' : '';
+															echo "<option value='" . (int) $section->sectionid . "'" . $sel . ">" . esc_html($section->sectionName) . "</option>";
+														}
+													} else {
+														echo '<option disabled selected>Select Class</option>';
+													}
+													?>
 												</select>
 											</div>
 
 											<div class="form-group">
 												<label>Year</label>
-												<select class="resultYear form-control" name="syear" required disabled>
-													<option disabled selected>Select Class</option>
+												<select class="resultYear form-control" name="syear" required <?= $selectedClass ? '' : 'disabled' ?>>
+													<?php
+													if ($selectedClass) {
+														$years = $wpdb->get_results($wpdb->prepare("SELECT infoYear FROM ct_studentinfo WHERE infoClass = %d GROUP BY infoYear ORDER BY infoYear ASC", $selectedClass));
+														$selectedYear = isset($_GET['syear']) ? $_GET['syear'] : '';
+														if (empty($years)) {
+															echo "<option value=''>No Student In this class</option>";
+														} else {
+															echo "<option value=''>Year</option>";
+														}
+														foreach ($years as $year) {
+															$sel = ($selectedYear === $year->infoYear) ? ' selected' : '';
+															echo "<option value='" . esc_attr($year->infoYear) . "'" . $sel . ">" . esc_html($year->infoYear) . "</option>";
+														}
+													} else {
+														echo '<option disabled selected>Select Class</option>';
+													}
+													?>
 												</select>
 											</div>
 
 											<div class="form-group ">
 												<label>Exam</label>
 												<?php if ($currentTestimonialType === 'regular'): ?>
-													<select class="resultExam form-control" name="exam" required disabled>
-														<option disabled selected>Select Class</option>
+													<select class="resultExam form-control" name="exam" required <?= $selectedClass ? '' : 'disabled' ?>>
+														<?php
+														if ($selectedClass) {
+															$exams = $wpdb->get_results($wpdb->prepare("SELECT examid,examName FROM ct_exam WHERE examClass = %d", $selectedClass));
+															$selectedExam = isset($_GET['exam']) ? (int) $_GET['exam'] : 0;
+															if (empty($exams)) {
+																echo "<option value=''>No Exam for this Class</option>";
+															} else {
+																echo "<option value=''>Select An Exam</option>";
+															}
+															foreach ($exams as $exam) {
+																$sel = ((int) $exam->examid === $selectedExam) ? ' selected' : '';
+																echo "<option value='" . (int) $exam->examid . "'" . $sel . ">" . esc_html($exam->examName) . "</option>";
+															}
+														} else {
+															echo '<option disabled selected>Select Class</option>';
+														}
+														?>
 													</select>
 												<?php else: ?>
-													<input type="text" class="form-control" name="exam" placeholder="Enter Exam Name" required>
+													<input type="text" class="form-control" name="exam" placeholder="Enter Exam Name" required value="<?= isset($_GET['exam']) ? esc_attr(wp_unslash($_GET['exam'])) : '' ?>">
 												<?php endif; ?>
 											</div>
 
 											<div class="form-group board-fields" style="<?= $showBoardFields ? '' : 'display:none;' ?>">
-												<input class="form-control" type="text" name="rollstart" placeholder="Roll Start From" style="width: 115px">
+												<input class="form-control" type="text" name="rollstart" placeholder="Roll Start From" style="width: 115px" value="<?= isset($_GET['rollstart']) ? esc_attr($_GET['rollstart']) : '' ?>">
 											</div>
 
 											<div class="form-group board-fields" style="<?= $showBoardFields ? '' : 'display:none;' ?>">
-												<input class="form-control" type="text" name="regstart" placeholder="Reg Start From" style="width: 115px">
+												<input class="form-control" type="text" name="regstart" placeholder="Reg Start From" style="width: 115px" value="<?= isset($_GET['regstart']) ? esc_attr($_GET['regstart']) : '' ?>">
 											</div>
 
 											<div class="form-group board-fields" style="<?= $showBoardFields ? '' : 'display:none;' ?>">
-												<input type="text" name="resSession" class="form-control" placeholder="Session" style="width: 100px">
+												<input type="text" name="resSession" class="form-control" placeholder="Session" style="width: 100px" value="<?= isset($_GET['resSession']) ? esc_attr($_GET['resSession']) : '' ?>">
 											</div>
 
 											<div class="form-group board-only-fields" style="<?= $showBoardOnlyFields ? '' : 'display:none;' ?>">
-												<input type="text" name="resPassingYear" class="form-control" placeholder="Passing Year" style="width: 110px">
+												<input type="text" name="resPassingYear" class="form-control" placeholder="Passing Year" style="width: 110px" value="<?= isset($_GET['resPassingYear']) ? esc_attr($_GET['resPassingYear']) : '' ?>">
 											</div>
 
 											<div class="form-group" id="idRoll">
-												<input class="form-control" type="text" name="roll" placeholder="Roll" style="width: 110px">
+												<input class="form-control" type="text" name="roll" placeholder="Roll" style="width: 110px" value="<?= isset($_GET['roll']) ? esc_attr($_GET['roll']) : '' ?>">
 											</div>
 											<div class="form-group">
 												<label>Reference (Optional)</label>
 												<input class="form-control" type="text" name="ref" placeholder="Reference" value="<?= isset($_GET['ref']) ? esc_attr(wp_unslash($_GET['ref'])) : '' ?>">
 											</div>
+                                            <div class="form-group">
+                                                <label>Serial No Start At</label>
+                                                <input class="form-control" type="number" name="serial_start" placeholder="Auto" value="<?= isset($_GET['serial_start']) ? esc_attr($_GET['serial_start']) : '' ?>">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Format</label>
+                                                <select class="form-control" name="pad_type">
+                                                    <?php
+                                                    $hasPadImage = !empty($s3sRedux['testimonial_pad']);
+                                                    $padDefault = !isset($_GET['pad_type']) && $hasPadImage;
+                                                    ?>
+                                                    <option value="default" <?= (isset($_GET['pad_type']) && $_GET['pad_type'] == 'default') || (!isset($_GET['pad_type']) && !$hasPadImage) ? 'selected' : '' ?>>Default</option>
+                                                    <option value="pad" <?= (isset($_GET['pad_type']) && $_GET['pad_type'] == 'pad') || $padDefault ? 'selected' : '' ?>>Pad</option>
+                                                </select>
+                                            </div>
 											<div class="form-group">
 												<input type="submit" name="creatId" value="Create" class="btn btn-primary">
 											</div>
@@ -238,18 +305,15 @@ require_once __DIR__ . '/functions/html-utils.php';
 											$session = @$_GET['resSession'];
 											$passingyear = @$_GET['resPassingYear'];
 											$institute_code = $wpdb->get_var("SELECT option_value FROM sm_options WHERE option_name = 'institute_code'");
-											$testimonial_prepared_by = $wpdb->get_var("SELECT option_value FROM sm_options WHERE option_name = 'testimonial_prepared_by'");
-											$testimonial_border_type = $wpdb->get_var("SELECT option_value FROM sm_options WHERE option_name = 'testimonial_type'");
-											$testimonial_pad = $wpdb->get_var("SELECT option_value FROM sm_options WHERE option_name = 'testimonial_pad'");
-											$testimonial_pad_url = '';
-											if (!empty($testimonial_pad)) {
-												$testimonial_pad_url = esc_url_raw($testimonial_pad);
-												if (strpos($testimonial_pad_url, 'http') !== 0) {
-													$relative_pad_path = ltrim($testimonial_pad_url, '/');
-													$testimonial_pad_url = home_url('/' . $relative_pad_path);
-												}
+											$testimonial_prepared_by = isset($s3sRedux['testimonial_prepared_by']) ? $s3sRedux['testimonial_prepared_by'] : $wpdb->get_var("SELECT option_value FROM sm_options WHERE option_name = 'testimonial_prepared_by'");
+											
+											// Handle Pad Selection
+                                            $pad_type = $_GET['pad_type'] ?? 'default';
+											$testimonial_bg_url = '';
+											if ($pad_type === 'pad' && !empty($s3sRedux['testimonial_pad'])) {
+												$testimonial_bg_url = $s3sRedux['testimonial_pad'];
 											}
-											$instHeadName = $wpdb->get_var("SELECT option_value FROM sm_options WHERE option_name = 'inst_head_name'");
+											$instHeadName = isset($s3sRedux['inst_head_name']) ? $s3sRedux['inst_head_name'] : $wpdb->get_var("SELECT option_value FROM sm_options WHERE option_name = 'inst_head_name'");
 
 											// Determine query based on testimonial type
 											if ($testimonial_type == 'board') {
@@ -293,6 +357,9 @@ require_once __DIR__ . '/functions/html-utils.php';
 											// Display results
 											if ($groupsBy) {
 												$refSerialStart = isset($s3sRedux['testimonial_ref']) ? (int) $s3sRedux['testimonial_ref'] : 1;
+												if (isset($_GET['serial_start']) && $_GET['serial_start'] !== '') {
+													$refSerialStart = max(1, (int) $_GET['serial_start']);
+												}
 												if ($refSerialStart < 1) {
 													$refSerialStart = 1;
 												}
@@ -303,248 +370,146 @@ require_once __DIR__ . '/functions/html-utils.php';
 												$staticWriteError = '';
 
 												ob_start();
-												$is_pad_layout = ($testimonial_border_type === 'Pad');
-
-												// Add print-specific CSS for pad background in snapshot
-												$pad_print_css = '';
-												if ($is_pad_layout && $testimonial_pad_url !== '') {
-													$pad_print_css = '<style type="text/css">@media print { .itemMainBox-pad { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; background-image: url(\'' . esc_url($testimonial_pad_url) . '\') !important; background-size: 100% 100% !important; background-repeat: no-repeat !important; background-position: center top !important; } }</style>';
-												}
-											?>
-												<link href="https://fonts.googleapis.com/css?family=Satisfy" rel="stylesheet">
-												<link href="https://fonts.googleapis.com/css?family=Quicksand" rel="stylesheet">
+										?>
 												<style type="text/css">
 													@page {
-														size: A4;
+														size: A4 portrait;
 														margin: 0;
-
-														/* Remove browser print header/footer */
-														/* Chrome/Edge/Safari: */
-														@top-left {
-															content: none;
-														}
-
-														@top-center {
-															content: none;
-														}
-
-														@top-right {
-															content: none;
-														}
-
-														@bottom-left {
-															content: none;
-														}
-
-														@bottom-center {
-															content: none;
-														}
-
-														@bottom-right {
-															content: none;
-														}
 													}
 
 													@media print {
 														body {
-															-webkit-print-color-adjust: exact;
-															print-color-adjust: exact;
+															-webkit-print-color-adjust: exact !important;
+															print-color-adjust: exact !important;
 														}
-
-														img {
-															max-width: 100%;
-															height: auto;
-															display: block;
-														}
-
-														/* Hide header/footer in Firefox */
-														@page {
-															margin: 0;
-														}
-
-														/* Remove forced header/footer for all browsers (where supported) */
-														html,
-														body {
-															margin: 0 !important;
-															padding: 0 !important;
+														.certificate {
+															-webkit-print-color-adjust: exact !important;
+															print-color-adjust: exact !important;
 														}
 													}
 
-													.itemMainBox {
-														max-width: 21cm;
-														min-height: calc(29.7cm);
-														display: inline-block;
-														overflow: hidden;
-														font-family: sans-serif;
-														width: 100%;
+													body {
+														background: #e6e6e6;
+														font-family: "Times New Roman", serif;
+														margin: 0;
+														padding: 0;
+													}
+
+													.certificate {
+														width: 21cm;
+														height: 29.7cm;
+														margin: 0 auto;
+														background-color: #ffffff;
+														box-sizing: border-box;
 														position: relative;
 														page-break-after: always;
-														box-sizing: border-box;
+														-webkit-print-color-adjust: exact;
+														print-color-adjust: exact;
 													}
 
-													.itemMainBox-border {
-														border: 10px solid #005daa;
+													.cert-content {
+														padding: 50px 60px;
 													}
 
-													.itemMainBox-pad {
-														border: none;
-														margin: 0;
-														padding: 0;
-														background-position: center top;
-														background-repeat: no-repeat;
-														background-size: 100% 100%;
-													}
-
-													.testimonial-inner {
-														padding: 32px;
-													}
-
-													.testimonial-inner-pad {
-														padding: 40px 48px;
-													}
-
-													.itemMainBox p {
-														font-size: 16px;
-														font-family: 'Quicksand', sans-serif;
-														line-height: 2;
-													}
-
-													.itemMainBox .itemWaterMark {
-														position: absolute;
-														top: 50%;
-														left: 50%;
-														transform: translate(-50%, -50%);
-														width: 100%;
-														z-index: -1;
+													.certificate .header {
 														text-align: center;
+														margin-bottom: 20px;
 													}
 
-													.itemMainBox .itemWaterMark img {
-														opacity: .12;
-														width: 250px;
-													}
-
-													.itemMainBox .instLogo {
-														width: 90px;
-														position: absolute;
-														left: 0;
-														top: 0;
-													}
-
-													.itemMainBox .instName {
+													.certificate .header h1 {
+														font-size: 20pt;
+														color: #000;
 														margin: 0 0 5px 0;
-														color: #337ab7;
 														font-weight: bold;
-														font-size: 30px;
+														text-transform: uppercase;
+														letter-spacing: 1px;
 													}
 
-													.itemMainBox .instAddrs {
-														margin: 0 0 10px 0;
+													.certificate .header .sub {
+														font-size: 13pt;
 														color: #000;
 														font-weight: normal;
-														font-size: 18px;
+														margin: 5px 0;
+														line-height: 1.4;
 													}
 
-													.itemMainBox .examName {
-														margin: 0 auto 7px;
+													.certificate .content {
+														font-size: 17px;
+														line-height: 1.8;
+														color: #000;
+														margin-top: 20px;
+														margin-bottom: 20px;
+													}
+
+													.certificate .content p {
+														margin-bottom: 12px;
+														text-align: justify;
+													}
+
+													.certificate .ref-date {
+														display: flex;
+														justify-content: space-between;
+														margin-bottom: 15px;
+													}
+
+													.certificate .doc-footer {
+														margin-top: 140px;
+														color: #000;
+														display: flex;
+														justify-content: space-between;
+														align-items: flex-end;
+													}
+
+													.certificate .doc-footer .left {
+														width: 40%;
+														font-size: 15px;
+													}
+
+													.certificate .doc-footer .right-sign {
 														text-align: center;
-														font-size: 25px;
+														width: 40%;
+														font-size: 15px;
 													}
 
-													.itemMainBox .examName h3 {
-														margin: 0;
-														font-size: 20px;
+													.certificate .doc-footer .right-sign img {
+														max-height: 60px;
+														max-width: 150px;
+														margin: 0 auto 5px;
+														display: block;
 													}
 
-													.itemMainBox .itemInfo {
+													.certificate .doc-footer .right-sign p {
+														margin: 2px 0;
+														line-height: 1.3;
+													}
+
+													.certificate .bottom {
+														margin-top: 20px;
+														text-align: left;
+														font-size: 15px;
+													}
+
+													.line {
+														border-bottom: 1px dotted #000;
+														padding-left: 4px;
+														padding-right: 4px;
 														text-align: center;
-														margin: 20px 0;
-														clear: both;
 													}
 
-													.itemMainBox .admitCard {
-														margin: 0 0 10px 0;
-														color: #f7740c;
-														font-weight: bold;
-														background: #f0f0f0;
-														print-color-adjust: exact;
-														-webkit-print-color-adjust: exact;
-														padding: 10px;
-														border-radius: 5px;
-														font-size: 25px;
-														border: 2px solid #f0f0f0;
-													}
-
-													.itemMainBox .admitNote {
-														float: left;
-													}
-
-													.itemMainBox .admitNote p {
-														margin: 0;
-														padding-left: 15px;
-													}
-
-													.itemMainBox hr {
-														clear: both;
-													}
-
-													.itemMainBox .princSign {
-														float: right;
-													}
+                                                    .title {
+                                                        font-size: 22pt;
+                                                        font-weight: bold;
+                                                        text-decoration: underline;
+                                                        margin: 20px 0;
+                                                        text-align: center;
+                                                    }
 
 													b u {
-														font-family: 'Rechtman', sans-serif;
 														text-decoration: none;
-														padding: 0 5px;
-													}
-
-													.editable {
-														position: relative;
-													}
-
-													.editable .closeEdit {
-														position: absolute;
-														z-index: 5;
-														cursor: pointer;
-														right: 0px;
-														top: -6px;
-														width: 15px;
-														text-indent: 0;
-														margin: 0;
-														padding: 0;
-														background: rgba(255, 0, 0, .8);
-														border-radius: 3px;
-														text-align: center;
-														line-height: 15px;
-														color: #fff;
-														font-family: arial;
-														-webkit-touch-callout: none;
-														-webkit-user-select: none;
-														-khtml-user-select: none;
-														-moz-user-select: none;
-														-ms-user-select: none;
-														user-select: none;
-													}
-
-													#wrapper {
-														position: absolute;
-														overflow: auto;
-														left: 0;
-														right: 0;
-														top: 0;
-														bottom: 0;
-													}
-
-													#wrapper-border {
-														border: 15px solid #d0bf9e;
+														padding: 0 3px;
 													}
 												</style>
 												<?php
-
-												// Output print CSS for pad if needed
-												if (!empty($pad_print_css)) {
-													echo $pad_print_css;
-												}
 
 												foreach ($groupsBy as $value) {
 													if ($useManualRef) {
@@ -554,186 +519,130 @@ require_once __DIR__ . '/functions/html-utils.php';
 														$refSerialCounter++;
 													}
 													$generatedTestimonials++;
-													$item_classes = 'itemMainBox';
-													$item_style_attr = '';
-													if ($is_pad_layout) {
-														$item_classes .= ' itemMainBox-pad';
-														if ($testimonial_pad_url !== '') {
-															$pad_style = sprintf("background-image:url('%s');background-repeat:no-repeat;background-position:center top;background-size:100%% 100%%;", esc_url($testimonial_pad_url));
-															$item_style_attr = ' style="' . esc_attr($pad_style) . '"';
-														}
-													} else {
-														$item_classes .= ' itemMainBox-border';
-													}
-
-													$wrapper_id = $is_pad_layout ? 'wrapper' : 'wrapper-border';
-													$content_wrapper_classes = 'testimonial-inner';
-													if ($is_pad_layout) {
-														$content_wrapper_classes .= ' testimonial-inner-pad';
-													}
 												?>
-													<div class="<?= esc_attr($item_classes); ?>" <?= $item_style_attr; ?>>
-														<div id="<?= esc_attr($wrapper_id); ?>">
-															<div class="<?= esc_attr($content_wrapper_classes); ?>">
-																<?php
-																if (!$is_pad_layout) {
-																?>
-																	<table style="width: 100%;">
-																		<tr>
-																			<td style="width: 20%; text-align: left; vertical-align: top;">
-																				<?php if ($s3sRedux['instLogo']): ?>
-																					<img width="100" style="margin-top: 0;" src="<?= $s3sRedux['instLogo'] ?>" alt="Logo">
-																				<?php endif; ?>
-																			</td>
-																			<td style="width: 80%; text-align: center;">
-																				<h2 class="instName"><?= $s3sRedux['institute_name'] ?></h2>
-																				<h5 class="instAddrs"><?= $s3sRedux['institute_address'] ?></h5>
-																				<h5 class="instAddrs">ESTD: <?= $s3sRedux['estd_year'] ?>, EIIN: <?= $s3sRedux['institute_eiin'] ?></h5>
-																			</td>
-																		</tr>
-																	</table>
+													<div class="certificate">
+														<?php if ($pad_type == 'pad' && !empty($testimonial_bg_url)) : ?>
+														<div style="width:100%;height:100%;">
+															<img style="width:100%;height:100%;" src="<?= esc_url($testimonial_bg_url) ?>" alt="Background" />
+														</div>
+														<?php endif; ?>
+														<div class="cert-content" style="<?= ($pad_type == 'pad' && !empty($testimonial_bg_url)) ? 'position:absolute;inset:0;z-index:20;margin-top:200px;' : '' ?>">
+															<?php if ($pad_type != 'pad') : ?>
+															<div class="header" style="display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 30px;">															
+																<div style="width: 20%; text-align: left; vertical-align: top;">
+																	<?php if ($s3sRedux['instLogo']): ?>
+																		<img width="100" style="margin-top: 0;" src="<?= $s3sRedux['instLogo'] ?>" alt="Logo">
+																	<?php endif; ?>
+																</div>
+																<div>
+																	<h1><?= esc_html($s3sRedux['institute_name']) ?></h1>
+																	<p class="sub">
+																		<?= esc_html($s3sRedux['institute_address']) ?><br>
+																		Estd. <?= esc_html($s3sRedux['estd_year']) ?> | EIIN: <?= esc_html($s3sRedux['institute_eiin']) ?>
+																	</p>
+																</div>															
+															</div>
+															<?php endif; ?>
 
-																	<table style="width: 100%; margin-top: 1px;">
-																		<tr>
-																			<td style="width: 100%; text-align: center;">
-																				Web: <?= home_url() ?> &nbsp; Email: <?= $s3sRedux['institute_email'] ?> &nbsp; Institute Code: <?= $institute_code ?>
-																			</td>
-																		</tr>
-																	</table>
+															<div class="content">
+																<div class="title">TESTIMONIAL</div>
 
-																	<b>
-																		<center>----------------------------------------------------------------------------------------------------------------</center>
-																	</b>
+																<div class="ref-date">
+																	<p><strong>Serial No:</strong> <span class="line"><?= esc_html($currentRefValue); ?></span></p>
+																	<p><strong>Date:</strong> <span class="line"><?= date('d-m-Y') ?></span></p>
+																</div>
 
-																	<table style="width: 100%; margin-top: 3px;">
-																		<tr>
-																			<td style="width: 50%; text-align: left;">
-																				Ref: <?= esc_html($currentRefValue); ?>
-																			</td>
-																			<td style="width: 50%; text-align: right;">
-																				Date: <?= date('d-m-Y') ?>
-																			</td>
-																		</tr>
-																	</table>
-																<?php } ?>
+																<?php if ($testimonial_type == 'board'): ?>
+																	<!-- Board Testimonial -->
+																	<p>
+																	This is to certify that <span class="line"><?= esc_html($value->stdName) ?></span>, 
+																	<?= ($value->stdGender == 0) ? 'daughter' : 'son' ?> of 
+																	<span class="line"><?= esc_html($value->stdFather) ?></span> and 
+																	<span class="line"><?= esc_html($value->stdMother) ?></span>, 
+																	has successfully passed the <span class="line"><?= esc_html($exam) ?></span> Examination 
+																	held in <span class="line"><?= esc_html($passingyear) ?></span> from this institution 
+																	under the <?= esc_html($s3sRedux['board_name_1']) ?>
+																	<?= isset($value->groupName) ? ", Group <span class='line'>" . esc_html($value->groupName) . "</span>" : '' ?>, 
+																	bearing Roll No: <span class="line"><?= esc_html($value->sscRoll) ?></span>, 
+																	Registration No: <span class="line"><?= esc_html($value->sscReg) ?></span>, 
+																	Session: <span class="line"><?= esc_html($session) ?></span>, 
+																	securing a G.P.A of <span class="line"><?= esc_html($value->stdGPA) ?></span> 
+																	on a scale of <span class="line">5.00</span>.
+																	</p>
+																	<p>
+																	According to the admission register, <?= ($value->stdGender == 0) ? 'her' : 'his' ?> 
+																	date of birth is recorded as <span class="line"><?= formatBirthDate($value->stdBrith) ?></span>.
+																	</p>
+																<?php elseif ($testimonial_type == 'technical'): ?>
+																	<!-- Technical Board Testimonial -->
+																	<p>
+																	This is to certify that <span class="line"><?= esc_html($value->stdName) ?></span>, 
+																	<?= ($value->stdGender == 0) ? 'daughter' : 'son' ?> of 
+																	<span class="line"><?= esc_html($value->stdFather) ?></span> and 
+																	<span class="line"><?= esc_html($value->stdMother) ?></span>, 
+																	is a student of this institution in Class <span class="line"><?= esc_html($value->className) ?></span>
+																	<?= isset($value->sectionName) ? ", Section <span class='line'>" . esc_html($value->sectionName) . "</span>" : '' ?>
+																	<?= isset($value->groupName) ? ", Group <span class='line'>" . esc_html($value->groupName) . "</span>" : '' ?>, 
+																	Roll No. <span class="line"><?= esc_html($value->infoRoll) ?></span>. 
+																	<?= ($value->stdGender == 0) ? 'She' : 'He' ?> appeared at 
+																	<span class="line"><?= esc_html($value->examName) ?></span> held in <span class="line"><?= esc_html($year) ?></span> 
+																	under the <?= esc_html($s3sRedux['board_name_2']) ?> and achieved merit position 
+																	<?= isset($value->spPosition) ? "<span class='line'>" . esc_html($value->spPosition) . "</span>" : '<span class="line">............</span>' ?> 
+																	with GPA <span class="line"><?= isset($value->spPoint) ? esc_html($value->spPoint) : '............' ?></span>.
+																	</p>
+																	<p>
+																	According to the admission register, <?= ($value->stdGender == 0) ? 'her' : 'his' ?> 
+																	date of birth is recorded as <span class="line"><?= formatBirthDate($value->stdBrith) ?></span>.
+																	</p>
+																<?php else: ?>
+																	<!-- Regular Testimonial -->
+																	<p>
+																	This is to certify that <span class="line"><?= esc_html($value->stdName) ?></span>, 
+																	<?= ($value->stdGender == 0) ? 'daughter' : 'son' ?> of 
+																	<span class="line"><?= esc_html($value->stdFather) ?></span> and 
+																	<span class="line"><?= esc_html($value->stdMother) ?></span>, 
+																	is a student of this institution in Class <span class="line"><?= esc_html($value->className) ?></span>
+																	<?= isset($value->sectionName) ? ", Section <span class='line'>" . esc_html($value->sectionName) . "</span>" : '' ?>
+																	<?= isset($value->groupName) ? ", Group <span class='line'>" . esc_html($value->groupName) . "</span>" : '' ?>, 
+																	Roll No. <span class="line"><?= esc_html($value->infoRoll) ?></span>. 
+																	<?= ($value->stdGender == 0) ? 'She' : 'He' ?> appeared at 
+																	<span class="line"><?= esc_html($value->examName) ?></span> held in <span class="line"><?= esc_html($year) ?></span> 
+																	and secured merit position 
+																	<?= isset($value->spPosition) ? "<span class='line'>" . esc_html($value->spPosition) . "</span>" : '<span class="line">............</span>' ?> 
+																	with GPA <span class="line"><?= isset($value->spPoint) ? esc_html($value->spPoint) : '............' ?></span>.
+																	</p>
+																	<p>
+																	According to the admission register, <?= ($value->stdGender == 0) ? 'her' : 'his' ?> 
+																	date of birth is recorded as <span class="line"><?= formatBirthDate($value->stdBrith) ?></span>.
+																	</p>
+																<?php endif; ?>
 
-																<div class="section3" <?php if (!$is_pad_layout): ?> style="background: url(<?= $s3sRedux['instLogo'] ?>) no-repeat center; background-size: 400px;" <?php endif; ?>>
-																	<div style="<?php if ($is_pad_layout) {
-																					echo 'background:transparent;margin-top:170px;';
-																				} else {
-																					echo 'background: rgba(255,255,255,0.9);margin-top:60px;';
-																				} ?>">
+																<p>
+																	<?= ($value->stdGender == 0) ? 'She' : 'He' ?> has never taken part in any activity 
+																	detrimental to the state or contrary to the discipline of this institution. 
+																	<?= ($value->stdGender == 0) ? 'She' : 'He' ?> bears good moral character.
+																</p>
 
-																		<?php if (!$is_pad_layout): ?>
-																			<div class="itemWaterMark">
-																				<img src="<?= $s3sRedux['instLogo'] ?>" alt="Logo Watermark">
-																			</div>
-																		<?php endif; ?>
-																		<div class="itemInfo">
-																			<h3 style="text-transform: uppercase;">Testimonial</h3>
-																		</div>
+																<p>
+																	We wish <?= ($value->stdGender == 0) ? 'her' : 'him' ?> every success in all future endeavors.
+																</p>
+															</div>
 
-																		<div style="width: 100%;">
-																			<?php if ($testimonial_type == 'board'): ?>
-																				<!-- Board Testimonial -->
-																				<p style="text-indent: 30px">
-																					This is to Certify that
-																					<b><u><?= $value->stdName ?></u></b> <?= ($value->stdGender == 0) ? 'daughter' : 'son' ?>
-																					of <b><u><?= $value->stdFather ?></u></b> and <b><u><?= $value->stdMother ?></u></b>
-																					passed the <b><u><?= $exam ?></u></b> Examination from this institution held in the year <b class='editable'><u><?= $passingyear ?></u></b>
-																					under the <?= $s3sRedux['board_name_1'] ?> in <?= isset($value->groupName) ? "Group <b><u>$value->groupName</u></b>" : '' ?>
-																					bearing Roll <?= $s3sRedux['center_code'] ?> No <b class='editable'><u><?= $value->sscRoll ?></u></b>
-																					Registration No<b class='editable'><u><?= $value->sscReg ?></u></b> Session <b><u><?= $session ?></u></b> and
-																					obtained GPA <b class='editable'><u><?= $value->stdGPA ?></u></b> Letter Grade<b class='editable'><u><?= $value->stdIntellectual ?></u></b>.
-																					<?= ($value->stdGender == 0) ? 'Her' : 'His' ?> date of birth is <b class='editable'><u><?= date('d-m-Y', strtotime($value->stdBrith)) ?></u></b> in words
-																					<?php
-																					$birthDate = $value->stdBrith;
-																					if ($birthDate) {
-																						echo formatBirthDate($birthDate);
-																					}
-																					?>.
-																				</p>
-																			<?php elseif ($testimonial_type == 'technical'): ?>
-																				<!-- Technical Board Testimonial -->
-																				<p>This is to Certify that
-																					<b><u><?= $value->stdName ?></u></b>
-																					<?= ($value->stdGender == 0) ? 'daughter' : 'son' ?>
-																					of Mr. <b><u><?= $value->stdFather ?></u></b> &
-																					<b><u><?= $value->stdMother ?></u></b>
-																					is a student of this institution in Class <b><u><?= $value->className ?>,</u></b>
-																					<?= isset($value->sectionName) ? "Section <b><u>$value->sectionName</u></b>" : '' ?>
-																					<?= isset($value->groupName) ? "Group <b><u>$value->groupName</u></b>" : '' ?>
-																					Roll No. <b><u><?= $value->infoRoll ?></u></b>
-																					and <?= ($value->stdGender == 0) ? 'she' : 'he' ?> appeared at <b><u><?= $value->examName ?></u></b> held in <b><u><?= $year ?></u></b>
-																					under the <?= esc_html($s3sRedux['board_name_2']) ?> and placed /merit position <?= isset($value->spPosition) ? "<b><u>" . $value->spPosition . "</u></b>" : '............' ?>
-																					GPA- <?= isset($value->spPoint) ? "<b><u>" . $value->spPoint . "</u></b>" : '............' ?>.
-																					<?= ($value->stdGender == 0) ? 'Her' : 'His' ?> date of birth is <b class='editable'><u><?= date('d-m-Y', strtotime($value->stdBrith)) ?></u></b> in words
-																					<?php
-																					$birthDate = $value->stdBrith;
-																					if ($birthDate) {
-																						echo formatBirthDate($birthDate);
-																					}
-																					?>.
-																				</p>
-																			<?php else: ?>
-																				<!-- Regular Testimonial -->
-																				<p>This is to Certify that
-																					<b><u><?= $value->stdName ?></u></b>
-																					<?= ($value->stdGender == 0) ? 'daughter' : 'son' ?>
-																					of Mr. <b><u><?= $value->stdFather ?></u></b> &
-																					<b><u><?= $value->stdMother ?></u></b>
-																					is a student of this institution in Class <b><u><?= $value->className ?>,</u></b>
-																					<?= isset($value->sectionName) ? "Section <b><u>$value->sectionName</u></b>" : '' ?>
-																					<?= isset($value->groupName) ? "Group <b><u>$value->groupName</u></b>" : '' ?>
-																					Roll No. <b><u><?= $value->infoRoll ?></u></b>
-																					and <?= ($value->stdGender == 0) ? 'she' : 'he' ?> appeared at <b><u><?= $value->examName ?></u></b> held in <b><u><?= $year ?></u></b> and
-																					placed /merit position <?= isset($value->spPosition) ? "<b><u>" . $value->spPosition . "</u></b>" : '............' ?>
-																					GPA- <?= isset($value->spPoint) ? "<b><u>" . $value->spPoint . "</u></b>" : '............' ?>.
-																					<?= ($value->stdGender == 0) ? 'Her' : 'His' ?> date of birth is <b class='editable'><u><?= date('d-m-Y', strtotime($value->stdBrith)) ?></u></b> in words
-																					<?php
-																					$birthDate = $value->stdBrith;
-																					if ($birthDate) {
-																						echo formatBirthDate($birthDate);
-																					}
-																					?>.
-																				</p>
-																			<?php endif; ?>
+															<div class="doc-footer">
+																<div class="left">
+																	<!-- <p><strong>Prepared by:</strong> <span class="line"><?= esc_html($testimonial_prepared_by) ?></span></p> -->
+																	<p>Date of Issue: <span class="line"><?= date('d-m-Y') ?></span></p>
+																</div>
 
-																			<p style="text-indent: 30px">
-																				<?= ($value->stdGender == 0) ? 'She' : 'He' ?> bears a good moral character.
-																				So far I know <?= ($value->stdGender == 0) ? 'she' : 'he' ?> was not involved in any activity subversive of the State or
-																				discipline of this institute.
-																			</p>
-																			<p></p>
-																			<p></p>
-																			<p style="<?= ($testimonial_type == 'board') ? 'text-indent: 30px' : 'padding-left: 20px' ?>">I wish <?= ($value->stdGender == 0) ? 'her' : 'him' ?> every success in life.</p>
-
-																			<table style="width: 100%; <?php if ($is_pad_layout) { ?>margin-top: 400px;<?php } else { ?>margin-top: 297px;<?php } ?>">
-																				<tr>
-																					<td>
-																						<p style="line-height: 1.2;">Prepared by: <?= $testimonial_prepared_by ?></p>
-																						<p style="line-height: 1.2;">Date: <?= date('d-m-Y') ?></p>
-																					</td>
-																					<td style="width: 350px;">
-																						<div style="width: fit-content; float: right; text-align: center;">
-																							<div style="display: flex; flex-direction: column; align-items: center;">
-																								<?php if ($s3sRedux['principalSign']): ?>
-																									<img src="<?= $s3sRedux['principalSign'] ?>" alt="Signature" style="max-height: 50px; max-width: 150px;">
-																								<?php endif; ?>
-																							</div>
-																							<p style="margin: 0;line-height: 1.2;"><?= $instHeadName ?><br>
-																								<?= $s3sRedux['inst_head_title'] ?><br>
-																								<?= $s3sRedux['institute_name'] ?><br>
-																								<?= $s3sRedux['institute_address'] ?></p>
-																						</div>
-																					</td>
-																				</tr>
-																			</table>
-																		</div>
-																	</div>
+																<div class="right-sign">
+																	<?php if (!empty($s3sRedux['principalSign'])): ?>
+																		<img src="<?= esc_url($s3sRedux['principalSign']) ?>" alt="Signature">
+																	<?php endif; ?>
+																	<p><strong><?= esc_html($instHeadName) ?></strong></p>
+																	<p><?= esc_html($s3sRedux['inst_head_title']) ?></p>
+																	<p><?= esc_html($s3sRedux['institute_name']) ?></p>
 																</div>
 															</div>
-															<div style="clear: both;"></div>
 														</div>
 													</div>
 
