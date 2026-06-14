@@ -6,43 +6,20 @@ if (isset($_POST['updateAllResult'])) {
 	$prc = $_POST['P'];
 	$ca = $_POST['ca'];
 	$response = false;
-	
 	foreach ($_POST['id'] as $id) {
-        $cqVal   = trim($cq[$id]);
-        $mcqVal  = trim($mcq[$id]);
-        $prcVal  = trim($prc[$id]);
-        $caVal   = trim($ca[$id]);
-
-        $update = $wpdb->update(
-            'ct_result',
-            array(
-                'resCQ'     => $cqVal,
-                'resMCQ'    => $mcqVal,
-                'resPrec'   => $prcVal,
-                'resCa'     => $caVal,
-                'resTotal'  => isnum($cqVal) + isnum($mcqVal) + isnum($prcVal) + isnum($caVal)
-            ),
-            array('resultId' => $id)
-        );
-
-        if ($update) {
-            $response = $update;
-        }
-    }
-// 	foreach ($_POST['id'] as $id) {
-// 		$update = $wpdb->update(
-// 		'ct_result',
-// 			array(
-// 				'resCQ' 		=> $cq[$id],
-// 				'resMCQ' 		=> $mcq[$id],
-// 				'resPrec' 	=> $prc[$id],
-// 				'resCa' 	=> $ca[$id],
-// 				'resTotal' 	=> isnum($cq[$id])+isnum($mcq[$id])+isnum($prc[$id])+isnum($ca[$id])
-// 			),
-// 			array( 'resultId' => $id)
-// 		);
-// 		if ($update) { $response = $update;	}
-// 	}
+		$update = $wpdb->update(
+		'ct_result',
+			array(
+				'resCQ' 		=> $cq[$id],
+				'resMCQ' 		=> $mcq[$id],
+				'resPrec' 	=> $prc[$id],
+				'resCa' 	=> $ca[$id],
+				'resTotal' 	=> isnum($cq[$id])+isnum($mcq[$id])+isnum($prc[$id])+isnum($ca[$id])
+			),
+			array( 'resultId' => $id)
+		);
+		if ($update) { $response = $update;	}
+	}
 	if ($response) {
 		$message = array('status' => 'success', 'message' => 'Successfully updated' );
 	}else{
@@ -99,24 +76,6 @@ if (isset($_POST['updateAllResult'])) {
 					<option disabled selected>Select Class First</option>
 				</select>
 			</div>
-			
-			<div class="form-group ">
-					<label>Group</label>
-					<select id="resultGroup" class="form-control" name="grou">
-						<option value="">Select Group</option>
-						<?php
-            	            $groups = $wpdb->get_results("SELECT * FROM ct_group");
-            	            foreach ($groups as $groups) {
-            	              $selected = ($edit->infoGroup == $groups->groupId) ? 'selected' : '';
-            	              ?>
-            	              <option value='<?= $groups->groupId ?>' <?= $selected ?>>
-            	                <?= $groups->groupName ?>
-            	              </option>
-            	              <?php
-            	            }
-            	          ?>
-					</select>
-				</div>
 
 			<div class="form-group">
 				<label>Year/Session</label>
@@ -156,17 +115,12 @@ if (isset($_POST['updateAllResult'])) {
 						$year			= $_GET['syear'];
 						$sec			= isset($_GET['sec']) ? $_GET['sec'] : '';
 						$subject  = $sub = $_GET['subject'];
-						$grou 	= $_GET['grou'];
-						$query = "SELECT stdName,infoRoll,infoSection,resultId,subjectName,assessment,resMCQ,resCQ,resPrec,resCa,subCQ,subMCQ,subPect,subCa FROM `ct_result`
+						$query = "SELECT stdName,infoRoll,resultId,subjectName,assessment,resMCQ,resCQ,resPrec,resCa,subCQ,subMCQ,subPect,subCa FROM `ct_result`
 							LEFT JOIN ct_student ON ct_student.studentid = ct_result.resStudentId
 							LEFT JOIN ct_studentinfo ON ct_studentinfo.infoStdid = ct_result.resStudentId
 							LEFT JOIN ct_subject ON ct_result.resSubject = ct_subject.subjectid
 							WHERE resClass = $class AND resExam = $exam AND resultYear = '$year' AND resSubject = $subject AND status = 0";
 						if ($sec !='') { $query .= " AND infoSection = $sec"; }
-						if ($grou != "") {
-													$query .= " AND infoGroup = $grou";
-												}
-						$query .= " Group By resStudentId order by infoSection asc, infoRoll asc";
 
 						$results = $wpdb->get_results($query);
 
@@ -186,20 +140,20 @@ if (isset($_POST['updateAllResult'])) {
 							if($results){
 								?>
 
-								<input type="hidden" name="subCQ" value="<?= @$result->subCQ ?>">
-								<input type="hidden" name="subMCQ" value="<?= @$result->subMCQ ?>">
-								<input type="hidden" name="subPect" value="<?= @$result->subPect ?>">
-								<input type="hidden" name="subCa" value="<?=@ $result->subCa ?>">
+								<input type="hidden" name="subCQ" value="<?= $result->subCQ ?>">
+								<input type="hidden" name="subMCQ" value="<?= $result->subMCQ ?>">
+								<input type="hidden" name="subPect" value="<?= $result->subPect ?>">
+								<input type="hidden" name="subCa" value="<?= $result->subCa ?>">
 								<table class="table table-bordered table-striped">
 									<tbody>
 										<tr>
 											<th>Student Name</th>
 											<th>Roll</th>
 											<th>Subject</th>
-											<th style="<?= ($results[0]->subCQ == 0) ? 'display: none;' : ''; ?>"><?= $results[0]->assessment == 1? 'Hand Writing' : $s3sRedux['cqtitle'] ?> 	<?= "(".$results[0]->subCQ.")" ?></th>
-											<th style="<?= ($results[0]->subMCQ == 0) ? 'display: none;' : ''; ?>"><?= $results[0]->assessment == 1? 'Attendence' : $s3sRedux['mcqtitle'] ?>  	<?= "(".$results[0]->subMCQ.")" ?></th>
-											<th style="<?= ($results[0]->subPect == 0) ? 'display: none;' : ''; ?>"><?= $results[0]->assessment == 1? 'Neat & Clean' : $s3sRedux['prctitle'] ?> 	<?= "(".$results[0]->subPect.")" ?></th>
-											<th style="<?= ($results[0]->subCa == 0) ? 'display: none;' : ''; ?>"><?= $results[0]->assessment == 1? 'Uniform' : $s3sRedux['catitle'] ?> 		<?= "(".$results[0]->subCa.")" ?></th>
+											<th><?= $results[0]->assessment == 1? 'Hand Writing' : $s3sRedux['cqtitle'] ?> 	<?= "(".$results[0]->subCQ.")" ?></th>
+											<th><?= $results[0]->assessment == 1? 'Attendence' : $s3sRedux['mcqtitle'] ?>  	<?= "(".$results[0]->subMCQ.")" ?></th>
+											<th><?= $results[0]->assessment == 1? 'Neat & Clean' : $s3sRedux['prctitle'] ?> 	<?= "(".$results[0]->subPect.")" ?></th>
+											<th><?= $results[0]->assessment == 1? 'Uniform' : $s3sRedux['catitle'] ?> 		<?= "(".$results[0]->subCa.")" ?></th>
 										</tr>
 										<?php
 
@@ -210,17 +164,17 @@ if (isset($_POST['updateAllResult'])) {
 													<td><?= $result->stdName ?></td>
 													<td><?= $result->infoRoll ?></td>
 													<td><?= $result->subjectName ?></td>
-													<td style="<?= ($result->subCQ == 0) ? 'display: none;' : ''; ?>">
-														<input class="resultInput form-control" type="text" data-max="<?= $result->subCQ ?>" name="CQ[<?= $result->resultId ?>]" value="<?= $result->resCQ ?>" style="<?= ($result->subCQ == 0) ? 'display: none;' : ''; ?>">
+													<td>
+														<input class="resultInput form-control" type="text" data-max="<?= $result->subCQ ?>" name="CQ[<?= $result->resultId ?>]" value="<?= $result->resCQ ?>">
 													</td>
-													<td style="<?= ($result->subMCQ == 0) ? 'display: none;' : ''; ?>">
-														<input class="resultInput form-control" type="text" data-max="<?= $result->subMCQ ?>" name="MCQ[<?= $result->resultId ?>]" value="<?= $result->resMCQ ?>" style="<?= ($result->subMCQ == 0) ? 'display: none;' : ''; ?> <?= ($result->subMCQ == 0) ? 'readonly' : ''; ?>">
+													<td>
+														<input class="resultInput form-control" type="text" data-max="<?= $result->subMCQ ?>" name="MCQ[<?= $result->resultId ?>]" value="<?= $result->resMCQ ?>" <?= ($result->subMCQ == 0) ? 'readonly' : ''; ?>>
 													</td>
-													<td style="<?= ($result->subPect == 0) ? 'display: none;' : ''; ?>">
-														<input class="resultInput form-control" type="text" data-max="<?= $result->subPect ?>" name="P[<?= $result->resultId ?>]" value="<?= $result->resPrec ?>" style="<?= ($result->subPect == 0) ? 'display: none;' : ''; ?> <?= ($result->subPect == 0) ? 'readonly' : ''; ?>">
+													<td>
+														<input class="resultInput form-control" type="text" data-max="<?= $result->subPect ?>" name="P[<?= $result->resultId ?>]" value="<?= $result->resPrec ?>" <?= ($result->subPect == 0) ? 'readonly' : ''; ?>>
 													</td>
-													<td style="<?= ($result->subCa == 0) ? 'display: none;' : ''; ?>">
-														<input class="resultInput form-control" type="text" data-max="<?= $result->subCa ?>" name="ca[<?= $result->resultId ?>]" value="<?= $result->resCa ?>" style="<?= ($result->subCa == 0) ? 'display: none;' : ''; ?> <?= ($result->subCa == 0) ? 'readonly' : ''; ?>">
+													<td>
+														<input class="resultInput form-control" type="text" data-max="<?= $result->subCa ?>" name="ca[<?= $result->resultId ?>]" value="<?= $result->resCa ?>" <?= ($result->subCa == 0) ? 'readonly' : ''; ?>>
 													</td>
 												</tr>
 												<?php  

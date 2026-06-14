@@ -3,7 +3,7 @@
 * Template Name: Admin TabulationSheet 2
 */
 global $wpdb,$s3sRedux; 
-$convertPercent = 70;
+
 ?>
 
 <?php if ( ! is_admin() ) { get_header(); ?>
@@ -31,21 +31,14 @@ $convertPercent = 70;
 					<label>Class</label>
 					<select id='resultClass' class="form-control" name="class" required>
 						<?php
-								$classQuery = $wpdb->get_results( "SELECT classid,className FROM ct_class WHERE classid IN (SELECT examClass FROM ct_exam GROUP BY examClass ORDER BY className ASC)" );
-							
-							
+
+							$classQuery = $wpdb->get_results( "SELECT classid,className FROM ct_class WHERE classid IN (SELECT examClass FROM ct_exam GROUP BY examClass ORDER BY className ASC)" );
 							echo "<option value=''>Select Class</option>";
 
 							foreach ($classQuery as $class) {
 								echo "<option value='".$class->classid."'>".$class->className."</option>";
 							}
 						?>
-					</select>
-				</div>
-				<div class="form-group ">
-					<label>Exam</label>
-					<select id="resultExam" class="form-control" name="exam" required disabled>
-						<option disabled selected>Select Class First</option>
 					</select>
 				</div>
 
@@ -94,7 +87,7 @@ $convertPercent = 70;
 	<div class="text-right">
   	<button onclick="print('printArea')" class="btn btn-primary">Print</button>
   </div>
-	<div id="printArea">
+	<div id="printArea" style="">
 		<?php 
 		if(isset($_GET['syear']) && isset($_GET['class'])){ ?>
 			<style type="text/css">
@@ -122,20 +115,13 @@ $convertPercent = 70;
 			$class 	= $_GET['class'];
 			$sec 		= isset($_GET['sec']) 	? $_GET['sec'] 	: '';
 			$grou 	= isset($_GET['grou'])  ? $_GET['grou'] : '';
-			$exam 	= isset($_GET['exam'])  ? $_GET['exam'] : '';
-			
-			$subjects = json_decode($wpdb->get_var("SELECT examSubjects FROM ct_exam WHERE examid = $exam AND examClass = $class"), true);
-            $ids = implode(',', array_map('intval', (array)$subjects));
-                                
-            $total_subCa = $ids ? $wpdb->get_var("SELECT IFNULL(SUM(subCa), 0) FROM ct_subject WHERE subjectid IN ($ids)") : 0;
-
 
 			$quey = "SELECT className,havecgpa";
 
   			if($grou != '' ){ $quey .= ",groupName"; }
   			if($sec != '' ){  $quey .= ",sectionName"; }
 
-				$quey .= " FROM ct_class LEFT JOIN ct_exam ON ct_exam.examid = $exam";
+				$quey .= " FROM ct_class";
 
 				if($grou != ''){ $quey .= " LEFT JOIN ct_group ON ct_group.groupId = $grou"; }
   			if($sec != ''){ $quey .= " LEFT JOIN ct_section ON ct_section.sectionid = $sec"; }
@@ -147,13 +133,13 @@ $convertPercent = 70;
 			?>
 
   		<table style="width: 100%">
-  			<tr style="background: #4472C4;print-color-adjust: exact; -webkit-print-color-adjust: exact;color: #fff">
+  			<tr style="background: #4472C4;-webkit-print-color-adjust: exact;color: #fff">
   				<td><b>Class :</b></td>
   				<td><?= $info[0]->className ?></td>
   				<td><b>Year/Section :</b></td>
   				<td><?= $year ?></td>
   			</tr>
-  			<tr style="background: #D9E2F3;print-color-adjust: exact; -webkit-print-color-adjust: exact;">
+  			<tr style="background: #D9E2F3;-webkit-print-color-adjust: exact;">
   				<td><b>Section :</b></td>
   				<td><?= ($sec != '') ? $info[0]->sectionName : '' ?></td>
   				<td><b>Group :</b></td>
@@ -172,7 +158,7 @@ $convertPercent = 70;
 			  
 			$stdQuery .= ($grou != '') ? " AND infoGroup = $grou" : '';
 			$stdQuery .= ($sec != '')  ? " AND infoSection = $sec" : '';
-			$stdQuery .= " ORDER BY infoRoll,sectionName";
+			$stdQuery .= " GROUP BY studentid ORDER BY infoRoll,sectionName";
 			$students  = $wpdb->get_results( $stdQuery );
 
 			if($students){
@@ -184,18 +170,14 @@ $convertPercent = 70;
 					<table class="tbTable" width="100%" style="margin-bottom: 5px;">
 					  <tbody>
 					    <?php 
-					    $exams = $wpdb->get_results("SELECT spExam,examName,spFaild,spPoint,spPosition FROM `ct_studentPoint`
-					      		LEFT JOIN ct_exam ON ct_exam.examid = $exam
-					      		WHERE spClass = $class AND spYear = '$year' AND spExam = $exam AND spStdID = $std GROUP BY spExam");
-					      		
-								// $exams = $wpdb->get_results("SELECT spExam,examName,spFaild,spPoint,spPosition FROM `ct_studentPoint`
-					   //   		LEFT JOIN ct_exam ON ct_exam.examid = ct_studentPoint.spExam
-					   //   		WHERE spClass = $class AND spYear = '$year' AND spStdID = $std GROUP BY spExam");
-								// $totalExam = sizeof($exams);
+								$exams = $wpdb->get_results("SELECT spExam,examName,spFaild,spPoint,spPosition FROM `ct_studentPoint`
+					      		LEFT JOIN ct_exam ON ct_exam.examid = ct_studentPoint.spExam
+					      		WHERE spClass = $class AND spYear = '$year' AND spStdID = $std GROUP BY spExam");
+								$totalExam = sizeof($exams);
 					    ?>
-					    <?php //foreach ($exams as $key => $exam) { ?>
+					    <?php foreach ($exams as $key => $exam) { ?>
 					    	<?php
-					    		$subExam = $exam;
+					    		$subExam = $exam->spExam;
 					      	$subNames1 = $wpdb->get_results("SELECT * FROM `ct_result`
 										LEFT JOIN ct_subject ON ct_result.resSubject = ct_subject.subjectid
 										LEFT JOIN ct_class ON $class = ct_class.classid
@@ -205,17 +187,15 @@ $convertPercent = 70;
 										LEFT JOIN ct_class ON $class = ct_class.classid
 										WHERE resClass = $class AND resExam = $subExam AND resultYear = '$year' AND resStudentId = $std AND  subCombineMark = 0 GROUP BY resSubject ORDER BY sub4th,subOptinal,subCode,subjectName ASC" );
 
-					      	if(!$subNames1 || !$subNames2){
-					      	    continue;
-					      	}
+					      	if($key == 0){
 					    	?>
 					    		<tr >
-					    			<th colspan='30' width="10%" style="color: blue;padding: 3px 0;background: #dad0ff">Student's Name : <?= $student->stdName ?> </th>
+					    			<th colspan='29' width="10%" style="color: blue;padding: 3px 0;background: #dad0ff">Student's Name : <?= $student->stdName ?> <span style="padding: 0 8px;">-</span> Father's Name : <?= $student->stdFather ?></th>
 					    		</tr>
-						    	<tr style="background: #fff2cc;print-color-adjust: exact; -webkit-print-color-adjust: exact;">
+						    	<tr style="background: #fff2cc;-webkit-print-color-adjust: exact;">
 							      <th width="3%">Roll</th>
 
-							      <!--<th width="5%">Exam Name</th>-->
+							      <th width="5%">Exam Name</th>
 							      <th width="6%">Obtain Marks </th>
 
 							      <?php
@@ -239,15 +219,15 @@ $convertPercent = 70;
 							      	<th width="3%">CGPA</th>
 							      <?php } ?>
 							    </tr>
-					    	<?php //} ?>
+					    	<?php } ?>
 						    <tr>
-						      <th rowspan="6" width="3%">
+						      <th rowspan="5" width="3%">
 						      	<?= $student->infoRoll ?><br>(<?= $student->sectionName ?>)
 						      </th>
 						      
-						      <!--<td rowspan="6" width="5%">-->
-						      <!--	<div class="rotate90"><?php //$exam->examName ?></div>-->
-						      <!--</td>-->
+						      <td rowspan="5" width="5%">
+						      	<div class="rotate90"><?= $exam->examName ?></div>
+						      </td>
 						      <td width="6%"><?= $s3sRedux['cqtitle'] ?></td>
 
 						      <?php 
@@ -255,21 +235,13 @@ $convertPercent = 70;
 											if($combin->connecttedPaper == 0){
 												?>
 												<td width="2%"><?= $combin->resCQ ?></td>
-												<?php if($combin->resCa > 0){ ?>
-        									        <td rowspan="5" width="2%"><?= round(((isnum($combin->resTotal)-isnum($combin->resCa))*$convertPercent/100)+isnum($combin->resCa)) ?></td>
-        									      <?php }else{ ?>
-        									        <td rowspan="3" width="2%"><?= $combin->resTotal ?></td>
-        									      <?php } ?>
+									      <td rowspan="4" width="2%"><?= $combin->resTotal ?></td>
 									      <?php
 												foreach ($subNames1 as $combin2) {
 													if($combin2->connecttedPaper == $combin->resSubject){
 														?>
 														<td width="2%"><?= $combin2->resCQ ?></td>
-														<?php if($combin2->resCa > 0){ ?>
-											                    <td rowspan="5" width="2%"><?= round(((isnum($combin2->resTotal)-isnum($combin2->resCa))*$convertPercent/100) +isnum($combin2->resCa))?></td>
-											             <?php }else{ ?>
-            									                 <td rowspan="3" width="2%"><?= $combin2->resTotal ?></td>
-            									      <?php } ?>
+											      <td rowspan="4" width="2%"><?= $combin2->resTotal ?></td>
 											      <?php
 													}
 												}
@@ -278,18 +250,14 @@ $convertPercent = 70;
 										foreach ($subNames2 as $subj) {
 											?>
 											<td width="2%"><?= $subj->resCQ ?></td>
-											<?php if($subj->resCa > 0){ ?>
-								      <td rowspan="5" width="2%"><?= round(((isnum($subj->resTotal)-isnum($subj->resCa))*$convertPercent/100) +isnum($subj->resCa))?></td>
-								      <?php }else{ ?>
-            									                 <td rowspan="3" width="2%"><?= $subj->resTotal ?></td>
-            									      <?php } ?>
+								      <td rowspan="4" width="2%"><?= $subj->resTotal ?></td>
 								      <?php
 										}
 						      ?>
-
-						      <td rowspan="6" width="3%">(<?= $exams[0]->spPosition ?>)<br><?= $exams[0]->spFaild == 0 ? $exams[0]->spPoint : '<span style="color:red"><b>F('. $exams[0]->spFaild.')</b></span><br>'.$exams[0]->spPoint  ?></td>
-						      <?php if($havecgpa){ ?>
-						      	<td rowspan="6" width="3%"><?= $student->cgpaPoint ?></td>
+						      
+						      <td rowspan="5" width="3%">(<?= $exam->spPosition ?>)<br><?= $exam->spFaild == 0 ? $exam->spPoint : 'F<br>'.$exam->spFaild  ?></td>
+						      <?php if($key == 0 && $havecgpa){ ?>
+						      	<td rowspan="<?= $totalExam*5 ?>" width="3%"><?= $student->cgpaPoint ?></td>
 						      <?php } ?>
 						    </tr>
 						    <tr>
@@ -331,38 +299,6 @@ $convertPercent = 70;
 										}
 						      ?>
 						    </tr>
-						    <?php if($total_subCa >0){?>
-                <tr>
-                  <td width="6%"><?= $convertPercent?>% </td>
-
-                  <?php
-                  foreach ($subNames1 as $combin) {
-                    if($combin->connecttedPaper == 0){
-                        if($combin->resCa > 0){
-                      echo '<td width="2%">'. round(((isnum($combin->resCQ) + isnum($combin->resMCQ) + isnum($combin->resPrec))*$convertPercent/100)) .'</td>';
-                        }else{
-                            echo '<td width="2%"></td>';
-                        }
-                      foreach ($subNames1 as $combin2) {
-                        if($combin2->connecttedPaper == $combin->resSubject){
-                            if($combin2->resCa > 0){
-                          echo '<td width="2%">'. round(((isnum($combin2->resCQ) + isnum($combin2->resMCQ) + isnum($combin2->resPrec))*$convertPercent/100)) .'</td>';
-                            }else{
-                            echo '<td width="2%"></td>';
-                        }
-                        }
-                      }
-                    }
-                  }
-                  foreach ($subNames2 as $subj) {
-                      if($subj->resCa > 0){
-                    echo '<td width="2%">'. round(((isnum($subj->resCQ) + isnum($subj->resMCQ) + isnum($subj->resPrec))*$convertPercent/100)).'</td>';
-                      }else{
-                            echo '<td width="2%"></td>';
-                        }
-                  }
-                  ?>
-                </tr>
                 <tr>
                   <td width="6%"><?= $s3sRedux['catitle'] ?></td>
 
@@ -382,7 +318,6 @@ $convertPercent = 70;
                   }
                   ?>
                 </tr>
-                 <?php }?>
 						    <tr>
 						      <td width="6%">Total</td>
 						      <?php 
@@ -393,15 +328,11 @@ $convertPercent = 70;
 							      		$absentCk[] = $combin->resCQ;
 												$absentCk[] = $combin->resMCQ;
 												$absentCk[] = $combin->resPrec;
-												// $absentCk[] = $combin->resCa;
+												$absentCk[] = $combin->resCa;
 												$tCalSpan = 2;
 												foreach ($subNames1 as $combin2) {
 													if($combin2->connecttedPaper == $combin->resSubject){
-													    if($combin2->resCa > 0){
-														$resTotal += round(((isnum($combin2->resTotal)-isnum($combin2->resCa))*$convertPercent/100)+isnum($combin2->resCa));
-													    }else{
-													        $resTotal += isnum($combin2->resTotal);
-													    }
+														$resTotal += $combin2->resTotal;
 														$tCalSpan = 4;
 											      break;
 													}
@@ -411,26 +342,18 @@ $convertPercent = 70;
 													$info1['grade'] = 'Ab';
 													$info1['point'] = '';
 												}else{
-													$subCQ		= (isnum($combin->subCQ) 	 + isnum($combin2->subCQ)) 	 ;
-													$subMCQ		= (isnum($combin->subMCQ)	 + isnum($combin2->subMCQ))  ;
-													$subPect	= (isnum($combin->subPect) + isnum($combin2->subPect)) ;
-                                                    $subCa	    = (isnum($combin->subCa) + isnum($combin2->subCa)) ;
-													$resCQ 		= (isnum($combin->resCQ) 	 + isnum($combin2->resCQ)) 	 ;
-													$resMCQ 	= (isnum($combin->resMCQ)	 + isnum($combin2->resMCQ))  ;
-													$resPrec 	= (isnum($combin->resPrec) + isnum($combin2->resPrec)) ;
-													$resCa 	= (isnum($combin->resCa) + isnum($combin2->resCa)) ;
-													if($combin2->subCa > 0){
-													$info1 = genPointWithPercent($subCQ,$subMCQ,$subPect,$subCa,$resCQ,$resMCQ,$resPrec,$resCa,$combin->combineMark);
-													}else{
+													$subCQ		= (isnum($combin->subCQ) 	 + isnum($combin2->subCQ)) 	 / 2;
+													$subMCQ		= (isnum($combin->subMCQ)	 + isnum($combin2->subMCQ))  / 2;
+													$subPect	= (isnum($combin->subPect) + isnum($combin2->subPect)) / 2;
+                          $subCa	= (isnum($combin->subCa) + isnum($combin2->subCa)) / 2;
+													$resCQ 		= (isnum($combin->resCQ) 	 + isnum($combin2->resCQ)) 	 / 2;
+													$resMCQ 	= (isnum($combin->resMCQ)	 + isnum($combin2->resMCQ))  / 2;
+													$resPrec 	= (isnum($combin->resPrec) + isnum($combin2->resPrec)) / 2;
+													$resCa 	= (isnum($combin->resCa) + isnum($combin2->resCa)) / 2;
 													$info1 = genPoint($subCQ,$subMCQ,$subPect,$subCa,$resCQ,$resMCQ,$resPrec,$resCa,$combin->combineMark);
-													}
 													$info1['point'] = ",".$info1['point'];
 												}
-												if($combin2->subCa>0){
-												$resTotal += round(((isnum($combin->resTotal)-isnum($combin->resCa))*$convertPercent/100)+isnum($combin->resCa));
-												}else{
-												    $resTotal += isnum($combin->resTotal);
-												}
+												$resTotal += $combin->resTotal;
 
 												echo "<td colspan='$tCalSpan'>$resTotal (".$info1['grade'].$info1['point'].")</td>";
 												
@@ -441,30 +364,20 @@ $convertPercent = 70;
 						      		$absentCk[] = $subj->resCQ;
 											$absentCk[] = $subj->resMCQ;
 											$absentCk[] = $subj->resPrec;
-								// 			$absentCk[] = $subj->resCa;
+											$absentCk[] = $subj->resCa;
 											if(in_array('a', $absentCk) || in_array('A', $absentCk)){
 												$info['grade'] = 'Ab';
 												$info['point'] = '';
 											}else{
-											    if($subj->subCa>0){
-												$info = genPointWithPercent($subj->subCQ,$subj->subMCQ,$subj->subPect,$subj->subCa,$subj->resCQ,$subj->resMCQ,$subj->resPrec,$subj->resCa,$subj->combineMark);
-											    }else{
 												$info = genPoint($subj->subCQ,$subj->subMCQ,$subj->subPect,$subj->subCa,$subj->resCQ,$subj->resMCQ,$subj->resPrec,$subj->resCa,$subj->combineMark);
-											    }
 												$info['point'] = ",".$info['point'];
 											}
-											if($subj->subCa>0){
-											    echo '<td colspan="2">'. round((isnum($subj->resTotal)-isnum($subj->resCa))*$convertPercent/100+isnum($subj->resCa)) .' ('.$info['grade'].$info['point'].')</td>';			
-											}else{
-                                                echo '<td colspan="2">'. $subj->resTotal .' ('.$info['grade'].$info['point'].')</td>';			
-
-											}
-											    
-											}
+											echo '<td colspan="2">'. $subj->resTotal .' ('.$info['grade'].$info['point'].')</td>';			
+										}
 						      ?>
 						    </tr>
 						  
-						  <?php //} ?>
+						  <?php } ?>
 					  </tbody>
 					</table>
 					<?php
@@ -488,16 +401,6 @@ $convertPercent = 70;
 	(function($) {
 		$('#resultClass').change(function() {
 	    var $siteUrl = $('#theSiteURL').text();
-	    
-	     $.ajax({
-	      url: $siteUrl+"/inc/ajaxAction.php",
-	      method: "POST",
-	      data: { class : $(this).val(), type : 'getExams' },
-	      dataType: "html"
-	    }).done(function( msg ) {
-	      $( "#resultExam" ).html( msg );
-	      $( "#resultExam" ).prop('disabled', false);
-	    });
 
 	    $.ajax({
 	      url: $siteUrl+"/inc/ajaxAction.php",
@@ -529,296 +432,4 @@ $convertPercent = 70;
     w.focus(); // necessary for IE >= 10
     return true;
   }
-</script>
-
-<?php
-// ===============================================================
-// FIX 409 CONFLICT - HANDLE AJAX ACTIONS LOCALLY (At End of File)
-// ===============================================================
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['type'])) {
-
-  // Clean output buffer to ensure JSON/HTML response is valid
-  while (ob_get_level()) {
-    ob_end_clean();
-  }
-
-  // ------------------------------------------
-  // Get Exams
-  // ------------------------------------------
-  if ($_POST['type'] == 'getExams') {
-    $class = $_POST['class'];
-    $exams = $wpdb->get_results("SELECT examid,examName FROM ct_exam WHERE examClass = '$class'");
-    if (empty($exams)) {
-      echo "<option value=''>No Exam for this Class</option>";
-    } else {
-      echo "<option value=''>Select An Exam</option>";
-    }
-    foreach ($exams as $exam) {
-      echo "<option value='{$exam->examid}'>{$exam->examName}</option>";
-    }
-    exit;
-  }
-
-  // ------------------------------------------
-  // Get Years
-  // ------------------------------------------
-  elseif ($_POST['type'] == 'getYears') {
-    $class = $_POST['class'];
-    $years = $wpdb->get_results("SELECT infoYear FROM ct_studentinfo WHERE infoClass = $class GROUP BY infoYear ORDER BY infoYear ASC");
-    if (empty($years)) {
-      echo "<option value=''>No Student In this class</option>";
-    } else {
-      echo "<option value=''>Year</option>";
-    }
-    foreach ($years as $year) {
-      echo "<option value='{$year->infoYear}'>{$year->infoYear}</option>";
-    }
-    exit;
-  }
-
-  // ------------------------------------------
-  // Get Section
-  // ------------------------------------------
-  elseif ($_POST['type'] == 'getSection') {
-    $class = $_POST['class'];
-    $sections_query = "SELECT sectionid,sectionName FROM ct_section WHERE forClass = '$class'";
-    
-    $sections_query .= " ORDER BY sectionName";
-    $sections = $wpdb->get_results($sections_query);
-
-    if (!empty($sections)) {
-      echo "<option value=''>Section</option>";
-      foreach ($sections as $section) {
-        echo "<option value='{$section->sectionid}'>{$section->sectionName}</option>";
-      }
-    } else {
-      echo "<option value=''>No sections available</option>";
-    }
-    exit;
-  }
-
-  // ------------------------------------------
-  // Get Groups
-  // ------------------------------------------
-  elseif ($_POST['type'] == 'getGroupsByClass') {
-    $class = $_POST['class'];
-    $groups_query = "SELECT DISTINCT ct_group.groupId, ct_group.groupName 
-            FROM ct_group 
-            INNER JOIN ct_studentinfo ON ct_studentinfo.infoGroup = ct_group.groupId 
-            WHERE ct_studentinfo.infoClass = '$class'";
-    
-    $groups_query .= " ORDER BY ct_group.groupName ASC";
-    $groups = $wpdb->get_results($groups_query);
-
-    echo "<option value=''>All Groups</option>";
-    foreach ($groups as $group) {
-      echo "<option value='{$group->groupId}'>{$group->groupName}</option>";
-    }
-    exit;
-  }
-
-  // ------------------------------------------
-  // Get Exam Subjects
-  // ------------------------------------------
-  elseif ($_POST['type'] == 'getExamSubject') {
-    $exam = intval($_POST['exam']);
-    $group = isset($_POST['group']) ? $_POST['group'] : '';
-    $subjects = [];
-
-    $subs = $wpdb->get_results("SELECT examSubjects FROM ct_exam WHERE examid = $exam");
-
-    if (!empty($subs[0]->examSubjects)) {
-      $subs = json_decode($subs[0]->examSubjects, true);
-    } else {
-      $subs = [];
-    }
-
-    if (!empty($subs)) {
-      $subs_escaped = array_map('intval', $subs);
-      $subjectQuery = "SELECT subjectid,subjectName FROM ct_subject 
-                WHERE subjectid IN (" . implode(',', $subs_escaped) . ")";
-
-      if (!empty($group)) {
-        $subjectQuery .= " AND (forGroup = 'all' OR forGroup = '$group' OR forGroup LIKE '%\"$group\"%')";
-      }
-
-      $subjectQuery .= " ORDER BY subjectName ASC";
-      $subjects = $wpdb->get_results($subjectQuery);
-    }
-
-    if (empty($subjects)) {
-      echo "<option value=''>No subject!</option>";
-    } else {
-      echo "<option value=''>Select Subject</option>";
-      foreach ($subjects as $subject) {
-        echo '<option value="' . $subject->subjectid . '">' . $subject->subjectName . '</option>';
-      }
-    }
-    exit;
-  }
-}
-
-if (isset($_POST['updateAllResult'])) {
-  $cq = $_POST['CQ'];
-  $mcq = $_POST['MCQ'];
-  $prc = $_POST['P'];
-  $ca = $_POST['ca'];
-  $response = false;
-  foreach ($_POST['id'] as $id) {
-    $update = $wpdb->update(
-      'ct_result',
-      array(
-        'resCQ'     => $cq[$id],
-        'resMCQ'     => $mcq[$id],
-        'resPrec'   => $prc[$id],
-        'resCa'   => $ca[$id],
-        'resTotal'   => isnum($cq[$id]) + isnum($mcq[$id]) + isnum($prc[$id]) + isnum($ca[$id])
-      ),
-      array('resultId' => $id)
-    );
-    if ($update) {
-      $response = $update;
-    }
-  }
-  if ($response) {
-    $message = array('status' => 'success', 'message' => 'Successfully updated');
-  } else {
-    $message = array('status' => 'faild', 'message' => 'Something wrong please try again');
-  }
-} ?>
-
-<script type="text/javascript">
-  // ==================================
-  // HANDLE AJAX ACTIONS LOCALLY
-  // ==================================
-  (function($) {
-    // Use current page as AJAX URL for standalone processing
-    var ajaxUrl = '';
-
-    $('#resultClass').change(function() {
-      var selectedClass = $(this).val();
-
-      // Fetch Exams
-      $.ajax({
-        url: ajaxUrl,
-        method: "POST",
-        data: {
-          class: selectedClass,
-          type: 'getExams'
-        },
-        dataType: "html"
-      }).done(function(msg) {
-        $("#resultExam").html(msg);
-        $("#resultExam").prop('disabled', false);
-        // Reset dependent dropdowns
-        $("#resultSubject").prop('disabled', true).html('<option disabled selected>Select exam First</option>');
-      });
-
-      // Fetch Years
-      $.ajax({
-        url: ajaxUrl,
-        method: "POST",
-        data: {
-          class: selectedClass,
-          type: 'getYears'
-        },
-        dataType: "html"
-      }).done(function(msg) {
-        $("#resultYear").html(msg);
-        $("#resultYear").prop('disabled', false);
-      });
-
-      // Fetch Sections
-      $.ajax({
-        url: ajaxUrl,
-        method: "POST",
-        data: {
-          class: selectedClass,
-          type: 'getSection'
-        },
-        dataType: "html"
-      }).done(function(msg) {
-        $("#resultSection").html(msg);
-        $("#resultSection").prop('disabled', false);
-      });
-
-      // Fetch All Groups
-      $.ajax({
-        url: ajaxUrl,
-        method: "POST",
-        data: {
-          class: selectedClass,
-          type: 'getGroupsByClass'
-        },
-        dataType: "html"
-      }).done(function(msg) {
-        $("#resultGroup").html(msg);
-        $("#resultGroup").prop('disabled', false);
-      });
-    });
-
-    // Fetch Subjects when Exam Changes
-    $('#resultExam').change(function() {
-      var selectedExam = $(this).val();
-      var selectedGroup = $('#resultGroup').val();
-
-      $.ajax({
-        url: ajaxUrl,
-        method: "POST",
-        data: {
-          exam: selectedExam,
-          group: selectedGroup,
-          type: 'getExamSubject'
-        },
-        dataType: "html"
-      }).done(function(msg) {
-        $("#resultSubject").html(msg);
-        $("#resultSubject").prop('disabled', false);
-      });
-    });
-
-    // Fetch Subjects when Group Changes
-    $('#resultGroup').change(function() {
-      var selectedExam = $('#resultExam').val();
-      var selectedGroup = $(this).val();
-
-      if (selectedExam) {
-        $.ajax({
-          url: ajaxUrl,
-          method: "POST",
-          data: {
-            exam: selectedExam,
-            group: selectedGroup,
-            type: 'getExamSubject'
-          },
-          dataType: "html"
-        }).done(function(msg) {
-          $("#resultSubject").html(msg);
-          $("#resultSubject").prop('disabled', false);
-        });
-      }
-    });
-
-    // Interactive validation for result inputs (Client-side only)
-    $('.resultInput').keyup(function(event) {
-      $this = $(this);
-      $val = $this.val();
-      $max = $this.data('max');
-
-      if ($val == '' || $val < ($max + 1) || $val == 'A' || $val == 'a') {
-        $this.css('border-color', '#ddd');
-        $this.removeClass('haserror');
-      } else {
-        $this.addClass('haserror');
-        $this.css('border-color', 'red');
-        $('.resultSubmit').prop('disabled', true);
-      }
-
-      if ($('.resultInput.haserror').length == 0) {
-        $('.resultSubmit').prop('disabled', false);
-      }
-    });
-
-  })(jQuery);
 </script>

@@ -4,9 +4,6 @@
  */
 
 global $wpdb;
-if (session_status() === PHP_SESSION_NONE) {
-	session_start();
-}
 
 
 /*=================
@@ -81,13 +78,9 @@ if (isset($_POST['addTeacher'])) {
 			'teacherFather' 				=> htmlentities($_POST['teacherFather'], ENT_QUOTES),
 			'teacherMother' 				=> htmlentities($_POST['teacherMother'], ENT_QUOTES),
 			'teacherDesignation' 		=> htmlentities($_POST['teacherDesignation'], ENT_QUOTES),
-			'job_type' 						=> htmlentities(isset($_POST['job_type']) ? $_POST['job_type'] : '', ENT_QUOTES),
-			'recruitment_authority' => htmlentities(isset($_POST['recruitment_authority']) ? $_POST['recruitment_authority'] : '', ENT_QUOTES),
-			'subject' 							=> htmlentities(isset($_POST['subject']) ? $_POST['subject'] : '', ENT_QUOTES),
 			'teacherBirth' 					=> htmlentities($_POST['teacherBirth'], ENT_QUOTES),
 			'teacherBlood' 					=> htmlentities($_POST['teacherBlood'], ENT_QUOTES),
 			'teacherJoining' 				=> htmlentities($_POST['teacherJoining'], ENT_QUOTES),
-			'retirement_date' 				=> htmlentities($_POST['retirement_date'], ENT_QUOTES),
 			'teacherPhone' 					=> htmlentities($_POST['teacherPhone'], ENT_QUOTES),
 			'teacherNid' 						=> htmlentities($_POST['teacherNid'], ENT_QUOTES),
 			'teacherPresent' 				=> htmlentities($_POST['teacherPresent'], ENT_QUOTES),
@@ -95,11 +88,7 @@ if (isset($_POST['addTeacher'])) {
 			'teacherMpo' 						=> htmlentities($_POST['teacherMpo'], ENT_QUOTES),
 			'teacherQualificarion' 	=> $teacherQualificarion,
 			'teacher_serial' 	=>  htmlentities($_POST['teacher_serial'], ENT_QUOTES),
-			'assignSection' 	=>  isset($_POST["sections"]) ? json_encode(array_filter($_POST["sections"])) : '',
-			'status' 		=> htmlentities(isset($_POST['status']) ? $_POST['status'] : 'Present', ENT_QUOTES),
-			'teacherTraining' 			=> $teacherTraining,
-			'teacherOfClass' 			=> isset($_POST['teacherOfClass']) && !empty($_POST['teacherOfClass']) ? intval($_POST['teacherOfClass']) : null,
-			'teacherOfSection' 			=> isset($_POST['teacherOfSection']) && !empty($_POST['teacherOfSection']) ? intval($_POST['teacherOfSection']) : null
+			'teacherTraining' 			=> $teacherTraining
 		)
 	);
 	
@@ -112,27 +101,21 @@ if (isset($_POST['editTeacher'])) {
 	$editid = $_POST['id'];
 	$edit = $wpdb->get_results( "SELECT * FROM ct_teacher WHERE teacherid = $editid" );
 	$edit = $edit[0];
+	$userNameInfo = $wpdb->get_results( "SELECT user_login FROM sm_users WHERE ID = $edit->tecUserId" );
 
-	$userName = '';
-	$_SESSION['tecUserId'] = null;
-	if (!empty($edit->tecUserId)) {
-		$storedLogin = $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT user_login FROM sm_users WHERE ID = %d",
-				$edit->tecUserId
-			)
-		);
-		if ($storedLogin) {
-			$userName = $storedLogin;
-			$_SESSION['tecUserId'] = $edit->tecUserId;
-		}
+	if($userNameInfo){
+		$userName = $userNameInfo[0]->user_login;
+		$_SESSION['tecUserId'] = $edit->tecUserId;
+	}else{
+		$userName = '';
+		$_SESSION['tecUserId'] = null;
 	}
 
 }
 
 /*Update Section*/
 if (isset($_POST['updateTeacher'])) {
-	$userId = $_SESSION['tecUserId'] ?? null;
+	$userId = $_SESSION['tecUserId'];
 	$qualificArray = array();
 
  	for ($i=1; $i < 6; $i++) { 
@@ -165,40 +148,30 @@ if (isset($_POST['updateTeacher'])) {
 	$teacherTraining = json_encode($trainingArray);
 
 	if($_POST['userid'] != '' && $_POST['userpass'] != '' ){
-		$sanitizedLogin = str_replace(' ', '', htmlentities($_POST['userid'], ENT_QUOTES));
-		$userPass = $_POST['userpass'];
 		if($_SESSION['tecUserId'] > 0){
 			$userId = $_SESSION['tecUserId'];
-			wp_set_password($userPass, $userId);
-			$wpdb->update(
+			wp_set_password($_POST['userpass'], $userId);
+			$user_info = $wpdb->update(
 				'sm_users', array(
-				'user_login' => $sanitizedLogin,
+				'user_login' => str_replace(' ', '', htmlentities($_POST['userid'], ENT_QUOTES)),
 				// 'user_pass' => MD5($_POST['userpass'])				
 			  ),
 			  array( 'ID' => $userId)
 			);
-		} else {
+		}else{
 			$user_info = wp_insert_user( array(
-				'user_login' => $sanitizedLogin,
-				'user_pass' => $userPass,
+				'user_login' => str_replace(' ', '', htmlentities($_POST['userid'], ENT_QUOTES)),
+				'user_pass' => $_POST['userpass'],
 				'user_email' => '',
 				'first_name' => htmlentities($_POST['teacherName'], ENT_QUOTES),
 				'last_name' => '',
 				'display_name' => htmlentities($_POST['teacherName'], ENT_QUOTES),
 				'role' => 'um_teachers'
-			));
+			  ));
 
-			if (is_wp_error($user_info)) {
-				$existing = get_user_by('login', $sanitizedLogin);
-				if ($existing) {
-					$userId = $existing->ID;
-					wp_set_password($userPass, $userId);
-				}
-			} else {
-				$userId = $user_info;
-			}
+			  $userId = $user_info;
 		}
-		$_SESSION['tecUserId'] = $userId;
+		
 	}
 
 	$update = $wpdb->update(
@@ -213,13 +186,9 @@ if (isset($_POST['updateTeacher'])) {
 			'teacherFather' 				=> htmlentities($_POST['teacherFather'], ENT_QUOTES),
 			'teacherMother' 				=> htmlentities($_POST['teacherMother'], ENT_QUOTES),
 			'teacherDesignation' 		=> htmlentities($_POST['teacherDesignation'], ENT_QUOTES),
-			'job_type' 						=> htmlentities(isset($_POST['job_type']) ? $_POST['job_type'] : '', ENT_QUOTES),
-			'recruitment_authority' => htmlentities(isset($_POST['recruitment_authority']) ? $_POST['recruitment_authority'] : '', ENT_QUOTES),
-			'subject' 							=> htmlentities(isset($_POST['subject']) ? $_POST['subject'] : '', ENT_QUOTES),
 			'teacherBirth' 					=> htmlentities($_POST['teacherBirth'], ENT_QUOTES),
 			'teacherBlood' 					=> htmlentities($_POST['teacherBlood'], ENT_QUOTES),
 			'teacherJoining' 				=> htmlentities($_POST['teacherJoining'], ENT_QUOTES),
-			'retirement_date' 				=> htmlentities($_POST['retirement_date'], ENT_QUOTES),
 			'teacherPhone' 					=> htmlentities($_POST['teacherPhone'], ENT_QUOTES),
 			'teacherNid' 						=> htmlentities($_POST['teacherNid'], ENT_QUOTES),
 			'teacherPresent' 				=> htmlentities($_POST['teacherPresent'], ENT_QUOTES),
@@ -227,11 +196,7 @@ if (isset($_POST['updateTeacher'])) {
 			'teacherMpo' 						=> htmlentities($_POST['teacherMpo'], ENT_QUOTES),
 			'teacherQualificarion' 	=> $teacherQualificarion,
 			'teacher_serial' 	=>  htmlentities($_POST['teacher_serial'], ENT_QUOTES),
-			'assignSection' 	=>  isset($_POST["sections"]) ? json_encode(array_filter($_POST["sections"])) : '',
-			'status' 		=> htmlentities(isset($_POST['status']) ? $_POST['status'] : 'Present', ENT_QUOTES),
-			'teacherTraining' 			=> $teacherTraining,
-			'teacherOfClass' 			=> isset($_POST['teacherOfClass']) && !empty($_POST['teacherOfClass']) ? intval($_POST['teacherOfClass']) : null,
-			'teacherOfSection' 			=> isset($_POST['teacherOfSection']) && !empty($_POST['teacherOfSection']) ? intval($_POST['teacherOfSection']) : null
+			'teacherTraining' 			=> $teacherTraining
 		),
 		array( 'teacherid' => $_POST['id'])
 	);
@@ -333,50 +298,27 @@ foreach ($haveTechquer as $vtech) {
 
 					    	<div class="form-group col-md-12">
 					    		<label>Qualification</label>
-					    		<input class="form-control" type="text" name="teacherSQuali" value="<?= isset($edit) ? $edit->teacherSQuali : ''; ?>">
+					    		<input class="form-control" type="text" name="teacherSQuali" value="<?= isset($edit) ? $edit->teacherSQuali : ''; ?>" required>
 					    	</div>
 
 					    	<div class="form-group col-md-6">
 					    		<label>Father's Name</label>
-					    		<input class="form-control" type="text" name="teacherFather" value="<?= isset($edit) ? $edit->teacherFather : ''; ?>">
+					    		<input class="form-control" type="text" name="teacherFather" value="<?= isset($edit) ? $edit->teacherFather : ''; ?>" required>
 					    	</div>
 
 					    	<div class="form-group col-md-6">
 					    		<label>Mother's Name</label>
-					    		<input class="form-control" type="text" name="teacherMother" value="<?= isset($edit) ? $edit->teacherMother : ''; ?>">
+					    		<input class="form-control" type="text" name="teacherMother" value="<?= isset($edit) ? $edit->teacherMother : ''; ?>" required>
 					    	</div>
 
 					    	<div class="form-group col-md-6">
 					    		<label>Designation</label>
-					    		<input class="form-control" type="text" name="teacherDesignation" placeholder="Lecturer/ Senior Teacher/ Assistant Teacher" value="<?= isset($edit) ? $edit->teacherDesignation : ''; ?>" required>
-					    	</div>
-
-					    	<div class="form-group col-md-6">
-					    		<label>Job Type</label>
-					    		<input class="form-control" type="text" name="job_type" value="<?= isset($edit) && isset($edit->job_type) ? $edit->job_type : ''; ?>" placeholder="Govt./MPO/Private/Contract">
-					    	</div>
-
-					    	<div class="form-group col-md-6">
-					    		<label>Recruitment Authority</label>
-					    		<input class="form-control" type="text" name="recruitment_authority" value="<?= isset($edit) && isset($edit->recruitment_authority) ? $edit->recruitment_authority : ''; ?>" placeholder="DSHE/SMC/Managing Committee">
-					    	</div>
-
-					    	<div class="form-group col-md-6">
-					    		<label>Subject</label>
-					    		<input class="form-control" type="text" name="subject" value="<?= isset($edit) && isset($edit->subject) ? $edit->subject : ''; ?>" placeholder="Bangla/English/Math">
+					    		<input class="form-control" type="text" name="teacherDesignation" value="<?= isset($edit) ? $edit->teacherDesignation : ''; ?>" required>
 					    	</div>
 
 					    	<div class="form-group col-md-6">
 					    		<label>Phone</label>
 					    		<input class="form-control" type="text" name="teacherPhone" value="<?= isset($edit) ? $edit->teacherPhone : ''; ?>" >
-					    	</div>
-					    	<div class="form-group col-md-6">
-					    		<label>Status</label>
-					    		<?php $current_status = isset($edit) && !empty($edit->status) ? $edit->status : 'Present'; ?>
-					    		<select class="form-control" name="status" required>
-					    			<option value="Present" <?= ($current_status === 'Present') ? 'selected' : ''; ?>>Present</option>
-					    			<option value="Former" <?= ($current_status === 'Former') ? 'selected' : ''; ?>>Former</option>
-					    		</select>
 					    	</div>
 
 				    		<div class="form-group col-md-4">
@@ -386,12 +328,8 @@ foreach ($haveTechquer as $vtech) {
 
 					    	<div class="form-group col-md-4">
 					    		<label>Joining Date</label>
-					    		<input class="form-control" type="date" name="teacherJoining" value="<?= isset($edit) ? $edit->teacherJoining : ''; ?>">
-					    	</div>
+					    		<input class="form-control" type="date" name="teacherJoining" value="<?= isset($edit) ? $edit->teacherJoining : ''; ?>" required>
 
-					    	<div class="form-group col-md-4">
-					    		<label>Retirement Date</label>
-					    		<input class="form-control" type="date" name="retirement_date" value="<?= isset($edit) ? $edit->retirement_date : ''; ?>">
 					    	</div>
 
 					    	<div class="form-group col-md-4">
@@ -525,25 +463,21 @@ foreach ($haveTechquer as $vtech) {
 	        				$tecAss = json_decode($edit->tecAssignSub);
 	        				if ($tecAss != null && sizeof($tecAss) > 0) {
 	        					$dataNow = sizeof($tecAss);
-	        				$tecAssignSub = $wpdb->get_results( "SELECT subjectid,subjectClass FROM ct_subject WHERE subjectid IN (".implode(",", $tecAss).")");
+	        					$tecAssignSub = $wpdb->get_results( "SELECT subjectid,subjectClass FROM ct_subject WHERE subjectid IN (".implode(",", $tecAss).") ORDER BY subjectClass DESC");
 	        				}
 		        		}
 				    	?>
 
 				    	<div class="tecAssignSub" data-now='<?= $dataNow ?>'>
-				    		<label>Assign Subject To Teacher</label>
-				    		<?php 
-				    		$assignSections = isset($edit) ? json_decode($edit->assignSection, true) : [];
-				    		for ($i=0; $i < $dataNow; $i++) { 
-				    			$currentSection = isset($assignSections[$i]) ? $assignSections[$i] : '';
-				    		?>
+				    		<label>Assign Subjet To Teacher</label>
+				    		<?php for ($i=0; $i < $dataNow; $i++) { ?>
 					    		<div class="inputGrp row">
 							    	<div class="form-group col-md-6">
 							    		<select class="form-control assignClass">
 							    			<option value=''>Select Class</option>
 							    			<?php
 							    				$classQuery = $wpdb->get_results( "SELECT classid,className FROM ct_class WHERE classid IN (SELECT subjectClass FROM `ct_subject` GROUP BY subjectClass) ORDER BY className");
-							    				$subCls = isset($tecAssignSub[$i]) ? $tecAssignSub[$i]->subjectClass : '';
+							    				$subCls = $tecAssignSub[$i]->subjectClass;
 							    				foreach ($classQuery as $value) {
 							    					$sel = ($subCls == $value->classid) ? 'selected' : '';
 							    					echo "<option value='".$value->classid."' $sel>".$value->className."</option>";
@@ -552,31 +486,14 @@ foreach ($haveTechquer as $vtech) {
 							    			?>
 							    		</select>
 							    	</div>
-							    	<div class="form-group col-md-6">
-					<select class="form-control resultSection" name="sections[]"  >
-					<?php
-								    			if (isset($edit) && $subCls) { 
-								    				$subQry = $wpdb->get_results( "SELECT sectionid,sectionName FROM `ct_section` WHERE forClass = $subCls ORDER BY sectionName");
-								    				echo "<option value=''>  Section</option>";
-								    				echo "<option value='all' ".(($currentSection == 'all') ? 'selected' : '').">All Section</option>";
-								    				foreach ($subQry as $subv) {
-								    					$sel = ($currentSection == $subv->sectionid) ? 'selected' : '';
-								    					echo "<option value='".$subv->sectionid."' $sel>".$subv->sectionName."</option>";
-								    				}
-							    				}else{
-							    					echo "<option value=''>Select Class First</option>";
-							    				}
-							    			?>
-					</select>
-				</div>
 
 							    	<div class="form-group col-md-6">
 							    		<select class="form-control assignSub" name="subjects[]">
 							    			<?php
-								    			if (isset($edit) && $subCls) { 
+								    			if (isset($edit)) { 
 								    				$subQry = $wpdb->get_results( "SELECT subjectid,subjectName FROM `ct_subject` WHERE subjectClass = $subCls ORDER BY subjectName");
 								    				foreach ($subQry as $subv) {
-								    					$sel = (isset($tecAssignSub[$i]) && $tecAssignSub[$i]->subjectid == $subv->subjectid) ? 'selected' : '';
+								    					$sel = ($tecAssignSub[$i]->subjectid == $subv->subjectid) ? 'selected' : '';
 								    					echo "<option value='".$subv->subjectid."' $sel>".$subv->subjectName."</option>";
 								    				}
 							    				}else{
@@ -595,38 +512,6 @@ foreach ($haveTechquer as $vtech) {
 				    	</div>
 
 				    	<div class="form-group">
-				    		<label>Class Teacher For</label>
-				    		<div class="row">
-				    			<div class="col-md-6">
-				    				<select class="form-control" name="teacherOfClass" id="teacherOfClass">
-				    					<option value="">Select Class</option>
-				    					<?php
-				    						$classQuery = $wpdb->get_results( "SELECT classid,className FROM ct_class ORDER BY className");
-				    						foreach ($classQuery as $value) {
-				    							$sel = (isset($edit) && $edit->teacherOfClass == $value->classid) ? 'selected' : '';
-				    							echo "<option value='".$value->classid."' $sel>".$value->className."</option>";
-				    						}
-				    					?>
-				    				</select>
-				    			</div>
-				    			<div class="col-md-6">
-				    				<select class="form-control" name="teacherOfSection" id="teacherOfSection">
-				    					<option value="">Select Section</option>
-				    					<?php
-				    						if (isset($edit) && $edit->teacherOfClass) {
-				    							$sectionQuery = $wpdb->get_results( "SELECT sectionid,sectionName FROM ct_section WHERE forClass = $edit->teacherOfClass ORDER BY sectionName");
-				    							foreach ($sectionQuery as $value) {
-				    								$sel = (isset($edit) && $edit->teacherOfSection == $value->sectionid) ? 'selected' : '';
-				    								echo "<option value='".$value->sectionid."' $sel>".$value->sectionName."</option>";
-				    							}
-				    						}
-				    					?>
-				    				</select>
-				    			</div>
-				    		</div>
-				    	</div>
-
-				    	<div class="form-group">
 				    		<label>Note</label>
 				    		<textarea class="form-control" name="teacherNote"><?= isset($edit) ? $edit->teacherNote : ''; ?></textarea>
 				    	</div>
@@ -635,59 +520,19 @@ foreach ($haveTechquer as $vtech) {
 				    		<input class="form-control" type="text" name="userid" autocomplete="userid" value="<?= $userName ?>" >
 				    	</div>
 						<div class="form-group">
-							<label>Password</label>
-							<div style="position:relative;display:flex;align-items:center;">
-								<input class="form-control" type="password" autocomplete="new-password" name="userpass" id="userpass" style="flex:1;">
-								<button type="button" id="togglePass" style="position:absolute;right:10px;background:none;border:none;outline:none;cursor:pointer;z-index:2;" tabindex="-1">
-									<span id="eyeIcon" style="font-size:18px;">👁️</span>
-								</button>
-							</div>
-						</div>
+				    		<label>Password</label>
+				    		<input class="form-control" type="password" autocomplete="new-password" name="userpass" >
+				    	</div>
 						<div class="form-group">
 				    		<label>Teacher Serial Number</label>
-				    		<input class="form-control" type="number" autocomplete="" value="<?= isset($edit) ? $edit->teacher_serial : ''; ?>" name="teacher_serial" >
+				    		<input class="form-control" type="number" autocomplete="" <?= isset($edit) ? $edit->teacher_serial : ''; ?> name="teacher_serial" >
 				    	</div>
 
-						<div class="form-group text-right">
-						    <button class="btn btn-primary" type="submit" name="<?= isset($edit) ? 'updateTeacher' : 'addTeacher'; ?>" id="submitBtn"><?= isset($edit) ? 'Update' : 'Add'; ?> Teacher</button>
-						</div>
+				    	<div class="form-group text-right">
+				    		<button class="btn btn-primary" type="submit" name="<?= isset($edit) ? 'updateTeacher' : 'addTeacher'; ?>"><?= isset($edit) ? 'Update' : 'Add'; ?> Teacher</button>
+				    	</div>
 
-					<script>
-					// View password toggle
-					document.addEventListener('DOMContentLoaded', function() {
-						var pass = document.getElementById('userpass');
-						var toggle = document.getElementById('togglePass');
-						var eyeIcon = document.getElementById('eyeIcon');
-						var submitBtn = document.getElementById('submitBtn');
-						var passMatchMsg = document.getElementById('passMatchMsg');
-						if (toggle && pass) {
-							toggle.addEventListener('click', function(e) {
-								e.preventDefault();
-								if (pass.type === 'password') {
-									pass.type = 'text';
-									eyeIcon.textContent = '🙈';
-								} else {
-									pass.type = 'password';
-									eyeIcon.textContent = '👁️';
-								}
-							});
-						}
-						// Password match validation
-						function checkMatch() {
-							if (pass) {
-								passMatchMsg.style.display = 'block';
-								submitBtn.disabled = true;
-							} else {
-								passMatchMsg.style.display = 'none';
-								submitBtn.disabled = false;
-							}
-						}
-						if (pass) {
-							pass.addEventListener('input', checkMatch);
-						}	
-					});
-					</script>
-					</form>
+				    </form>
 				  </div>
 				</div>
 			</div>
@@ -719,12 +564,6 @@ foreach ($haveTechquer as $vtech) {
 						        	<div class="col-md-6">
 						        		<label>Designation</label>
 						            <p><?= output($teacher->teacherDesignation) ?></p>
-						            <label>Job Type</label>
-						            <p><?= output(isset($teacher->job_type) ? $teacher->job_type : '') ?></p>
-						            <label>Recruitment Authority</label>
-						            <p><?= output(isset($teacher->recruitment_authority) ? $teacher->recruitment_authority : '') ?></p>
-						            <label>Subject</label>
-						            <p><?= output(isset($teacher->subject) ? $teacher->subject : '') ?></p>
 						            <label>Phone</label>
 								        <p><?= output($teacher->teacherPhone) ?></p>
 								        <label>Birth Date</label>
@@ -733,8 +572,6 @@ foreach ($haveTechquer as $vtech) {
 								        <p><?= output($teacher->teacherBlood) ?></p>
 								        <label>Joining Date</label>
 								        <p><?= output($teacher->teacherJoining) ?></p>
-								        <label>Retirement Date</label>
-								        <p><?= output($teacher->retirement_date) ?></p>
 						        	</div>
 
 						        	<div class="col-md-6">
@@ -939,7 +776,7 @@ foreach ($haveTechquer as $vtech) {
 				if ($now < 21) {
 					$('.tecAssignSub').data('now',$now);
 					$(".tecAssignSub").find('.inputGrp:first').clone(true).appendTo(".tecAssignSub");
-					$(".tecAssignSub").find('.inputGrp:last').find('input, select').val('');
+					$(".tecAssignSub").find('.inputGrp:last').find('input').val('');
 				}
 			});
 
@@ -977,29 +814,6 @@ foreach ($haveTechquer as $vtech) {
 	      }).done(function( msg ) {
 	        $this.closest('.inputGrp').find('.assignSub').html(msg);
 	      });
-	      
-	      $.ajax({
-	      url: $siteUrl+"/inc/ajaxAction.php",
-	      method: "POST",
-	      data: { class : $this.val(), type : 'getSection' },
-	      dataType: "html"
-	    }).done(function( msg ) {
-	      $this.closest('.inputGrp').find('.resultSection').html( msg );
-	      $this.closest('.inputGrp').find('.resultSection').prop('disabled', false);
-	    });
-			});
-
-			$('#teacherOfClass').change(function(event) {
-				$this = $(this);
-	      $.ajax({
-	      url: $siteUrl+"/inc/ajaxAction.php",
-	      method: "POST",
-	      data: { class : $this.val(), type : 'getSection' },
-	      dataType: "html"
-	    }).done(function( msg ) {
-	      $('#teacherOfSection').html( msg );
-	      $('#teacherOfSection').prop('disabled', false);
-	    });
 			});
 
 			$('.btnDelete').click(function(event) {

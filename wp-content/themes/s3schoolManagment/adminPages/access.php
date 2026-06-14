@@ -118,12 +118,6 @@ if (isset($_POST['accessctrl'])){
 			    			<input class="form-controll" type="checkbox" name="astdfee" <?= $astdfee ?>> Student Fee Functionality
 			    		</label>
 			    		<label class="labelRadio">
-			    			<input class="form-controll" type="checkbox" name="astdfeereport" <?= $astdfeereport ?>> Student Fee Report
-			    		</label>
-			    		<label class="labelRadio">
-			    			<input class="form-controll" type="checkbox" name="astdcoaching" <?= $astdcoaching ?>> Coaching Fee
-			    		</label>
-			    		<label class="labelRadio">
 			    			<input class="form-controll" type="checkbox" name="asms" <?= $asms ?>> SMS Functionality
 			    		</label>
 			    	</div>

@@ -3,7 +3,7 @@
 * Template Name: Admin ResultPublish
 */
 global $wpdb;
-$convertPercent = 70;
+
 /*=================
 	Publish 
 =================*/
@@ -39,6 +39,7 @@ if (isset($_POST['publisRes'])) {
 
 		$roll 	= $user->resStdRoll;
 		$stdnt  = $user->resStudentId;
+
 		$totalPoint = $spAbsent = $spFaild = $totalobtain = $allsubjTotal = $mainSubj = $totalPoin = 0;
 
 		/*==================
@@ -49,9 +50,9 @@ if (isset($_POST['publisRes'])) {
 		$combines = $wpdb->get_results("SELECT * FROM `ct_result`
 			LEFT JOIN ct_subject ON ct_result.resSubject = ct_subject.subjectid
 			LEFT JOIN ct_class ON $class = ct_class.classid
-			WHERE resClass = $class AND resExam = $exam AND resultYear = '$year'  AND resStudentId = $stdnt AND subCombineMark = 1 GROUP BY resSubject ORDER BY sub4th,subOptinal,subCode ASC");
+			WHERE resClass = $class AND resExam = $exam AND resultYear = '$year'  AND resStudentId = $stdnt AND subCombineMark = 1  GROUP BY resSubject ORDER BY sub4th,subOptinal,subCode ASC");
 
-		$results2 = $wpdb->get_results( "SELECT *, others FROM `ct_result`
+		$results2 = $wpdb->get_results( "SELECT * FROM `ct_result`
 			LEFT JOIN ct_subject ON ct_result.resSubject = ct_subject.subjectid
 			LEFT JOIN ct_class ON $class = ct_class.classid
 			WHERE resClass = $class AND resExam = $exam AND resultYear = '$year'  AND resStudentId = $stdnt AND subCombineMark = 0  GROUP BY resSubject ORDER BY sub4th,subOptinal,subCode ASC" );
@@ -59,32 +60,22 @@ if (isset($_POST['publisRes'])) {
 			$absentCk = array();
 			if($combin->subPaper == 1){
 				$havecon = false;
-                if($combin->subCa > 0){
-                    $subTot1 = (isnum($combin->subMCQ)+isnum($combin->subCQ)+isnum($combin->subPect))*$convertPercent/100 + $combin->subCa;
-    				$allsubjTotal += $subTot1;
-    				$obtain = round(((isnum($combin->resCQ)+isnum($combin->resMCQ)+isnum($combin->resPrec))*$convertPercent/100)+isnum($combin->resCa));
-                }else{
-                    $subTot1 = $combin->subMCQ+$combin->subCQ+$combin->subPect+$combin->subCa;
-    				$allsubjTotal += $subTot1;
-    				$obtain = $combin->resTotal;
-                }
-				
+
+				$subTot1 = $combin->subMCQ+$combin->subCQ+$combin->subPect+$combin->subCa;
+				$allsubjTotal += $subTot1;
+			
+				$obtain = $combin->resTotal;
 				$subTot2 = 0;
 				$resCQ = $resMCQ = $resPre = $resCa = $subCQ = $subMCQ = $subPrec = $subCa = 0;
 				foreach ($combines as $combin2) {
 					if($combin2->connecttedPaper == $combin->resSubject){
 
 						$havecon = true;
-						if($combin2->subCa > 0){
-						    $obtain += round(((isnum($combin2->resCQ)+isnum($combin2->resMCQ)+isnum($combin2->resPrec))*$convertPercent/100)+isnum($combin2->resCa));
-						    $subTot2 = (isnum($combin2->subMCQ)+isnum($combin2->subCQ)+isnum($combin2->subPect))*$convertPercent/100 + $combin2->subCa;
-						    $allsubjTotal += $subTot2;
-						}else{
-						    $obtain += $combin2->resTotal;
-    						$subTot2 = isnum($combin2->subMCQ)+isnum($combin2->subCQ)+isnum($combin2->subPect)+isnum($combin2->subCa);
-    						$allsubjTotal += $subTot2;
-						}
+						$obtain += $combin2->resTotal;
+
+						$subTot2 = isnum($combin2->subMCQ)+isnum($combin2->subCQ)+isnum($combin2->subPect)+isnum($combin2->subCa);
 						
+						$allsubjTotal += $subTot2;
 						$subName = $combin2->subjectName;
 						$subCQ = isnum($combin2->subCQ); 
 						$subMCQ = isnum($combin2->subMCQ);
@@ -98,7 +89,7 @@ if (isset($_POST['publisRes'])) {
 						$absentCk[] = $combin2->resCQ;
 						$absentCk[] = $combin2->resMCQ;
 						$absentCk[] = $combin2->resPrec;
-				// 		$absentCk[] = $combin2->resCa;
+						$absentCk[] = $combin2->resCa;
 					
 						break;
 					}
@@ -118,17 +109,13 @@ if (isset($_POST['publisRes'])) {
 				$absentCk[] = $combin->resCQ;
 				$absentCk[] = $combin->resMCQ;
 				$absentCk[] = $combin->resPrec;
-				// $absentCk[] = $combin->resCa;
+				$absentCk[] = $combin->resCa;
 				
 				$totalobtain += $obtain;
 				
-			
+				
 				if( $havecon ){
-				    if($combin->subCa > 0){
-					$genRes = genPointWithPercent($subCQ,$subMCQ,$subPrec,$subCa,$resCQ,$resMCQ,$resPre,$resCa,$combin->combineMark);
-				    }else{
-				        $genRes = genPoint($subCQ,$subMCQ,$subPrec,$subCa,$resCQ,$resMCQ,$resPre,$resCa,$combin->combineMark);
-				    }
+					$genRes = genPoint($subCQ,$subMCQ,$subPrec,$subCa,$resCQ,$resMCQ,$resPre,$resCa,$combin->combineMark);
 					$combinegrade = $genRes['grade'];
 					$conbinePoint = $genRes['point'];
 					if(in_array('a', $absentCk) || in_array('A', $absentCk)){ $combinegrade = 'F'; }
@@ -145,7 +132,6 @@ if (isset($_POST['publisRes'])) {
 				else{ $mainSubj++; $totalPoin += $conbinePoint; }
 				
 			}
-			
 		}
 
 		/*Combine mark end*/
@@ -155,29 +141,14 @@ if (isset($_POST['publisRes'])) {
 			$absentCk[] = $result2->resCQ;
 			$absentCk[] = $result2->resMCQ;
 			$absentCk[] = $result2->resPrec;
-// 			$absentCk[] = $result2->resCa;
+			$absentCk[] = $result2->resCa;
 
 			if(in_array('a', $absentCk) || in_array('A', $absentCk)){ $spAbsent++; }
 			$sub4th = $result2->resSub4th;
-			$others = $result2->others;
-			 if($result2->subCa > 0){
-    			$resTotal = round(((isnum($result2->resCQ)+isnum($result2->resMCQ)+isnum($result2->resPrec))*$convertPercent/100)+isnum($result2->resCa));
-    			if($others != 1){
-    			    $subjTotal =  (isnum($result2->subMCQ) + isnum($result2->subCQ) + isnum($result2->subPect))*$convertPercent/100 + $result2->subCa;
-    			}else{
-    				$subjTotal = 0;
-    			}
-    			$genRes = genPointWithPercent($result2->subCQ,$result2->subMCQ,$result2->subPect,$result2->subCa,$result2->resCQ,$result2->resMCQ,$result2->resPrec,$result2->resCa,$result2->combineMark);
-			 }else{
-			    $resTotal = $result2->resTotal;
-    			if($others != 1){
-    				$subjTotal =  isnum($result2->subMCQ) + isnum($result2->subCQ) + isnum($result2->subPect)+ isnum($result2->subCa);
-    			}else{
-    				$subjTotal = 0;
-    			}
-    			$genRes = genPoint($result2->subCQ,$result2->subMCQ,$result2->subPect,$result2->subCa,$result2->resCQ,$result2->resMCQ,$result2->resPrec,$result2->resCa,$result2->combineMark);
-    			
-			 }
+			$resTotal = $result2->resTotal;
+			$subjTotal =  isnum($result2->subMCQ) + isnum($result2->subCQ) + isnum($result2->subPect) + isnum($result2->subCa);
+
+			$genRes = genPoint($result2->subCQ,$result2->subMCQ,$result2->subPect,$result2->subCa,$result2->resCQ,$result2->resMCQ,$result2->resPrec,$result2->resCa,$result2->combineMark);
 			$grade = $genRes['grade'];
 			$point = $genRes['point'];
 			if(in_array('a', $absentCk) || in_array('A', $absentCk)){ $grade = 'F'; }
@@ -201,12 +172,14 @@ if (isset($_POST['publisRes'])) {
 		}else{
 			$gettotalPoint = $totalPoin;
 		}
+
 		$gettotalPoint = ($gettotalPoint > 5) ? 5 : $gettotalPoint;
 
 		if ($userkey != 0) {
 			$insert .= ','; 
 		}		
 		$insert .= "($stdnt,".number_format((float)$gettotalPoint, 2, '.', '').",'$year',$class,$exam,$totalobtain,$allsubjTotal,$spAbsent,$spFaild)"; 
+
 	}//End User loop
 
 
@@ -271,8 +244,8 @@ if (isset($_POST['unpublisRes'])) {
 	$exam = $_POST['resExam'];
 	$year = $_POST['resYear'];
 
-	$update = $wpdb->query( $wpdb->prepare( "UPDATE ct_result SET status = %d,  can_student_search_result = %d WHERE resultYear = %d AND resClass = %d AND resExam = %d", 0,0,$year, $class , $exam	) );
-
+	$update = $wpdb->query( $wpdb->prepare( "UPDATE ct_result SET status = %d, can_student_search_result = %d WHERE resultYear = %d AND resClass = %d AND resExam = %d", 0,0,$year, $class , $exam	) );
+	
 	$users = $wpdb->get_results("SELECT resStudentId,resStdRoll FROM `ct_result`
 			WHERE resClass = $class AND resExam = $exam AND resultYear = '$year' GROUP BY resStudentId ORDER BY resStudentId ASC");
 
@@ -337,9 +310,8 @@ if (isset($_POST['unpublisRes'])) {
 														  						<form action="" method="POST">
 														  							<input type="hidden" name="resYear" value="<?= $resYear ?>">
 														  							<input type="hidden" name="resClass" value="<?= $resClass ?>">
-														  							<input type="hidden" name="resExam" value="<?= $resExam ?>">
-														  							<button class="btn btn-success btn-sm" type="submit" name="publisRes">Generate</button>
-														  						</form>
+														  							<input type="hidden" name="resExam" value="<?= $resExam ?>">					  							<button class="btn btn-success btn-sm" type="submit" name="publisRes">Generate</button>
+			  						</form>
 														  					</td>
 														  				</tr>
 															  		<?php
@@ -384,12 +356,12 @@ if (isset($_POST['unpublisRes'])) {
 													      <tr>
 													        <th>Exam</th>
 													        <th>Stutas</th>
-													         <th>Action</th>
+													        <th>Action</th>
 													      </tr>
 													    </thead>
 													    <tbody>
 													      <?php 
-															  	$exams = $wpdb->get_results( "SELECT resExam,examName,can_student_search_result   FROM `ct_result` LEFT JOIN ct_exam ON ct_result.resExam = ct_exam.examid WHERE resultYear = '$resYear' AND resClass = $resClass AND status = 1 GROUP BY resExam ORDER BY resExam ASC" );
+															  	$exams = $wpdb->get_results( "SELECT resExam,examName,can_student_search_result FROM `ct_result` LEFT JOIN ct_exam ON ct_result.resExam = ct_exam.examid WHERE resultYear = '$resYear' AND resClass = $resClass AND status = 1 GROUP BY resExam ORDER BY resExam ASC" );
 															  	foreach ($exams as $exam) {
 															  		$resExam = $exam->resExam;
 															  		?>
@@ -397,13 +369,12 @@ if (isset($_POST['unpublisRes'])) {
 														  				<tr>
 														  					<td><?= $exam->examName ?></td>
 														  					<td><?= $exam->can_student_search_result == 1? '<span style="color: green">Published</span>': '<span style="color: red">Generated</span>' ?></td>
-
 														  					<td>
 														  						<form action="" method="POST">
 														  							<input type="hidden" name="resYear" value="<?= $resYear ?>">
 														  							<input type="hidden" name="resClass" value="<?= $resClass ?>">
 														  							<input type="hidden" name="resExam" value="<?= $resExam ?>">
-														  						    <button class="btn btn-danger btn-sm" type="submit" name="unpublisRes">Unpublish</button>
+														  								<button class="btn btn-danger btn-sm" type="submit" name="unpublisRes">Unpublish</button>
 														  							<button class="btn btn-success btn-sm" type="submit" name="showInFrontend">Publish</button>
 														  						</form>
 														  					</td>

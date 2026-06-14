@@ -4,11 +4,6 @@
 */
 global $wpdb;
 
-/*
-ALTER TABLE ct_class ADD COLUMN haveShift TINYINT(1) DEFAULT 0;
-ALTER TABLE ct_student ADD COLUMN stdShift VARCHAR(20) DEFAULT '';
-*/
-
 /*=================
 	Add Class
 =================*/
@@ -21,12 +16,9 @@ if (isset($_POST['addClass'])) {
 			'haveOptionalSub' => $_POST['haveOptionalSub'],
 			'have4thSub' 			=> $_POST['have4thSub'],
 			'havecgpa' 			=> $_POST['havecgpa'],
-			'havegroup' 			=> $_POST['havegroup'],
-			'haveShift' 			=> $_POST['haveShift'],
 			'combineMark' 		=> $_POST['combineMark'],
 			'session' 				=> $_POST['session'],
-			'classNote' 			=> $_POST['classNote'],
-			'classOrder'			=> isset($_POST['classOrder']) ? intval($_POST['classOrder']) : 0
+			'classNote' 			=> $_POST['classNote']
 		)
 	);
 
@@ -45,12 +37,9 @@ if (isset($_POST['updateClass'])) {
 			'haveOptionalSub' => $_POST['haveOptionalSub'],
 			'have4thSub' 			=> $_POST['have4thSub'],
 			'havecgpa' 			=> $_POST['havecgpa'],
-			'havegroup' 			=> $_POST['havegroup'],
-			'haveShift' 			=> $_POST['haveShift'],
 			'combineMark' 		=> $_POST['combineMark'],
 			'session' 				=> $_POST['session'],
-			'classNote' 			=> $_POST['classNote'],
-			'classOrder'			=> isset($_POST['classOrder']) ? intval($_POST['classOrder']) : 0
+			'classNote' 			=> $_POST['classNote']
 		),
 		array( 'classid' => $_POST['id'])
 	);
@@ -71,8 +60,8 @@ if (isset($_POST['deleteClass'])) {
 	Edit Class
 =================*/
 $editid = 0;
-$dont4th = $optionNo = $combineMarkN = $sessionY = $havecgpay = $nogroup = $noshift = 'checked';
-$optionYes =  $have4th = $combineMarkY = $sessionS = $havecgpan = $havegroup = $haveshift = '';
+$dont4th = $optionNo = $combineMarkN = $sessionY = $havecgpay = 'checked';
+$optionYes =  $have4th = $combineMarkY = $sessionS = $havecgpan = '';
 if (isset($_POST['editClass'])) {
 	$editid = $_POST['id'];
 	$edit = $wpdb->get_results( "SELECT * FROM ct_class WHERE classid = $editid" );
@@ -80,11 +69,10 @@ if (isset($_POST['editClass'])) {
 
 	if($edit->haveOptionalSub == 1){ $optionYes = 'checked'; $optionNo = ''; }
 	if($edit->have4thSub == 1){ $have4th = 'checked'; $dont4th = ''; }
-	if($edit->havegroup == 1){ $havegroup = 'checked'; $nogroup = '';}
-	if($edit->haveShift == 1){ $haveshift = 'checked'; $noshift = '';}
 	if($edit->combineMark == 1){ $combineMarkY = 'checked'; $combineMarkN = ''; }
 	if($edit->session != 'year'){ $sessionS = 'checked'; $sessionY = ''; }
 	if($edit->havecgpa != '1'){ $havecgpan = 'checked'; $havecgpay = ''; }
+
 }
 
 ?>
@@ -113,15 +101,9 @@ if (isset($_POST['editClass'])) {
 			    <form action="" method="POST">
 			    	<div class="row">
 			    		<input type="hidden" name="id" value="<?= $editid ?>">
-			    		<div class="form-group col-md-8">
+			    		<div class="form-group col-md-12">
 				    		<label>Class Name</label>
 				    		<input class="form-control" type="text" name="className" value="<?= isset($edit) ? $edit->className : ''; ?>" required>
-				    	</div>
-
-				    	<div class="form-group col-md-4">
-				    		<label>Display Order</label>
-				    		<input class="form-control" type="number" name="classOrder" value="<?= isset($edit) ? $edit->classOrder : '0'; ?>" min="0" placeholder="0">
-				    		<small class="text-muted">Lower numbers appear first</small>
 				    	</div>
 
 				    	<div class="col-md-6">
@@ -172,24 +154,6 @@ if (isset($_POST['editClass'])) {
 				    			<input type="radio" name="havecgpa" value="0" <?= $havecgpan ?>> No
 				    		</label>
 				    	</div>
-				    	<div class="form-group col-md-6">
-				    		<label>Has Group?</label><br>
-				    		<label class="labelRadio">
-				    			<input type="radio" name="havegroup" value="1" <?= $havegroup ?>> Yes
-				    		</label>
-				    		<label class="labelRadio">
-				    			<input type="radio" name="havegroup" value="0" <?= $nogroup ?>> No
-				    		</label>
-				    	</div>
-				    	<div class="form-group col-md-6">
-				    		<label>Has Shift?</label><br>
-				    		<label class="labelRadio">
-				    			<input type="radio" name="haveShift" value="1" <?= $haveshift ?>> Yes
-				    		</label>
-				    		<label class="labelRadio">
-				    			<input type="radio" name="haveShift" value="0" <?= $noshift ?>> No
-				    		</label>
-				    	</div>
 			    	</div>
 
 			    	<div class="form-group">
@@ -212,7 +176,7 @@ if (isset($_POST['editClass'])) {
 					<div class="panel-group" id="accordion">
 
 						<?php
-							$classes = $wpdb->get_results( "SELECT * FROM ct_class ORDER BY classOrder ASC, className ASC" );
+							$classes = $wpdb->get_results( "SELECT * FROM ct_class" );
 							foreach ($classes as $class) {
 
 								?>
@@ -220,9 +184,6 @@ if (isset($_POST['editClass'])) {
 							    <div class="panel-heading">
 							      <h4 class="panel-title">
 							        <a data-toggle="collapse" data-parent="#accordion" href="#collapse<?= $class->classid ?>">
-							        <span class="badge" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-size: 11px; padding: 4px 8px; border-radius: 4px; margin-right: 8px; font-weight: 600;">
-							        	#<?= isset($class->classOrder) ? $class->classOrder : '0'; ?>
-							        </span>
 							        <?= $class->className ?>
 							        <?= !empty($class->groupName) ? " (".$class->groupName.")" : ''; ?> </a>
 							        <form class="pull-right actionForm" method="POST" action="">
@@ -247,20 +208,6 @@ if (isset($_POST['editClass'])) {
 													<td>
 														<b>4th Subject:</b>
 														<?php echo ($class->have4thSub) ? "Yes" : "No"; ?>
-													</td>
-												</tr>
-												<tr>
-													<td>
-														<b>Display Order:</b>
-														<?= isset($class->classOrder) ? $class->classOrder : '0'; ?>
-													</td>
-													<td>
-														<b>Has Group:</b>
-														<?php echo ($class->havegroup) ? "Yes" : "No"; ?>
-													</td>
-													<td>
-														<b>Has Shift:</b>
-														<?php echo (isset($class->haveShift) && $class->haveShift) ? "Yes" : "No"; ?>
 													</td>
 												</tr>
 												<tr>

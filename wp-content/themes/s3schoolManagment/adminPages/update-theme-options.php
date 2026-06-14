@@ -215,6 +215,13 @@ if (wp_get_current_user()->roles[0] == 'um_headmaster' || current_user_can('admi
             $redux_options['chairmanTextLimit'] = sanitize_text_field($_POST['opt_name']['chairmanTextLimit'] ?? '');
             $redux_options['chairmanMoreBtn'] = sanitize_text_field($_POST['opt_name']['chairmanMoreBtn'] ?? '');
 
+            $allowed_testimonial_types = ['Default', 'Pad'];
+            $submitted_testimonial_type = sanitize_text_field($_POST['opt_name']['testimonial_type'] ?? 'Default');
+            if (!in_array($submitted_testimonial_type, $allowed_testimonial_types, true)) {
+                $submitted_testimonial_type = 'Default';
+            }
+            $redux_options['testimonial_type'] = $submitted_testimonial_type;
+
             // Save statistics to Redux options
             $redux_options['totalClasses'] = intval($_POST['opt_name']['totalClasses'] ?? 0);
             $redux_options['totalStudents'] = intval($_POST['opt_name']['totalStudents'] ?? 0);
@@ -288,37 +295,30 @@ if (wp_get_current_user()->roles[0] == 'um_headmaster' || current_user_can('admi
                 ];
             }
 
-            // Handle Pad Uploads
-            $pad_types = ['testimonial_pad', 'tc_pad', 'concern_pad'];
-            
-            foreach ($pad_types as $pad) {
-                if (isset($_POST['opt_name']) && array_key_exists($pad, $_POST['opt_name'])) {
-                    $pad_url = esc_url_raw($_POST['opt_name'][$pad]);
-                } else {
-                    $pad_url = esc_url_raw($redux_options[$pad] ?? '');
-                }
-
-                if (!empty($_FILES[$pad]['name'])) {
-                    if (!function_exists('wp_handle_upload')) {
-                        require_once ABSPATH . 'wp-admin/includes/file.php';
-                    }
-
-                    $upload_overrides = ['test_form' => false];
-                    $uploaded_file = wp_handle_upload($_FILES[$pad], $upload_overrides);
-
-                    if (!isset($uploaded_file['error']) && !empty($uploaded_file['url'])) {
-                        $pad_url = esc_url_raw($uploaded_file['url']);
-                    } else {
-                        if (isset($uploaded_file['error'])) {
-                            error_log($pad . ' upload error: ' . $uploaded_file['error']);
-                        }
-                    }
-                }
-
-                $redux_options[$pad] = $pad_url;
-                // We will save this in the $save_option loop later if we add it to the loop, 
-                // or we can save it explicitly below like testimonial_pad was.
+            if (isset($_POST['opt_name']) && array_key_exists('testimonial_pad', $_POST['opt_name'])) {
+                $testimonial_pad_url = esc_url_raw($_POST['opt_name']['testimonial_pad']);
+            } else {
+                $testimonial_pad_url = esc_url_raw($redux_options['testimonial_pad'] ?? '');
             }
+
+            if (!empty($_FILES['testimonial_pad']['name'])) {
+                if (!function_exists('wp_handle_upload')) {
+                    require_once ABSPATH . 'wp-admin/includes/file.php';
+                }
+
+                $upload_overrides = ['test_form' => false];
+                $uploaded_file = wp_handle_upload($_FILES['testimonial_pad'], $upload_overrides);
+
+                if (!isset($uploaded_file['error']) && !empty($uploaded_file['url'])) {
+                    $testimonial_pad_url = esc_url_raw($uploaded_file['url']);
+                } else {
+                    if (isset($uploaded_file['error'])) {
+                        error_log('Testimonial pad upload error: ' . $uploaded_file['error']);
+                    }
+                }
+            }
+
+            $redux_options['testimonial_pad'] = $testimonial_pad_url;
 
             // Save all options to sm_options table
             global $wpdb;
@@ -370,7 +370,8 @@ if (wp_get_current_user()->roles[0] == 'um_headmaster' || current_user_can('admi
                     'aboutTitelText' => sanitize_text_field($_POST['opt_name']['aboutTitelText'] ?? ''),
                     'aboutUsTextLimit' => sanitize_text_field($_POST['opt_name']['aboutUsTextLimit'] ?? ''),
                     'aboutUsMoreBtn' => sanitize_text_field($_POST['opt_name']['aboutUsMoreBtn'] ?? ''),
-                    'headmasterSpeechTitle' => sanitize_text_field($_POST['opt_name']['headmasterSpeechTitle'] ?? ''),
+                    '
+                    ' => sanitize_text_field($_POST['opt_name']['headmasterSpeechTitle'] ?? ''),
                     'homeHeadmasterTitle' => sanitize_text_field($_POST['opt_name']['homeHeadmasterTitle'] ?? ''),
                     'headmasterTextLimit' => sanitize_text_field($_POST['opt_name']['headmasterTextLimit'] ?? ''),
                     'headmasterMoreBtn' => sanitize_text_field($_POST['opt_name']['headmasterMoreBtn'] ?? ''),
@@ -378,6 +379,7 @@ if (wp_get_current_user()->roles[0] == 'um_headmaster' || current_user_can('admi
                     'homeChairmanTitle' => sanitize_text_field($_POST['opt_name']['homeChairmanTitle'] ?? ''),
                     'chairmanTextLimit' => sanitize_text_field($_POST['opt_name']['chairmanTextLimit'] ?? ''),
                     'chairmanMoreBtn' => sanitize_text_field($_POST['opt_name']['chairmanMoreBtn'] ?? ''),
+                    'testimonial_type' => $submitted_testimonial_type,
                     'totalClasses'      => intval($_POST['opt_name']['totalClasses'] ?? 0),
                     'totalStudents'     => intval($_POST['opt_name']['totalStudents'] ?? 0),
                     'totalTeachers'     => intval($_POST['opt_name']['totalTeachers'] ?? 0),
@@ -427,8 +429,6 @@ if (wp_get_current_user()->roles[0] == 'um_headmaster' || current_user_can('admi
                 }
 
                 $save_option('testimonial_pad', $redux_options['testimonial_pad']);
-                $save_option('tc_pad', $redux_options['tc_pad'] ?? '');
-                $save_option('concern_pad', $redux_options['concern_pad'] ?? '');
 
                 // Handle Class-wise Students Count save
                 if (isset($_POST['class_wise_students']) && is_array($_POST['class_wise_students'])) {
@@ -1172,7 +1172,7 @@ if (wp_get_current_user()->roles[0] == 'um_headmaster' || current_user_can('admi
                         ) {
                             header('Content-Type: application/json');
                             $image_url = esc_url_raw($_POST['image_url']);
-                            
+
                             $saved = $wpdb->insert($table_name, [
                                 'image_url' => $image_url,
                                 'created_at' => current_time('mysql'),
@@ -1246,14 +1246,14 @@ if (wp_get_current_user()->roles[0] == 'um_headmaster' || current_user_can('admi
                                         let imageId = attachment.id;
                                         let fileSize = attachment.filesizeInBytes || 0;
 
-                                        // Client-side validation: 300KB limit
-                                        const maxSize = 300 * 1024; // 300KB in bytes
+                                        // Client-side validation: 400KB limit
+                                        const maxSize = 400 * 1024; // 400KB in bytes
 
                                         $('#slider_upload_error').hide().text('');
-                                        
+
                                         if (fileSize > maxSize) {
                                             let sizeInKB = Math.round(fileSize / 1024);
-                                            let errorMsg = '❌ Image size (' + sizeInKB + 'KB) exceeds the 300KB limit. Please choose a smaller image.';
+                                            let errorMsg = '❌ Image size (' + sizeInKB + 'KB) exceeds the 400KB limit. Please choose a smaller image.';
                                             $('#slider_upload_error').text(errorMsg).show();
                                             $('#slider_image_preview').html('');
                                             return;
@@ -1280,7 +1280,7 @@ if (wp_get_current_user()->roles[0] == 'um_headmaster' || current_user_can('admi
                                                 }
                                             },
                                         });
-                                        
+
                                         $('#slider_image_preview').html('<img src="' + imageUrl + '" style="max-width:200px;"><p style="color: #2271b1; margin-top: 5px;">Upload Finished</p>');
                                     });
 
@@ -1318,46 +1318,53 @@ if (wp_get_current_user()->roles[0] == 'um_headmaster' || current_user_can('admi
 
                         <div class="testimonial-settings">
                             <h1 style="margin-top: 20px;">Testimonial Settings</h1>
-                        </div>
 
-                        <div style="width: 100%; display: flex; gap: 30px; margin-top: 20px;">
-                            <?php
-                            // Helper function for pad fields
-                            $render_pad_field = function($id, $label, $redux_options) {
-                                $pad_value = $redux_options[$id] ?? '';
-                                $pad_link = $pad_value ? get_image_url($pad_value) : '';
-                                $pad_name = $pad_value ? wp_basename($pad_value) : '';
-                                ?>
-                                <div class="testimonial-settings">
-                                    <label for="opt_name_<?php echo esc_attr($id); ?>"><?php echo esc_html($label); ?></label>
-                                    <fieldset id="opt_name-<?php echo esc_attr($id); ?>" class="redux-field-container redux-field redux-container-media" data-id="<?php echo esc_attr($id); ?>" data-type="file">
-                                        <input placeholder="No file selected" type="text" class="upload large-text" name="opt_name[<?php echo esc_attr($id); ?>]" id="opt_name_<?php echo esc_attr($id); ?>" value="<?php echo esc_attr($pad_value); ?>" readonly="readonly">
-                                        <div class="upload_button_div" style="display: flex;">
-                                            <span class="button media_upload_button" data-title="Select <?php echo esc_attr($label); ?>" data-button-text="Use this file" data-allowed-types="image,application">Select or Upload</span>
-                                        </div>
-                                        <!-- Show Preview -->
-                                        <?php if ($pad_link) : ?>
-                                            <div class="screenshot" style="margin-top: 10px;">
-                                                <a class="of-uploaded-image media-file-link" href="<?php echo esc_url($pad_link); ?>" target="_blank">
-                                                    <?php if (in_array(pathinfo($pad_name, PATHINFO_EXTENSION), ['jpg', 'jpeg', 'png', 'gif'])) : ?>
-                                                        <img class="redux-option-image" src="<?php echo esc_url($pad_link); ?>" alt="" style="width: 150px; max-height: 100px;">
-                                                    <?php else : ?>
-                                                        <span><?php echo esc_html($pad_name); ?></span>
-                                                    <?php endif; ?>
-                                                </a>
-                                            </div>
-                                        <?php endif; ?>
-                                    </fieldset>
-                                </div>
+                            <label for="testimonial_type">Testimonial Type</label>
+                            <select id="testimonial_type" name="opt_name[testimonial_type]" class="regular-text" style="width: 200px;">
                                 <?php
-                            };
-
-                            $render_pad_field('testimonial_pad', 'Testimonial Pad', $redux_options);
-                            $render_pad_field('tc_pad', 'TC Pad', $redux_options);
-                            $render_pad_field('concern_pad', 'Concern Letter Pad', $redux_options);
-                            ?>
+                                $testimonial_type_value = $redux_options['testimonial_type'] ?? 'Default';
+                                $options = [
+                                    'Default' => 'Default',
+                                    'Pad' => 'Pad',
+                                ];
+                                foreach ($options as $value => $label) {
+                                    echo '<option value="' . esc_attr($value) . '"' . selected($testimonial_type_value, $value, false) . '>' . esc_html($label) . '</option>';
+                                }
+                                ?>
+                            </select>
                         </div>
-                        
+                        <?php
+                        $testimonial_pad_value = $redux_options['testimonial_pad'] ?? '';
+                        $testimonial_pad_link = $testimonial_pad_value ? get_image_url($testimonial_pad_value) : '';
+                        $testimonial_pad_name = $testimonial_pad_value ? wp_basename($testimonial_pad_value) : '';
+                        ?>
+                        <div class="testimonial-settings">
+                            <label for="opt_name_testimonial_pad">Testimonial Pad</label>
+                            <fieldset id="opt_name-testimonial_pad" class="redux-field-container redux-field redux-container-media" data-id="testimonial_pad" data-type="file">
+                                <input placeholder="No file selected" type="text" class="upload large-text" name="opt_name[testimonial_pad]" id="opt_name_testimonial_pad" value="<?php echo esc_attr($testimonial_pad_value); ?>" readonly="readonly">
+                                <input type="hidden" class="upload-id" value="">
+                                <input type="hidden" class="upload-height" value="">
+                                <input type="hidden" class="upload-width" value="">
+                                <input type="hidden" class="upload-thumbnail" value="">
+                                <div class="upload_button_div">
+                                    <span class="button media_upload_button" data-title="Select Testimonial Pad" data-button-text="Use this file" data-allowed-types="image,application">Select or Upload</span>
+                                    <span class="button remove-image">Remove</span>
+                                </div>
+                                <!-- Show Preview -->
+                                <?php if ($testimonial_pad_link) : ?>
+                                    <div class="screenshot" style="margin-top: 10px;">
+                                        <a class="of-uploaded-image media-file-link" href="<?php echo esc_url($testimonial_pad_link); ?>" target="_blank">
+                                            <?php if (in_array(pathinfo($testimonial_pad_name, PATHINFO_EXTENSION), ['jpg', 'jpeg', 'png', 'gif'])) : ?>
+                                                <img class="redux-option-image" src="<?php echo esc_url($testimonial_pad_link); ?>" alt="" style="width: 400px; max-height: 300px;">
+                                            <?php else : ?>
+                                                <span><?php echo esc_html($testimonial_pad_name); ?></span>
+                                            <?php endif; ?>
+                                        </a>
+                                    </div>
+                                <?php endif; ?>
+                            </fieldset>
+                        </div>
+
                         <style>
                             #slider_images_list {
                                 display: flex;
@@ -3193,7 +3200,9 @@ if (wp_get_current_user()->roles[0] == 'um_headmaster' || current_user_can('admi
             };
 
             if (allowedTypes.length > 0) {
-                frameConfig.library = { type: allowedTypes };
+                frameConfig.library = {
+                    type: allowedTypes
+                };
             }
 
             var mediaFrame = wp.media(frameConfig);

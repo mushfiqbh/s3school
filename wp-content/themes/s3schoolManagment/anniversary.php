@@ -12,7 +12,7 @@ get_header(); ?>
 		<div class="b-layer-big otherPageBg">
 			<div class="layer-big-bg page-layer-big-bg">
 				<div class="layer-content-big text-center">
-					<h1><b>সুবর্ণজয়ন্তি-কর্ণার</b></h1>
+					<h1><b>বঙ্গবন্ধু কর্ণার</b></h1>
 				</div>
 			</div>
 		</div>
@@ -69,7 +69,7 @@ get_header(); ?>
 								}
 								
 							}else{
-								echo "<h3 class='text-center text-danger'>Gallery Empty</h3>";
+								echo "<h3 class='text-center text-danger'></h3>";
 							}
 							wp_reset_postdata();
 						?>

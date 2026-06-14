@@ -1,13 +1,10 @@
 <?php
 
 // 	define( 'SHORTINIT', true );
-    	require( '../../../../wp-load.php' );
-    	ob_start();
 
-
-// Initialize default POST keys to prevent notices
-if (!isset($_POST['type'])) $_POST['type'] = '';
-if (!isset($_POST['action'])) $_POST['action'] = '';
+	require( '../../../../wp-load.php' );
+	require_once get_template_directory() . '/adminPages/functions/teacher-access.php';
+	$applyTeacherRestrictions = s3s_teacher_restrictions_enabled();
 
 	/*
 		Check The Roll
@@ -121,6 +118,47 @@ $subjects = $wpdb->get_results("
 		$current_user = wp_get_current_user();
 		$sections_query = "SELECT sectionid,sectionName FROM ct_section WHERE forClass = '$class'";
 
+		if ($applyTeacherRestrictions && $current_user->roles[0] == 'um_teachers') {
+			$current_user_id = get_current_user_id();
+			
+			// Determine table name (try prefixed first, fallback to ct_teacher)
+			$prefixed = $wpdb->prefix . 'ct_teacher';
+			$exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $prefixed));
+			$table = ($exists === $prefixed) ? $prefixed : 'ct_teacher';
+			
+			$teacher_record = $wpdb->get_row($wpdb->prepare("SELECT teacherOfClass, teacherOfSection, assignSection FROM $table WHERE tecUserId = %d", $current_user_id));
+
+			$allowed_sections = array();
+
+			// Add subject-assigned sections
+			if ($teacher_record && !empty($teacher_record->assignSection)) {
+				$assigned_sections = json_decode($teacher_record->assignSection, true);
+				$has_all = false;
+				if (is_array($assigned_sections) && !empty($assigned_sections)) {
+					if (in_array('all', $assigned_sections)) {
+						$has_all = true;
+						$assigned_sections = array_diff($assigned_sections, ['all']);
+					}
+					if (!empty($assigned_sections)) {
+						$allowed_sections = array_merge($allowed_sections, $assigned_sections);
+					}
+				}
+			}
+
+			// Add class teacher section (only if it matches the requested class)
+			if ($teacher_record && !empty($teacher_record->teacherOfClass) && !empty($teacher_record->teacherOfSection) && $teacher_record->teacherOfClass == $class) {
+				$allowed_sections[] = $teacher_record->teacherOfSection;
+			}
+
+			// If we have any allowed sections, filter the query
+			if ($has_all) {
+				// Show all sections
+			} elseif (!empty($allowed_sections)) {
+				$allowed_sections = array_unique($allowed_sections);
+				$sections_query .= " AND sectionid IN (" . implode(',', array_map('intval', $allowed_sections)) . ")";
+			}
+		}
+
 		$sections_query .= " ORDER BY sectionName";
 
 		$sections = $wpdb->get_results($sections_query);
@@ -147,6 +185,25 @@ $subjects = $wpdb->get_results("
 			FROM ct_group 
 			INNER JOIN ct_studentinfo ON ct_studentinfo.infoGroup = ct_group.groupId 
 			WHERE ct_studentinfo.infoClass = '$class'";
+
+		if ($applyTeacherRestrictions && $current_user->roles[0] == 'um_teachers') {
+			$current_user_id = get_current_user_id();
+			$teacher_record = $wpdb->get_row($wpdb->prepare("SELECT tecAssignSub FROM ct_teacher WHERE tecUserId = %d", $current_user_id));
+
+			if ($teacher_record && !empty($teacher_record->tecAssignSub)) {
+				$assigned_subjects = json_decode($teacher_record->tecAssignSub, true);
+				if (is_array($assigned_subjects) && !empty($assigned_subjects)) {
+					// Get groups that have subjects assigned to this teacher
+					$groups_query .= " AND ct_studentinfo.infoGroup IN (
+						SELECT DISTINCT forGroup 
+						FROM ct_subject 
+						WHERE subjectid IN (" . implode(',', array_map('intval', $assigned_subjects)) . ") 
+						AND subjectClass = '$class'
+						AND forGroup != 'all'
+					)";
+				}
+			}
+		}
 
 		$groups_query .= " ORDER BY ct_group.groupName ASC";
 		
@@ -282,6 +339,20 @@ $subjects = $wpdb->get_results("
 
     $current_user = wp_get_current_user();
 
+	if ($applyTeacherRestrictions && $current_user->roles[0] == 'um_teachers') {
+        $current_user_id = get_current_user_id();
+        $teacher_record = $wpdb->get_row($wpdb->prepare("SELECT tecAssignSub FROM ct_teacher WHERE tecUserId = %d", $current_user_id));
+
+        if ($teacher_record && !empty($teacher_record->tecAssignSub)) {
+            $assigned_subjects = json_decode($teacher_record->tecAssignSub, true);
+
+            if (is_array($assigned_subjects) && !empty($assigned_subjects) && !empty($subs)) {
+                // Filter exam subjects to only include assigned subjects
+                $subs = array_intersect($subs, $assigned_subjects);
+            }
+        }
+    }
+
     if (!empty($subs)) {
         $subs_escaped = array_map('intval', $subs);
         $subjectQuery = "SELECT subjectid,subjectName FROM ct_subject 
@@ -390,7 +461,7 @@ elseif($_POST['type'] == 'getYearSection'){
 	$options = '';
     $currentYear = date("Y");
 	if($session == 'year'){
-		for ($i=-2; $i < 7; $i++) {
+		for ($i=-2; $i < 2; $i++) {
 		     $sec = (date("Y")-$i);
             $selected = ($currentYear == $sec) ? 'selected' : '';
       
@@ -398,7 +469,7 @@ elseif($_POST['type'] == 'getYearSection'){
     } 
 	}else{
 	    $currentYear = date("Y")."-".(date("Y")+1);
-		for ($i=-2; $i < 7; $i++) { 
+		for ($i=-2; $i < 2; $i++) { 
       $sec = (date("Y")-($i+1))."-".(date("Y")-$i);
       $selected = ($currentYear == $sec) ? 'selected' : '';
       $options .= "<option value='$sec' $selected>$sec</option>";
@@ -882,361 +953,4 @@ elseif ($_POST['type'] == 'saveExamSchedule') {
 		}
 	}
 
-}
-
-
-
-// ==========================================
-// UNIFIED RESULT MANAGEMENT
-// ==========================================
-
-/*
-    Load Students for Unified Result Entry
-*/
-elseif($_POST['type'] == 'load_students'){
-    $class = intval($_POST['class']);
-    $exam = intval($_POST['exam']);
-    $section = isset($_POST['section']) ? intval($_POST['section']) : 0;
-    $group = isset($_POST['group']) ? intval($_POST['group']) : 0;
-    $year = sanitize_text_field($_POST['year']);
-    $subject = intval($_POST['subject']);
-
-    // Get subject configuration
-    $subject_info = $wpdb->get_row($wpdb->prepare(
-        "SELECT subCode, subCQ, subMCQ, subPect, subCa, subOptinal, sub4th, subPaper, connecttedPaper FROM ct_subject WHERE subjectid = %d",
-        $subject
-    ));
-
-    if (!$subject_info) {
-        echo json_encode(['success' => false, 'message' => 'Subject not found']);
-        exit;
-    }
-
-    $subject_config = [
-        'cq' => intval($subject_info->subCQ),
-        'mcq' => intval($subject_info->subMCQ),
-        'prac' => intval($subject_info->subPect),
-        'ca' => intval($subject_info->subCa)
-    ];
-
-    $subOpt = intval($subject_info->subOptinal);
-    $sub4th = intval($subject_info->sub4th);
-    $subCode = $subject_info->subCode;
-
-    // Religion filter
-    $religionMap = [
-        'Muslim' => 111,
-        'Hinduism' => 112,
-        'Buddist' => 113,
-        'Christian' => 114
-    ];
-
-    $religionFilter = '';
-    if ($subCode && in_array($subCode, array_values($religionMap))) {
-        $religion = array_search($subCode, $religionMap);
-        $religionFilter = $wpdb->prepare(" AND ct_student.stdReligion = %s", $religion);
-    }
-
-    // Build student query
-    if ($subOpt == 0 && $sub4th == 0) {
-        // Regular subject
-        $stdQuery = "SELECT 
-            studentid,
-            infoRoll,
-            stdName,
-            groupName,
-            infoGroup,
-            infoSection,
-            sectionName,
-            stdReligion
-        FROM ct_student
-        LEFT JOIN ct_studentinfo ON ct_student.studentid = ct_studentinfo.infoStdid
-            AND ct_studentinfo.infoClass = $class AND ct_studentinfo.infoYear = '$year'
-        LEFT JOIN ct_group ON ct_studentinfo.infoGroup = ct_group.groupId
-        LEFT JOIN ct_section ON ct_studentinfo.infoSection = ct_section.sectionid
-        WHERE stdCurntYear = '$year' AND stdCurrentClass = $class" . $religionFilter;
-    } else {
-        // Optional or 4th subject
-        $stdQuery = "SELECT 
-            studentid,
-            infoRoll,
-            stdName,
-            groupName,
-            infoGroup,
-            infoSection,
-            infoOptionals,
-            info4thSub,
-            sectionName,
-            stdReligion
-        FROM ct_student
-        LEFT JOIN ct_studentinfo ON ct_student.studentid = ct_studentinfo.infoStdid
-            AND ct_studentinfo.infoClass = $class AND ct_studentinfo.infoYear = '$year'
-        LEFT JOIN ct_group ON ct_studentinfo.infoGroup = ct_group.groupId
-        LEFT JOIN ct_section ON ct_studentinfo.infoSection = ct_section.sectionid
-        WHERE stdCurntYear = '$year' AND stdCurrentClass = $class" . $religionFilter;
-
-        if ($subOpt == 1 && $sub4th == 1) {
-            $stdQuery .= " AND (infoOptionals LIKE '%\"$subject\"%' OR info4thSub = $subject)";
-        }
-        if ($subOpt == 1 && $sub4th == 0) {
-            $stdQuery .= " AND infoOptionals LIKE '%\"$subject\"%'";
-        }
-        if ($subOpt == 0 && $sub4th == 1) {
-            $stdQuery .= " AND info4thSub = $subject";
-        }
-    }
-
-    if ($section != 0 && $section != '') {
-        $stdQuery .= " AND infoSection = $section";
-    }
-    if ($group != 0 && $group != '') {
-        $stdQuery .= " AND infoGroup = $group";
-    }
-
-    $stdQuery .= " ORDER BY infoRoll ASC";
-
-    $students = $wpdb->get_results($stdQuery);
-
-    $studentsData = [];
-
-    foreach ($students as $student) {
-        // Check if result already exists
-        $existingResult = $wpdb->get_row($wpdb->prepare(
-            "SELECT resultId, resCQ, resMCQ, resPrec, resCa, resTotal 
-            FROM ct_result 
-            WHERE resStudentId = %d AND resClass = %d AND resExam = %d AND resSubject = %d AND resultYear = %s",
-            $student->studentid,
-            $class,
-            $exam,
-            $subject,
-            $year
-        ));
-
-        $marks = [
-            'cq' => '',
-            'mcq' => '',
-            'prac' => '',
-            'ca' => ''
-        ];
-
-        $result_id = null;
-
-        if ($existingResult) {
-            // Edit mode - pre-fill marks
-            $marks = [
-                'cq' => $existingResult->resCQ,
-                'mcq' => $existingResult->resMCQ,
-                'prac' => $existingResult->resPrec,
-                'ca' => $existingResult->resCa
-            ];
-            $result_id = $existingResult->resultId;
-        }
-
-        $studentsData[] = [
-            'student_id' => $student->studentid,
-            'roll' => $student->infoRoll,
-            'name' => $student->stdName,
-            'group' => $student->groupName,
-            'section' => $student->sectionName,
-            'info_group' => $student->infoGroup,
-            'info_section' => $student->infoSection,
-            'result_id' => $result_id,
-            'marks' => $marks
-        ];
-    }
-
-    echo json_encode([
-        'success' => true,
-        'data' => [
-            'students' => $studentsData,
-            'subject_config' => $subject_config
-        ]
-    ]);
-}
-
-/*
-    Save Individual Result (Add/Update)
-*/
-elseif($_POST['type'] == 'save_result'){
-    $student_id = intval($_POST['student_id']);
-    $result_id = isset($_POST['result_id']) && $_POST['result_id'] !== '' ? intval($_POST['result_id']) : null;
-    $mode = sanitize_text_field($_POST['mode']);
-    $class = intval($_POST['class']);
-    $exam = intval($_POST['exam']);
-    $section = isset($_POST['section']) ? intval($_POST['section']) : 0;
-    $group = isset($_POST['group']) ? intval($_POST['group']) : 0;
-    $year = sanitize_text_field($_POST['year']);
-    $subject = intval($_POST['subject']);
-    $marks = $_POST['marks'];
-
-    // Get subject info
-    $subject_info = $wpdb->get_row($wpdb->prepare(
-        "SELECT subPaper, connecttedPaper FROM ct_subject WHERE subjectid = %d",
-        $subject
-    ));
-
-    if (!$subject_info) {
-        echo json_encode(['success' => false, 'message' => 'Subject not found']);
-        exit;
-    }
-
-    // Get student info
-    $student_info = $wpdb->get_row($wpdb->prepare(
-        "SELECT infoRoll, infoGroup, infoSection, infoOptionals, info4thSub 
-        FROM ct_studentinfo 
-        WHERE infoStdid = %d AND infoClass = %d AND infoYear = %s",
-        $student_id,
-        $class,
-        $year
-    ));
-
-    if (!$student_info) {
-        echo json_encode(['success' => false, 'message' => 'Student information not found']);
-        exit;
-    }
-
-    // Determine optional/4th subject status
-    $resSubOpt = 0;
-    if (!empty($student_info->infoOptionals)) {
-        $optionals = json_decode($student_info->infoOptionals, true);
-        if (is_array($optionals) && in_array($subject, $optionals)) {
-            $resSubOpt = 1;
-        }
-    }
-
-    $resSub4th = 0;
-    if (!empty($student_info->info4thSub)) {
-        // Handle both numeric and JSON format
-        if (is_numeric($student_info->info4thSub)) {
-            $fourthSubId = intval($student_info->info4thSub);
-        } else {
-            $fourthSub = json_decode($student_info->info4thSub, true);
-            if (is_array($fourthSub)) {
-                $fourthSubId = isset($fourthSub[0]) ? intval($fourthSub[0]) : null;
-            } else {
-                $fourthSubId = intval($student_info->info4thSub);
-            }
-        }
-        if ($subject == $fourthSubId) {
-            $resSub4th = 1;
-        }
-    }
-
-    // Calculate total (same as result-add.php)
-    $stdCQ = (is_numeric($marks['cq']) && $marks['cq'] != '') ? $marks['cq'] : 0;
-    $stdMCQ = (is_numeric($marks['mcq']) && $marks['mcq'] != '') ? $marks['mcq'] : 0;
-    $stdPrec = (is_numeric($marks['prac']) && $marks['prac'] != '') ? $marks['prac'] : 0;
-    $stdCa = (is_numeric($marks['ca']) && $marks['ca'] != '') ? $marks['ca'] : 0;
-    $total = $stdCQ + $stdMCQ + $stdPrec + $stdCa;
-
-    $data = [
-        'resStudentId' => $student_id,
-        'resClass' => $class,
-        'resSubPaper' => $subject_info->subPaper,
-        'resgroup' => $student_info->infoGroup,
-        'resSec' => $student_info->infoSection,
-        'resExam' => $exam,
-        'resSubject' => $subject,
-        'resultYear' => $year,
-        'resCombineWith' => $subject_info->connecttedPaper,
-        'resSubOpt' => $resSubOpt,
-        'resSub4th' => $resSub4th,
-        'resStdRoll' => $student_info->infoRoll,
-        'resCQ' => $marks['cq'],
-        'resMCQ' => $marks['mcq'],
-        'resPrec' => $marks['prac'],
-        'resCa' => $marks['ca'],
-        'resTotal' => $total
-    ];
-
-    if ($mode === 'add' || $result_id === null) {
-        // INSERT
-        $data['resAdd'] = get_current_user_id();
-        
-        $insert = $wpdb->insert('ct_result', $data);
-
-        if ($insert) {
-            echo json_encode([
-                'success' => true,
-                'data' => [
-                    'message' => 'Result added successfully',
-                    'result_id' => $wpdb->insert_id
-                ]
-            ]);
-        } else {
-            $error_msg = 'Failed to add result';
-            if ($wpdb->last_error) {
-                $error_msg .= ': ' . $wpdb->last_error;
-            }
-            echo json_encode(['success' => false, 'message' => $error_msg, 'debug_data' => $data]);
-        }
-    } else {
-        // UPDATE
-        $update = $wpdb->update(
-            'ct_result',
-            [
-                'resCQ' => $marks['cq'],
-                'resMCQ' => $marks['mcq'],
-                'resPrec' => $marks['prac'],
-                'resCa' => $marks['ca'],
-                'resTotal' => $total
-            ],
-            ['resultId' => $result_id]
-        );
-
-        if ($update !== false) {
-            echo json_encode([
-                'success' => true,
-                'data' => [
-                    'message' => 'Result updated successfully',
-                    'result_id' => $result_id
-                ]
-            ]);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Failed to update result']);
-        }
-    }
-}
-
-/*
-    Delete Multiple Results
-*/
-elseif($_POST['type'] == 'delete_results'){
-    $student_ids = $_POST['student_ids'];
-    $class = intval($_POST['class']);
-    $exam = intval($_POST['exam']);
-    $year = sanitize_text_field($_POST['year']);
-    $subject = intval($_POST['subject']);
-
-    if (!is_array($student_ids) || empty($student_ids)) {
-        echo json_encode(['success' => false, 'message' => 'No students selected']);
-        exit;
-    }
-
-    $student_ids = array_map('intval', $student_ids);
-    $placeholders = implode(',', array_fill(0, count($student_ids), '%d'));
-
-    $query = $wpdb->prepare(
-        "DELETE FROM ct_result 
-        WHERE resStudentId IN ($placeholders) 
-        AND resClass = %d 
-        AND resExam = %d 
-        AND resSubject = %d 
-        AND resultYear = %s",
-        array_merge($student_ids, [$class, $exam, $subject, $year])
-    );
-
-    $deleted = $wpdb->query($query);
-
-    if ($deleted !== false) {
-        echo json_encode([
-            'success' => true,
-            'data' => [
-                'message' => 'Results deleted successfully',
-                'deleted_count' => $deleted
-            ]
-        ]);
-    } else {
-        echo json_encode(['success' => false, 'message' => 'Failed to delete results']);
-    }
 }

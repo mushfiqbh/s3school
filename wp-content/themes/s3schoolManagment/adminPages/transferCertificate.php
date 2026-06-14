@@ -142,7 +142,7 @@
 							text-align: center; margin: 20px 0; clear: both;
 						}
 						#itemMainBox .admitCard{
-							margin: 0 0 10px 0;color: #f7740c; font-weight: bold; background: #f0f0f0; print-color-adjust: exact; -webkit-print-color-adjust: exact; padding: 10px; border-radius: 5px; font-size: 25px;
+							margin: 0 0 10px 0;color: #f7740c; font-weight: bold; background: #f0f0f0;-webkit-print-color-adjust: exact; padding: 10px; border-radius: 5px; font-size: 25px;
 							border: 2px solid #f0f0f0;
 						}
 						#itemMainBox .admitNote{
@@ -161,6 +161,32 @@
 						b u{
 							font-family: 'Rechtman', sans-serif;
 							text-decoration: none;
+						}
+						.editable{
+							position: relative;
+						}
+						.editable .closeEdit {
+							position: absolute;
+							z-index: 5;
+							cursor: pointer;
+							right: 0px;
+							top: -6px;
+							width: 15px;
+							text-indent: 0;
+							margin: 0;
+							padding: 0;
+							background: rgba(255,0,0,.8);
+							border-radius: 3px;
+							text-align: center;
+							line-height: ;
+							color: #fff;
+							font-family: arial;
+							-webkit-touch-callout: none;
+							-webkit-user-select: none;
+							-khtml-user-select: none;
+							-moz-user-select: none;
+							-ms-user-select: none;
+							user-select: none;
 						}
 						#wrapper {
 				      position: absolute;
@@ -210,19 +236,23 @@
 
 										<div style="padding: 50px 30px; ">
 											<div style="text-align: center;" >
-												<div style="position: relative;">
-
-													<h2 class="instName"><?= $s3sRedux['institute_name'] ?></h2>
-									  			<h4 class="instAddrs"><?= $s3sRedux['institute_address'] ?></h4>
-													<img width="80" src="<?= $s3sRedux['instLogo']['url'] ?>">
+													<div style="position: relative;">
+														<h2 class="instName"><?= $s3sRedux['institute_name'] ?></h2>
+														<span style="font-size:17px"><?= $s3sRedux['institute_address'] ?></span><br>
+														<img width="100" style="float:left;margin-top:-50px;" src="<?= $s3sRedux['instLogo']['url'] ?>">
+														<img width="100" style="float:right;margin-top:-50px;" src="<?= get_template_directory_uri();?>/img/alqrcode.jpeg;">
+														<span style="font-size:15px">Email: alfalah540@gmail.com, Web: www.al-falahacademy.com</span><br>
+															<span style="font-size:15px">School code: 460395, EMIS Code: 06604070206</span><br>
+														<span style="font-size:15px">Phone: +8801718-441529, +880 1756-588761</span>
+													</div>
+                                                        <hr style="border: 3px solid #005daa;">
+                                                        <span style="float:left;">Ref: <?= date('Y') ?>/<b class='editable'><u>.......</u></b></span>
+                                                        <span style="float:right;">Date: <?= date('d-m-Y') ?></span>
 												</div>
-												
-
-											</div>
-											<div class="itemInfo">
-								  			<h3>Transfer Certificate</h3>
-											</div>
-											<div style="width: 100%;">
+												<div class="itemInfo">
+									  			<h3 style="text-transform: uppercase;margin-top:150px;"><u>Transfer Certificate</u></h3>
+												</div>
+												<div style="width: 100%;">
 												<p >
 													This is to Certify That 
 													<b><u><?= $value->stdName ?></u></b> 
@@ -238,7 +268,7 @@
 
 												
 												
-													<h4>Cause of leaving the school: </h4>
+													<h4>Cause of leaving the Institute: </h4>
 													<p style="padding-left: 20px">
 														1. Willing of the guardian.<br>
 														2. Change of Resident.<br>
@@ -292,6 +322,17 @@
 
 <script type="text/javascript">
 	(function($) {
+	    	$('.editable').on('click', 'u', function(){
+			$this = $(this);
+			$this.closest('.editable').html("").append("<input type='text' value='"+$this.text()+"'><p class='closeEdit'>x</p>");
+		});
+
+
+
+ 		$('.editable').on('focusout', 'input', function(){
+ 			$this = $(this);
+			$this.closest('.editable').html("<u>"+$this.val()+"</u>");
+ 		});
 		$('#resultClass').change(function() {
 	    var $siteUrl = $('#theSiteURL').text();
 	    $.ajax({

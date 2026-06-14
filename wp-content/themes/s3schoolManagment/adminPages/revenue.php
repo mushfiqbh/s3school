@@ -216,9 +216,6 @@ if (isset($_POST['delRevinew'])) {
 <div class="row text-center">
 			<h2> Accounts</h2>
 			<div class="col-md-9" style="margin: 10px">	
-				<?php  if(wp_get_current_user()->roles[0] == 'um_accounts-user' ){?>
-    			    <a href="?page=revenue&view=debitCredit" class="btn btn-secondary pull-right" style="background:#4dc28f;" >Debit Credit</a>
-    			<?php } ?>
 				<a href="?page=revenue&view=expense" class="btn btn-secondary pull-right" style="background:#4dc28f;">Expense Entry</a>
 				<a href="?page=revenue" class="btn btn-secondary pull-right" style="background:#4dc28f;">Income Entry</a>
 			</div>
@@ -233,8 +230,6 @@ if (isset($_POST['delRevinew'])) {
 	</div>
 	<div class="col-md-12" style="margin-top: 5px">
 		<h2 class="resmangh2" style="padding-bottom: 10px;">
-		    <?php if(wp_get_current_user()->roles[0] == 'um_headmaster'  || wp_get_current_user()->roles[0] == 'administrator'){?>
-				
 			<a href="?page=revenue&view=summary-report" class="btn btn-primary pull-right" >Summary Report</a>
 			<a href="?page=revenue&view=transaction-report" class="btn btn-primary pull-right" >Transaction Report</a>
 			<a href="?page=revenue&view=income-report" class="btn btn-primary pull-right" >Income Report</a>
@@ -246,7 +241,6 @@ if (isset($_POST['delRevinew'])) {
 			<a href="?page=revenue&view=category" class="btn btn-primary pull-right">Category</a>
 			<a href="?page=revenue&view=initialBalance" class="btn btn-primary pull-right" >Initial Balance</a>
 			<a href="?page=revenue&view=debitCredit" class="btn btn-primary pull-right" >Debit Credit</a>
-			<?php } ?>
 
 
 		</h2>
@@ -646,20 +640,9 @@ if (isset($_POST['delRevinew'])) {
 						$from_date			= $_POST['from-date'];
 						$to_date			= $_POST['to-date'];
 						$previousBalance = $wpdb->get_results( "SELECT SUM(credit)-SUM(debit) AS previousBalance FROM ct_ledger WHERE sub_head_id = '$sub_head_id' AND date(date) < '$from_date' " );
-				// 		$transactionList = $wpdb->get_results( "SELECT * FROM ct_ledger WHERE sub_head_id = '$sub_head_id' AND date(date) >= '$from_date' AND date(date) <= '$to_date'" );
+						$transactionList = $wpdb->get_results( "SELECT * FROM ct_ledger WHERE sub_head_id = '$sub_head_id' AND date(date) >= '$from_date' AND date(date) <= '$to_date'" );
 						$previousBalance = $previousBalance[0]->previousBalance;
-						$transactionList = $wpdb->get_results(
-                                                $wpdb->prepare(
-                                                    "SELECT ct.*, sm.display_name 
-                                                     FROM ct_ledger ct
-                                                     JOIN sm_users sm ON ct.created_by = sm.ID
-                                                     WHERE ct.sub_head_id = %d 
-                                                       AND DATE(ct.date) >= %s 
-                                                       AND DATE(ct.date) <= %s",
-                                                    $sub_head_id, $from_date, $to_date
-                                                )
-                                            );
-							
+													
 						?>
 
 <div class="container-fluid maxAdminpages">
@@ -709,7 +692,6 @@ if (isset($_POST['delRevinew'])) {
 									<th class="number">#</th>
 									<th>Date</th>
 									<th>Reference</th>
-									<th>Accountant Name</th>
 									<th >Credit</th>
 									<th >Debit</th>
 									<th >Balance</th>
@@ -723,7 +705,6 @@ if (isset($_POST['delRevinew'])) {
 	  									<td><?= $key+1 ?></td>
 	  									<td><?= date('d-m-Y',strtotime($val->date)) ?></td>
 	  									<td><?=  $val->reference?> </td>
-	  									<td><?=  $val->display_name?> </td>
 	  									<td><?= number_format( $val->credit,2)?> TK</td>
 	  									<td><?= number_format( $val->debit,2)?> TK</td>
 										  <?php
@@ -1916,9 +1897,7 @@ if (isset($_POST['delRevinew'])) {
 											</tr>
 											<?php
 												$i = 1;
-												$totalIncome = 0;
 												foreach($reportArray['income'] as $key=>$val){
-												    $totalIncome += $val['amount'];
 											?>
 												<tr>
 													<td><?= $i?></td>
@@ -1949,9 +1928,7 @@ if (isset($_POST['delRevinew'])) {
 											
 										<?php
 												$i = 1;
-												$totalExpense = 0;
 												foreach($reportArray['expense'] as $key=>$val){
-												    $totalExpense += $val['amount'];
 											?>
 												<tr>
 													<td><?= $i?></td>
@@ -1966,29 +1943,24 @@ if (isset($_POST['delRevinew'])) {
 									</table>
 								</td>
 							</tr>
-							
+							<tr>
+								<td>&nbsp;</td>
+								<td></td>
+							</tr>
 							<tr>
 								<td>
 									<table class="table table-bordered">
-									    <tr>
-											<td class="text-right"> Total</td>
-											<td class="text-right"><?= number_format( ($reportArray['income_total']),2) ?></td>
-										</tr>
 										<tr>
-											<td class="text-right"><b>Grand Total</b></td>
-											<td class="text-right"><b><?= number_format( ($previousBalance + $reportArray['income_total']),2) ?></b></td>
+											<td class="text-right">Total</td>
+											<td class="text-right"><?= number_format( ($previousBalance + $reportArray['income_total']),2) ?></td>
 										</tr>
 									</table>
 								</td>
 								<td>
 									<table class="table table-bordered">
-									    <tr>
-											<td class="text-right"> Total</td>
-											<td class="text-right"><?= number_format( ( $reportArray['expense_total']),2) ?></td>
-										</tr>
 										<tr>
-											<td class="text-right"><b>Grand Total</b></td>
-											<td class="text-right"><b><?= number_format( ( $reportArray['expense_total']),2) ?></b></td>
+											<td class="text-right">Total</td>
+											<td class="text-right"><?= number_format( ( $reportArray['expense_total']),2) ?></td>
 										</tr>
 									</table>
 								</td>
@@ -2003,8 +1975,8 @@ if (isset($_POST['delRevinew'])) {
 								<td>
 									<table class="table table-bordered">
 										<tr>
-											<td class="text-right"><b> Balance C/D</b></td>
-											<td class="text-right"><b><?= number_format( ($previousBalance + $reportArray['income_total'] - $reportArray['expense_total']),2) ?></b></td>
+											<td class="text-right">Balance C/D</td>
+											<td class="text-right"><?= number_format( ($previousBalance + $reportArray['income_total'] - $reportArray['expense_total']),2) ?></td>
 										</tr>
 									</table>
 									

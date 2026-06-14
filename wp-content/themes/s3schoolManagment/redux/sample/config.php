@@ -440,17 +440,7 @@ Redux::setHelpSidebar( $opt_name, $content );
             'description' => true,
             'url' => false,
           )
-        ),
-        array(
-          'id'       => 'academic_calendar_img',
-          'type'     => 'media',
-          'url'      => true,
-          'title'    => __('Academic Calendar Image', 's3school'),
-          'desc'     => __('Upload the academic calendar image to show on the calendar page.', 's3school'),
-          'default'  => array(
-            'url'    => get_template_directory_uri().'/img/calendar.jpg'
-          )
-        ),
+        )
       )
     ));
 

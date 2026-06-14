@@ -92,7 +92,7 @@ if (isset($_POST['updateSubject'])) {
 			'paymentPaid' 			=> $_POST['paymentPaid'],
 			'paymentDue' 				=> $_POST['paymentDue'],
 			'stdNote' 					=> $_POST['stdNote'],
-			'stdUpdatedAt' 			=> current_time( 'mysql' )
+			'stdUpdatedAt' 			=> now()
 		),
 		array( 'studentid' => $_POST['id'])
 	);
@@ -300,7 +300,7 @@ if (isset($_POST['editStudent'])) {
 							    				echo "<option disabled selected>Select a Class..</option>";
 							    			}
 
-						    				$classes = $wpdb->get_results( "SELECT classid,className FROM ct_class" );
+						    				$classes = $wpdb->get_results( "SELECT classid,className,groupId,groupName FROM ct_class LEFT JOIN ct_group ON ct_class.classGroup = ct_group.groupId" );
 												foreach ($classes as $class) {
 
 							    				?>

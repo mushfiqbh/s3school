@@ -89,11 +89,12 @@ if (isset($_POST['editSection'])) {
 				    			$sel = '';
 					    			if (!isset($edit) || empty($edit->forClass)) {
 					    				echo "<option disabled selected>Select a Class..</option>";
+					    			}else{
+					    				$sel = ($edit->forClass == $class->classid) ? "selected" : '';
 					    			}
 
 				    				$classes = $wpdb->get_results( "SELECT * FROM ct_class" );
 										foreach ($classes as $class) {
-										    $sel = (@$edit->forClass == $class->classid) ? "selected" : '';
 											?>
 					    				<option value='<?= $class->classid ?>' <?= $sel ?>>
 					    					<?= $class->className ?>

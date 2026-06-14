@@ -8,7 +8,7 @@ global $wpdb; global $s3sRedux;
 Add Subject
 =================*/
 if (isset($_POST['addSubject'])) {
-  
+
   if (isset($_POST['allGroup'])) {
     $forGroup = 'all';
   }else{
@@ -19,7 +19,6 @@ if (isset($_POST['addSubject'])) {
 		'ct_subject',
 		array(
 			'subjectName' 		=> $_POST['subjectName'],
-			'shortName' 		=> $_POST['shortName'],
       'subCode'         => $_POST['subCode'],
 			'subid' 				  => $_POST['subid'],
 			'subjectClass' 		=> $_POST['subjectClass'],
@@ -32,11 +31,10 @@ if (isset($_POST['addSubject'])) {
 			'subMCQ' 					=> $_POST['subMCQ'],
 			'subCQ' 					=> $_POST['subCQ'],
 			'subPect' 				=> $_POST['subPect'],
-            'subCa'           => $_POST['subCa'],
+      'subCa'           => $_POST['subCa'],
 			'subCombineMark' 	=> isset($_POST['subCombineMark']) ? 1 : 0,
 			'connecttedPaper' => isset($_POST['connecttedPaper']) ? $_POST['connecttedPaper'] : 0,
-			'subjectNote' 		=> $_POST['subjectNote'],
-			'religionId' 		=> @$_POST['religionId']
+			'subjectNote' 		=> $_POST['subjectNote']
 		)
 	);
 
@@ -56,7 +54,6 @@ if (isset($_POST['updateSubject'])) {
 		'ct_subject',
 		array(
 			'subjectName' 		=> $_POST['subjectName'],
-			'shortName' 		=> $_POST['shortName'],
       'subCode'         => $_POST['subCode'],
 			'subid' 				  => $_POST['subid'],
 			'subjectClass' 		=> $_POST['subjectClass'],
@@ -69,11 +66,10 @@ if (isset($_POST['updateSubject'])) {
 			'subMCQ' 					=> $_POST['subMCQ'],
 			'subCQ' 					=> $_POST['subCQ'],
 			'subPect' 				=> $_POST['subPect'],
-            'subCa'           => $_POST['subCa'],
+      'subCa'           => $_POST['subCa'],
 			'subCombineMark' 	=> isset($_POST['subCombineMark']) ? 1 : 0,
 			'connecttedPaper' => isset($_POST['connecttedPaper']) ? $_POST['connecttedPaper'] : 0,
-			'subjectNote' 		=> $_POST['subjectNote'],
-			'religionId' 		=> @$_POST['religionId']
+			'subjectNote' 		=> $_POST['subjectNote']
 		),
 		array( 'subjectid' => $_POST['id'])
 	);
@@ -120,7 +116,6 @@ if (isset($_POST['deleteSubject'])) {
         <thead>
           <tr>
             <th>Name</th>
-            <th>Short Name</th>
             <th>For Class</th>
             <th><?= $s3sRedux['mcqtitle'] ?></th>
             <th><?= $s3sRedux['cqtitle'] ?></th>
@@ -139,7 +134,6 @@ if (isset($_POST['deleteSubject'])) {
 					?>
           <tr>
             <td class='subjectName'><?= $subject->subjectName ?></td>
-            <td class='shortName'><?= $subject->shortName ?></td>
             <td class='className'><?= $subject->className ?></td>
             <td class='subMCQ'>
               <?= $subject->subMCQ ?>
@@ -185,8 +179,7 @@ if (isset($_POST['deleteSubject'])) {
                         data-forGroup='<?= $subject->forGroup ?>'
                         data-class='<?= $subject->subjectClass ?>'
                         data-teacherid='<?= $subject->teacherid ?>'
-                        data-optional='<?= $subject->subOptinal ?>'
-                        data-religionId='<?= $subject->religionId ?>'>
+                        data-optional='<?= $subject->subOptinal ?>'>
                   <span class="dashicons dashicons-welcome-write-blog">
                   </span>
                 </button>
@@ -249,7 +242,6 @@ if (isset($_POST['deleteSubject'])) {
 	Subject Add/Edit Modal
 =========================-->
 <div id="addModal" class="modal fade" role="dialog">
-    <p id="theSiteURL" class="hidden"><?= get_template_directory_uri() ?></p>
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
@@ -261,20 +253,16 @@ if (isset($_POST['deleteSubject'])) {
         <form action="" method="POST">
           <div class="row">
             <input class="id" type="hidden" name="id" value="">
-            <div class="form-group col-md-5">
+            <div class="form-group col-md-6">
               <label>Subject Name</label>
               <input class="form-control subjectName" type="text" name="subjectName" value="" required>
             </div>
-            <div class="form-group col-md-3">
-              <label>Short Name</label>
-              <input class="form-control shortName" type="text" name="shortName" value="" required>
-            </div>
-            <div class="form-group col-md-4">
+            <div class="form-group col-md-6">
               <label>For Class</label>
-              <select class="form-control className" id="stdClass" name="subjectClass" required>
+              <select class="form-control className" name="subjectClass" required>
                 <?php
 								
-                echo "<option value=\"\" disabled selected>Select a Class..</option>";
+								echo "<option disabled selected>Select a Class..</option>";
 								$classes = $wpdb->get_results( "SELECT * FROM ct_class" );
 								foreach ($classes as $class) {
 									?>
@@ -337,28 +325,6 @@ if (isset($_POST['deleteSubject'])) {
              
 	          </div>
 	        </div>
-	        <div class="row">
-              
-                  <div class="col-md-2">
-    	            <div class="form-group">
-    	              <label>Religion?</label><br>
-    	              <label class="labelRadio">
-                      <input class="religionck" type="checkbox" name="isReligion" value="1"> Yes
-    	              </label>
-    	            </div>
-    	          </div>
-    	          <!-- Radio Buttons -->
-    	          <div class="col-md-10">
-                    <div id="religionContainer" style="display:none">
-                      <label><input type="radio" name="religionId" value="1"> Islam</label>
-                      <label><input type="radio" name="religionId" value="2"> Hinduism</label>
-                      <label><input type="radio" name="religionId" value="3"> Buddhism</label>
-                      <label><input type="radio" name="religionId" value="4"> Christianity</label>
-                      <label><input type="radio" name="religionId" value="5"> Others</label>
-                      <label><input type="radio" name="religionId" value=""> None</label>
-                    </div>
-                </div>
-	          </div>
 
 	        <div class="row">
 	          <div class="form-group col-md-4">
@@ -440,7 +406,7 @@ if (isset($_POST['deleteSubject'])) {
               <input class="form-control subid" type="text" name="subid" value="">
             </div>
 	        </div>
-	        <div class="form-group" style="display:none">
+	        <div class="form-group">
 	          <label>Note
 	          </label>
 	          <textarea class="form-control Note" name="subjectNote"></textarea>
@@ -494,38 +460,13 @@ if (isset($_POST['deleteSubject'])) {
 
     $(".optionalCk, .sub4thCk").change(function() {
       if($('.optionalCk').is(':checked') || $('.sub4thCk').is(':checked')) {
-           var $siteUrl = $('#theSiteURL').text();
-      $classdata = { class : $('#stdClass').val(), type : 'hasGroup' };
-      $.ajax({
-          url: $siteUrl + "/inc/ajaxAction.php",
-          method: "POST",
-          data: $classdata,
-          dataType: "html"
-        }).done(function(msg) {
-          if (msg === 'true') {
-            $('.forGroup').show('slow');
-            $( "#forGroup" ).attr('required', 'required');
-          } else {
-            $('.forGroup').hide('slow');
-            $( "#forGroup" ).removeAttr('required');          }
-        });
-       
+        $('.forGroup').show('slow');
+        $( "#forGroup" ).attr('required', 'required');
       }else{
         $('.forGroup').hide('slow');
         $( "#forGroup" ).removeAttr('required');
       }
     });
-    
-   $(".religionck").change(function() {
-  if ($('.religionck:checked').length > 0) {
-    $('#religionContainer').show('slow');
-    $("input[name='religionId']").attr('required', 'required');
-  } else {
-    $('#religionContainer').hide('slow');
-    $("input[name='religionId']").removeAttr('required');
-  }
-});
-
 
     /*Delete Button*/
     $('.btnDelete').click(function(event) {
@@ -552,7 +493,6 @@ if (isset($_POST['deleteSubject'])) {
 
       /*Get All value*/
       var $subjectName = $tr.find('.subjectName').text();
-      var $shortName = $tr.find('.shortName').text();
       var $subMCQ = $tr.find('.subMCQ').text();
       var $subCQ = $tr.find('.subCQ').text();
       var $subPect = $tr.find('.subPect').text();
@@ -571,7 +511,6 @@ if (isset($_POST['deleteSubject'])) {
       var $subid = $this.data('subid');
       var $class = $this.data('class');
       var $teacherid = $this.data('teacherid');
-      var $religionId = $this.data('religionid');
 
       var $modal = $('#addModal');
 
@@ -595,12 +534,11 @@ if (isset($_POST['deleteSubject'])) {
       $modal.find('.btn-primary').attr('name', 'updateSubject');
 
       /*Reset Value*/
-      $modal.find('.id, .subjectName, .shortName, .subMCQ, .subCQ, .subPect, .Note, .subjectNote, .subCode, .subid').val('');
+      $modal.find('.id, .subjectName, .subMCQ, .subCQ, .subPect, .Note, .subjectNote, .subCode, .subid').val('');
 
       /*Set value*/
       $modal.find('.id').val($this.data('id'));
       $modal.find('.subjectName').val($subjectName);
-      $modal.find('.shortName').val($shortName);
       $modal.find('.subMCQ').val($.trim($subMCQ));
       $modal.find('.subCQ').val($subCQ);
       $modal.find('.subPect').val($subPect);
@@ -614,62 +552,27 @@ if (isset($_POST['deleteSubject'])) {
       
 
 
-    $modal.find('.groupCkBox, .allGrpCk').prop('checked', false);
-
-    if ($forGroup === 'all' || $forGroup === '0' || $forGroup === 0) {
-      $modal.find('.allGrpCk').prop('checked', true);
-      $modal.find('.groupCkBox').prop('checked', true);
-    } else {
-      var groupValues = [];
-      if ($.isNumeric($forGroup)) {
-        groupValues = [$forGroup.toString()];
-      } else if (Array.isArray($forGroup)) {
-        groupValues = $forGroup;
-      } else if (typeof $forGroup === 'string' && $forGroup.length) {
-        try {
-          var parsedGroups = JSON.parse($forGroup);
-          if (Array.isArray(parsedGroups)) {
-            groupValues = parsedGroups;
-          } else if ($.isNumeric(parsedGroups)) {
-            groupValues = [parsedGroups.toString()];
-          }
-        } catch (err) {
-          groupValues = [$forGroup];
-        }
+      if($.isNumeric($forGroup)){
+        $modal.find('.groupCkBox:checkbox[value='+$forGroup+']').attr('checked', true);
+      }else if ($forGroup == 'all') {
+        $modal.find('.allGrpCk').attr('checked', true);
       }
+      else{
+        console.log($forGroup);
+        $.each( $forGroup, function( index, value ) {
+          console.log(value);
+          $modal.find('.groupCkBox:checkbox[value='+value+']').attr('checked', true);
+        });
+      }
+      
 
-      $.each(groupValues, function(_, groupId) {
-        var normalizedId = (groupId !== undefined && groupId !== null) ? groupId.toString() : '';
-        $modal.find('.groupCkBox').filter('[value="' + normalizedId + '"]').prop('checked', true);
-      });
-    }
-
-    $modal.find('.forGroup').hide();
+      $modal.find('.forGroup').hide();
 
       $modal.find('.optionalCk').attr('checked', false);
       if ($optional == 1) {
         $modal.find('.optionalCk').attr('checked', true);
         $modal.find('.forGroup').show();
       }
-
-      if ($religionId) {
-          
-        // Check the checkbox
-        $modal.find('.religionck').prop('checked', true);
-    
-        // Show the radio container
-        $modal.find('#religionContainer').show();
-    
-        // Check the correct radio button
-        $modal.find('input[name="religionId"][value="' + $religionId + '"]').prop('checked', true);
-    } else {
-        // If no religionId, make sure checkbox is unchecked and container is hidden
-        $modal.find('.religionck').prop('checked', false);
-        $modal.find('#religionContainer').hide();
-        $modal.find('input[name="religionId"][value=""]').prop('checked', true);
-
-    }
-
 
       $modal.find('.sub4thCk').attr('checked', false);
       if ($sub4th == 1) {

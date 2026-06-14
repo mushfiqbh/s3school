@@ -403,7 +403,6 @@ get_header(); ?>
 
 														// $optionals = implode (", ",json_decode($student->infoOptionals));
 														$fourth = $student->info4thSub;
-
 														// $optionals = ($optionals == 0) ? $optionals.",".$fourth : $optionals; 
 
 														$combines = $wpdb->get_results("SELECT * FROM `ct_subject`

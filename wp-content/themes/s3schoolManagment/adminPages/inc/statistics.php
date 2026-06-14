@@ -80,7 +80,7 @@ $yer = $_GET['syear'] ??  date('Y');
 
 			  	<table class="table table-bordered">
 			  		<?php
-			  			$classes = $wpdb->get_results("SELECT classid,className,COUNT(*) AS totalstd FROM `ct_studentinfo` LEFT JOIN ct_class ON classid = infoClass WHERE `infoYear` = '$yer' GROUP BY infoClass");
+			  			$classes = $wpdb->get_results("SELECT classid,className,COUNT(*) AS totalstd FROM `ct_student` LEFT JOIN ct_class ON classid = stdCurrentClass WHERE `stdCurntYear` = '$yer' GROUP BY stdCurrentClass");
 			  		
 			  			foreach ($classes as $key => $class) {
 			  				$classid = $class->classid;
@@ -131,7 +131,7 @@ $yer = $_GET['syear'] ??  date('Y');
     var printContents = document.getElementById(divId).innerHTML;
     w = window.open();
     w.document.write(printContents);
-    w.document.write('<scr' + 'ipt type="text/javascript">' + 'window.onload = function() { window.print(); window.close(); };' + '</sc' + 'ript>');
+    w.document.write('<scr' + 'ipt type="text/javascript">' + 'window.onload = function() { window.print();  };' + '</sc' + 'ript>');
     w.document.close(); // necessary for IE >= 10
     w.focus(); // necessary for IE >= 10
     return true;

@@ -78,90 +78,6 @@ if (!function_exists('s3school_normalize_header_label')) {
 	}
 }
 
-if (!function_exists('s3school_categorize_import_fields')) {
-	function s3school_categorize_import_fields($student_columns, $additional_export_columns)
-	{
-		$categories = [
-			'personal' => [
-				'label' => __('Personal Information', 's3schoolManagment'),
-				'fields' => []
-			],
-			'academic' => [
-				'label' => __('Academic Information', 's3schoolManagment'),
-				'fields' => []
-			],
-			'contact' => [
-				'label' => __('Contact Information', 's3schoolManagment'),
-				'fields' => []
-			],
-			'system' => [
-				'label' => __('System Information', 's3schoolManagment'),
-				'fields' => []
-			],
-			'other' => [
-				'label' => __('Other Fields', 's3schoolManagment'),
-				'fields' => []
-			]
-		];
-
-		// Keywords for categorization
-		$personal_keywords = ['name', 'email', 'phone', 'address', 'dob', 'birth', 'gender', 'age'];
-		$academic_keywords = ['class', 'section', 'year', 'group', 'roll', 'subject', 'grade', 'marks'];
-		$contact_keywords = ['parent', 'guardian', 'contact'];
-		$system_keywords = ['id', 'user', 'institute', 'eiin', 'created', 'updated', 'status'];
-
-		$all_fields = array_merge($student_columns, $additional_export_columns);
-
-		foreach ($all_fields as $field) {
-			$field_lower = strtolower($field);
-			if (in_array($field, $additional_export_columns)) {
-				// Additional fields are mostly academic
-				$categories['academic']['fields'][] = $field;
-			} elseif (preg_match('/(' . implode('|', $personal_keywords) . ')/', $field_lower)) {
-				$categories['personal']['fields'][] = $field;
-			} elseif (preg_match('/(' . implode('|', $academic_keywords) . ')/', $field_lower)) {
-				$categories['academic']['fields'][] = $field;
-			} elseif (preg_match('/(' . implode('|', $contact_keywords) . ')/', $field_lower)) {
-				$categories['contact']['fields'][] = $field;
-			} elseif (preg_match('/(' . implode('|', $system_keywords) . ')/', $field_lower)) {
-				$categories['system']['fields'][] = $field;
-			} else {
-				$categories['other']['fields'][] = $field;
-			}
-		}
-
-		// Remove empty categories
-		foreach ($categories as $key => $category) {
-			if (empty($category['fields'])) {
-				unset($categories[$key]);
-			}
-		}
-
-		return $categories;
-	}
-}
-
-if (!function_exists('s3school_safe_array_combine')) {
-	function s3school_safe_array_combine($keys, $values)
-	{
-		$keys_count = count($keys);
-		$values_count = count($values);
-
-		if ($keys_count === $values_count) {
-			return array_combine($keys, $values);
-		}
-
-		// Pad the shorter array with empty strings
-		if ($keys_count > $values_count) {
-			$values = array_pad($values, $keys_count, '');
-		} else {
-			$keys = array_pad($keys, $values_count, 'Extra Column');
-		}
-
-		return array_combine($keys, $values);
-	}
-}
-
 if (!function_exists('s3school_normalize_export_reports')) {
 	function s3school_normalize_export_reports($reports, $allowed_columns)
 	{
@@ -339,79 +255,6 @@ if (!function_exists('s3school_update_custom_option_value')) {
 	}
 }
 
-if (!function_exists('s3school_resolve_student_image_path')) {
-	function s3school_resolve_student_image_path($raw_url)
-	{
-		$raw_url = trim((string) $raw_url);
-		if ($raw_url === '') {
-			return '';
-		}
-
-		$raw_url = str_replace('\\', '/', $raw_url);
-		$raw_url = strtok($raw_url, '?');
-		$raw_url = rtrim($raw_url, '/');
-
-		$map = [];
-		$upload_dir = wp_get_upload_dir();
-		if (!empty($upload_dir['baseurl']) && !empty($upload_dir['basedir'])) {
-			$base_url = untrailingslashit($upload_dir['baseurl']);
-			$base_dir = untrailingslashit($upload_dir['basedir']);
-			$map[$base_url] = $base_dir;
-			$http_variant = untrailingslashit(set_url_scheme($upload_dir['baseurl'], 'http'));
-			$https_variant = untrailingslashit(set_url_scheme($upload_dir['baseurl'], 'https'));
-			if ($http_variant !== $base_url) {
-				$map[$http_variant] = $base_dir;
-			}
-			if ($https_variant !== $base_url && $https_variant !== $http_variant) {
-				$map[$https_variant] = $base_dir;
-			}
-		}
-
-		$site_variants = array_filter(array_unique([
-			untrailingslashit(home_url('/')),
-			untrailingslashit(set_url_scheme(home_url('/'), 'http')),
-			untrailingslashit(set_url_scheme(home_url('/'), 'https')),
-			untrailingslashit(site_url('/')),
-			untrailingslashit(set_url_scheme(site_url('/'), 'http')),
-			untrailingslashit(set_url_scheme(site_url('/'), 'https')),
-		]));
-		foreach ($site_variants as $variant) {
-			if ($variant !== '') {
-				$map[$variant] = untrailingslashit(ABSPATH);
-			}
-		}
-
-		$candidates = [];
-		foreach ($map as $base_url => $base_dir) {
-			if (strpos($raw_url, $base_url) === 0) {
-				$relative = ltrim(substr($raw_url, strlen($base_url)), '/');
-				$path = $base_dir . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relative);
-				$candidates[] = $path;
-				if (file_exists($path)) {
-					return $path;
-				}
-			}
-		}
-
-		if (file_exists($raw_url)) {
-			return $raw_url;
-		}
-
-		$relative_path = ABSPATH . str_replace('/', DIRECTORY_SEPARATOR, ltrim($raw_url, '/'));
-		if (file_exists($relative_path)) {
-			return $relative_path;
-		}
-
-		foreach ($candidates as $candidate) {
-			if (file_exists($candidate)) {
-				return $candidate;
-			}
-		}
-
-		return '';
-	}
-}
-
 global $wpdb, $s3sRedux;
 
 $primary_table  = $wpdb->prefix . 'ct_student';
@@ -431,12 +274,11 @@ $studentinfo_table = str_replace('ct_student', 'ct_studentinfo', $students_table
 $class_table = str_replace('ct_student', 'ct_class', $students_table);
 $section_table = str_replace('ct_student', 'ct_section', $students_table);
 $group_table = str_replace('ct_student', 'ct_group', $students_table);
-$subject_table = str_replace('ct_student', 'ct_subject', $students_table);
 
 $student_columns = $wpdb->get_col('SHOW COLUMNS FROM ' . $students_table, 0);
 
 // Columns that must never appear in exports or report configuration
-$excluded_export_columns = ['stdImg', 'stdStatus', 'createdBy', 'stdCreatedAt', 'stdUpdatedAt', 'studentid'];
+$excluded_export_columns = ['stdImg', 'stdStatus', 'createdBy', 'stdCreatedAt', 'stdUpdatedAt'];
 $student_columns = array_values(array_diff($student_columns, $excluded_export_columns));
 
 // Pseudo/system columns that should be available for exports
@@ -460,9 +302,6 @@ $preserve_original_label_columns = apply_filters(
 
 $all_export_columns = array_merge($system_export_columns, $student_columns, $additional_export_columns);
 $pseudo_export_columns = $system_export_columns;
-
-// Categorize fields for better UX in import mapping
-$import_field_categories = s3school_categorize_import_fields($student_columns, $additional_export_columns);
 
 if (empty($student_columns)) {
 	wp_die(esc_html__('Unable to determine student table columns.', 's3schoolManagment'));
@@ -558,7 +397,7 @@ $group_table_safe = '`' . str_replace('`', '``', $group_table) . '`';
 $class_options = $wpdb->get_results("SELECT classid, className FROM {$class_table_safe} ORDER BY className ASC", ARRAY_A);
 $section_options = $wpdb->get_results("SELECT sectionid, sectionName, forClass FROM {$section_table_safe} ORDER BY sectionName ASC", ARRAY_A);
 $group_options = $wpdb->get_results("SELECT groupId, groupName FROM {$group_table_safe} ORDER BY groupName ASC", ARRAY_A);
-$year_options = $wpdb->get_col("SELECT DISTINCT infoYear FROM {$studentinfo_table_safe} WHERE infoYear IS NOT NULL AND infoYear <> '' ORDER BY infoYear DESC");
+$year_options = $wpdb->get_col("SELECT DISTINCT infoYear FROM {$studentinfo_table_safe} WHERE infoYear IS NOT NULL AND infoYear <> '' ORDER BY infoYear ASC");
 
 $class_lookup = [];
 if (!empty($class_options)) {
@@ -863,39 +702,6 @@ if (!function_exists('s3school_handle_unused_columns_ajax')) {
 	add_action('wp_ajax_s3school_unused_columns', 's3school_handle_unused_columns_ajax');
 }
 
-if (!function_exists('s3school_handle_get_sections_ajax')) {
-	function s3school_handle_get_sections_ajax()
-	{
-		if (!current_user_can('manage_options')) {
-			wp_send_json_error(['message' => esc_html__('Unauthorized request.', 's3schoolManagment')], 403);
-		}
-
-		$nonce = isset($_POST['nonce']) ? sanitize_text_field(wp_unslash($_POST['nonce'])) : '';
-		if (!wp_verify_nonce($nonce, 's3school_get_sections')) {
-			wp_send_json_error(['message' => esc_html__('Invalid request token.', 's3schoolManagment')], 400);
-		}
-
-		$class_id = isset($_POST['class']) ? intval($_POST['class']) : 0;
-		if (!$class_id) {
-			wp_send_json_error(['message' => esc_html__('Invalid class ID.', 's3schoolManagment')], 400);
-		}
-
-		global $wpdb;
-		$sections = $wpdb->get_results($wpdb->prepare(
-			"SELECT sectionid, sectionName FROM ct_section WHERE forClass = %d ORDER BY sectionName",
-			$class_id
-		));
-
-		if ($sections === false) {
-			wp_send_json_error(['message' => esc_html__('Database error.', 's3schoolManagment')], 500);
-		}
-
-		wp_send_json_success($sections);
-	}
-
-	add_action('wp_ajax_s3school_get_sections', 's3school_handle_get_sections_ajax');
-}
-
 $import_stage   = 'upload';
 $import_result  = null;
 $mapping_token  = '';
@@ -1030,32 +836,27 @@ if (isset($_POST['s3school_import_stage']) && isset($_POST['s3school_import_nonc
 						$default_info_input = wp_unslash($_POST['s3school_default_info']);
 					}
 
-					$default_class = isset($default_info_input['className']) ? sanitize_text_field($default_info_input['className']) : '';
-					$default_class = trim($default_class);
+					$default_class = isset($default_info_input['className']) ? absint($default_info_input['className']) : 0;
+					if ($default_class && !isset($class_lookup[$default_class])) {
+						$default_class = 0;
+					}
 
-					$default_section = isset($default_info_input['sectionName']) ? sanitize_text_field($default_info_input['sectionName']) : '';
-					$default_section = trim($default_section);
+					$default_section = isset($default_info_input['sectionName']) ? absint($default_info_input['sectionName']) : 0;
+					if ($default_section && !isset($section_lookup[$default_section])) {
+						$default_section = 0;
+					}
 
-					$default_group = isset($default_info_input['groupName']) ? sanitize_text_field($default_info_input['groupName']) : '';
-					$default_group = trim($default_group);
+					$default_group = isset($default_info_input['groupName']) ? absint($default_info_input['groupName']) : 0;
+					if ($default_group && !isset($group_lookup[$default_group])) {
+						$default_group = 0;
+					}
 
 					$default_year = isset($default_info_input['year']) ? sanitize_text_field($default_info_input['year']) : '';
 					$default_year = trim($default_year);
 
-					// Resolve defaults (inputs are free-form text in UI; accept either numeric IDs or names)
-					$default_class_id = 0;
-					if ($default_class !== '') {
-						if (is_numeric($default_class)) {
-							$default_class_id = absint($default_class);
-						} else {
-							$resolved = $wpdb->get_var($wpdb->prepare(
-								"SELECT classid FROM `" . str_replace('`', '``', $class_table) . "` WHERE className = %s LIMIT 1",
-								$default_class
-							));
-							$default_class_id = $resolved ? (int) $resolved : 0;
-						}
-					}
-					$apply_default_group   = !isset($valid_info_map['groupName']) && $default_group !== '';
+					$apply_default_class   = !isset($valid_info_map['className']) && $default_class;
+					$apply_default_section = !isset($valid_info_map['sectionName']) && $default_section;
+					$apply_default_group   = !isset($valid_info_map['groupName']) && $default_group;
 					$apply_default_year    = !isset($valid_info_map['year']) && $default_year !== '';
 
 					$header_index = [];
@@ -1079,7 +880,6 @@ if (isset($_POST['s3school_import_stage']) && isset($_POST['s3school_import_nonc
 					};
 					$inserted     = 0;
 					$skipped      = 0;
-					$skipped_rows = [];
 
 					$handle = fopen($stored_data['path'], 'r');
 					if ($handle === false) {
@@ -1107,74 +907,8 @@ if (isset($_POST['s3school_import_stage']) && isset($_POST['s3school_import_nonc
 								$row_data[$column_name] = $trimmed === '' ? null : $trimmed;
 							}
 
-							// Map gender values to numeric
-							if (isset($row_data['stdGender']) && $row_data['stdGender'] !== null) {
-								$gender_value = strtolower(trim($row_data['stdGender']));
-								$gender_map = [
-									'female' => 0,
-									'girl' => 0,
-									'male' => 1,
-									'boy' => 1,
-									'other' => 2,
-								];
-								if (isset($gender_map[$gender_value])) {
-									$row_data['stdGender'] = $gender_map[$gender_value];
-								} else {
-									// If not matched, set to other
-									$row_data['stdGender'] = 2;
-								}
-							}
-
-							// Map class, group, section names to IDs
-							if (isset($row_data['stdAdmitClass']) && $row_data['stdAdmitClass'] !== null && !is_numeric($row_data['stdAdmitClass'])) {
-								$class_id = $wpdb->get_var($wpdb->prepare(
-									"SELECT classid FROM `" . str_replace('`', '``', $class_table) . "` WHERE className = %s LIMIT 1",
-									$row_data['stdAdmitClass']
-								));
-								if ($class_id) {
-									$row_data['stdAdmitClass'] = $class_id;
-								} else {
-									$row_data['stdAdmitClass'] = 0;
-								}
-							}
-
-							if (isset($row_data['stdGroup']) && $row_data['stdGroup'] !== null && !is_numeric($row_data['stdGroup'])) {
-								$group_id = $wpdb->get_var($wpdb->prepare(
-									"SELECT groupId FROM `" . str_replace('`', '``', $group_table) . "` WHERE groupName = %s LIMIT 1",
-									$row_data['stdGroup']
-								));
-								if ($group_id) {
-									$row_data['stdGroup'] = $group_id;
-								} else {
-									$row_data['stdGroup'] = 0;
-								}
-							}
-
-							if (isset($row_data['stdSection']) && $row_data['stdSection'] !== null && !is_numeric($row_data['stdSection'])) {
-								$section_id = $wpdb->get_var($wpdb->prepare(
-									"SELECT sectionid FROM `" . str_replace('`', '``', $section_table) . "` WHERE sectionName = %s LIMIT 1",
-									$row_data['stdSection']
-								));
-								if ($section_id) {
-									$row_data['stdSection'] = $section_id;
-								} else {
-									$row_data['stdSection'] = 0;
-								}
-							}
-
 							// Process studentinfo columns
 							$info_data = [];
-
-							// Sync stdCurrentClass with infoClass
-							if (isset($row_data['stdCurrentClass']) && $row_data['stdCurrentClass'] !== null && $row_data['stdCurrentClass'] !== '') {
-								$info_data['infoClass'] = $row_data['stdCurrentClass'];
-							}
-
-							// Sync stdCurntYear with infoYear
-							if (isset($row_data['stdCurntYear']) && $row_data['stdCurntYear'] !== null && $row_data['stdCurntYear'] !== '') {
-								$info_data['infoYear'] = $row_data['stdCurntYear'];
-							}
-
 							foreach ($valid_info_map as $column_name => $header_label) {
 								$column_position = $resolve_header_position($header_label);
 								if ($column_position === null) {
@@ -1193,14 +927,18 @@ if (isset($_POST['s3school_import_stage']) && isset($_POST['s3school_import_nonc
 									));
 									if ($class_id) {
 										$info_data['infoClass'] = $class_id;
-										$row_data['stdCurrentClass'] = $class_id;
 									}
 								} elseif ($column_name === 'sectionName') {
-									// Store section name temporarily, will resolve after we know the class
-									$info_data['_temp_sectionName'] = $trimmed;
+									// Look up section ID by name
+									$section_id = $wpdb->get_var($wpdb->prepare(
+										"SELECT sectionid FROM `" . str_replace('`', '``', $section_table) . "` WHERE sectionName = %s LIMIT 1",
+										$trimmed
+									));
+									if ($section_id) {
+										$info_data['infoSection'] = $section_id;
+									}
 								} elseif ($column_name === 'year') {
 									$info_data['infoYear'] = $trimmed;
-									$row_data['stdCurntYear'] = $trimmed;
 								} elseif ($column_name === 'groupName') {
 									// Look up group ID by name
 									$group_id = $wpdb->get_var($wpdb->prepare(
@@ -1219,87 +957,28 @@ if (isset($_POST['s3school_import_stage']) && isset($_POST['s3school_import_nonc
 								}
 							}
 
-						// Resolve/fallback class for this row.
-						// Requirement: if class column is skipped OR row has empty class, fall back to default
-						// for stdAdmitClass, stdCurrentClass and infoClass. Section resolution should use the resolved class.
-						if (isset($info_data['infoClass']) && $info_data['infoClass'] !== null && $info_data['infoClass'] !== '' && !is_numeric($info_data['infoClass'])) {
-							$resolved = $wpdb->get_var($wpdb->prepare(
-								"SELECT classid FROM `" . str_replace('`', '``', $class_table) . "` WHERE className = %s LIMIT 1",
-								(string) $info_data['infoClass']
-							));
-							$info_data['infoClass'] = $resolved ? (int) $resolved : 0;
-						}
-						if (isset($row_data['stdCurrentClass']) && $row_data['stdCurrentClass'] !== null && $row_data['stdCurrentClass'] !== '' && !is_numeric($row_data['stdCurrentClass'])) {
-							$resolved = $wpdb->get_var($wpdb->prepare(
-								"SELECT classid FROM `" . str_replace('`', '``', $class_table) . "` WHERE className = %s LIMIT 1",
-								(string) $row_data['stdCurrentClass']
-							));
-							$row_data['stdCurrentClass'] = $resolved ? (int) $resolved : 0;
-						}
-
-						$resolved_class_id = 0;
-						if (isset($info_data['infoClass']) && is_numeric($info_data['infoClass']) && (int) $info_data['infoClass'] > 0) {
-							$resolved_class_id = (int) $info_data['infoClass'];
-						} elseif (isset($row_data['stdCurrentClass']) && is_numeric($row_data['stdCurrentClass']) && (int) $row_data['stdCurrentClass'] > 0) {
-							$resolved_class_id = (int) $row_data['stdCurrentClass'];
-						} elseif (isset($row_data['stdAdmitClass']) && is_numeric($row_data['stdAdmitClass']) && (int) $row_data['stdAdmitClass'] > 0) {
-							$resolved_class_id = (int) $row_data['stdAdmitClass'];
-						} elseif ($default_class_id > 0) {
-							$resolved_class_id = (int) $default_class_id;
-						}
-
-						if ($resolved_class_id > 0) {
-							if (!isset($info_data['infoClass']) || !is_numeric($info_data['infoClass']) || (int) $info_data['infoClass'] <= 0) {
-								$info_data['infoClass'] = $resolved_class_id;
+							if ($apply_default_class) {
+								$info_data['infoClass'] = $default_class;
 							}
-							if (!isset($row_data['stdCurrentClass']) || $row_data['stdCurrentClass'] === null || $row_data['stdCurrentClass'] === '' || (is_numeric($row_data['stdCurrentClass']) && (int) $row_data['stdCurrentClass'] <= 0)) {
-								$row_data['stdCurrentClass'] = $resolved_class_id;
+
+							if ($apply_default_section) {
+								$info_data['infoSection'] = $default_section;
 							}
-							if (!isset($row_data['stdAdmitClass']) || $row_data['stdAdmitClass'] === null || $row_data['stdAdmitClass'] === '' || (is_numeric($row_data['stdAdmitClass']) && (int) $row_data['stdAdmitClass'] <= 0)) {
-								$row_data['stdAdmitClass'] = $resolved_class_id;
+
+							if ($apply_default_group) {
+								$info_data['infoGroup'] = $default_group;
 							}
-						}
 
-						if ($apply_default_group) {
-							$info_data['infoGroup'] = $default_group;
-						}
-
-						if ($apply_default_year) {
-							$info_data['infoYear'] = $default_year;
-							$row_data['stdCurntYear'] = $default_year;
-						}
-
-						// Resolve section to section ID based on the resolved class.
-						$resolved_section_name = '';
-						if (isset($info_data['_temp_sectionName']) && is_string($info_data['_temp_sectionName'])) {
-							$resolved_section_name = trim($info_data['_temp_sectionName']);
-						}
-						if ($resolved_section_name === '' && is_string($default_section) && trim($default_section) !== '') {
-							$resolved_section_name = trim($default_section);
-						}
-						if ($resolved_section_name !== '' && (!isset($info_data['infoSection']) || $info_data['infoSection'] === null || $info_data['infoSection'] === '' || (is_numeric($info_data['infoSection']) && (int) $info_data['infoSection'] <= 0))) {
-							if (is_numeric($resolved_section_name)) {
-								$info_data['infoSection'] = absint($resolved_section_name);
-							} elseif ($resolved_class_id > 0) {
-								$section_id = $wpdb->get_var($wpdb->prepare(
-									"SELECT sectionid FROM `" . str_replace('`', '``', $section_table) . "` WHERE sectionName = %s AND forClass = %d LIMIT 1",
-									$resolved_section_name,
-									$resolved_class_id
-								));
-								if ($section_id) {
-									$info_data['infoSection'] = (int) $section_id;
-								}
+							if ($apply_default_year) {
+								$info_data['infoYear'] = $default_year;
 							}
-						}
 
-						// Remove temporary field
-						unset($info_data['_temp_sectionName']);
+							if (empty($row_data) && empty($info_data)) {
+								++$skipped;
+								continue;
+							}
 
-						if (empty($row_data) && empty($info_data)) {
-							++$skipped;
-							$skipped_rows[] = s3school_safe_array_combine($stored_data['columns'], $data_row);
-							continue;
-						}							// Always insert a new student, never use or check studentid
+							// Always insert a new student, never use or check studentid
 							if (isset($row_data['studentid'])) {
 								unset($row_data['studentid']);
 							}
@@ -1325,11 +1004,10 @@ if (isset($_POST['s3school_import_stage']) && isset($_POST['s3school_import_nonc
 								'stdPermanent' => '',
 								'stdPresent' => '',
 								'stdBrith' => '0000-00-00',
-								'stdNationality' => 'Bangladeshi',
+								'stdNationality' => '',
 								'stdReligion' => '',
 								'stdAdmitClass' => 0,
 								'stdAdmitYear' => '',
-								'stdCurntYear' => '',
 								'stdTcNumber' => '',
 								'sscRoll' => '',
 								'sscReg' => '',
@@ -1358,72 +1036,11 @@ if (isset($_POST['s3school_import_stage']) && isset($_POST['s3school_import_nonc
 							} else {
 								error_log('Student insert failed: ' . $wpdb->last_error);
 								++$skipped;
-								$skipped_rows[] = s3school_safe_array_combine($stored_data['columns'], $data_row);
 								continue;
 							}
 
 							// Insert student info if we have any
 							if (!empty($info_data)) {
-								// Map subject codes to subject IDs for infoOptionals and info4thSub
-								$info_class = isset($info_data['infoClass']) ? (int) $info_data['infoClass'] : 0;
-								$subject_fields = ['infoOptionals', 'info4thSub'];
-								$parse_subject_tokens = static function ($raw) {
-									if ($raw === null) {
-										return [];
-									}
-									$raw = trim((string) $raw);
-									if ($raw === '') {
-										return [];
-									}
-
-									// If already a JSON array, prefer that.
-									$decoded = json_decode($raw, true);
-									if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-										$decoded = array_values(array_filter(array_map('strval', $decoded), static function ($v) {
-											return trim($v) !== '';
-										}));
-										return $decoded;
-									}
-
-									// Otherwise accept comma and/or whitespace separated tokens.
-									$tokens = preg_split('/[\s,]+/', $raw, -1, PREG_SPLIT_NO_EMPTY);
-									return is_array($tokens) ? $tokens : [];
-								};
-
-								foreach ($subject_fields as $field) {
-									if (isset($info_data[$field]) && !empty($info_data[$field])) {
-										$codes = $parse_subject_tokens($info_data[$field]);
-										$subject_ids = [];
-										foreach ($codes as $code) {
-											$code = trim((string) $code);
-											$code = trim($code, "\"'[](){} ");
-											if ($code === '') {
-												continue;
-											}
-
-											$flag_column = ($field === 'infoOptionals') ? 'subOptinal' : 'sub4th';
-											if (is_numeric($code)) {
-												$sub_id = $wpdb->get_var($wpdb->prepare(
-													"SELECT subjectid FROM `" . str_replace('`', '``', $subject_table) . "` WHERE subjectid = %d AND subjectClass = %d AND {$flag_column} = 1 LIMIT 1",
-													absint($code),
-													$info_class
-												));
-											} else {
-												$sub_id = $wpdb->get_var($wpdb->prepare(
-													"SELECT subjectid FROM `" . str_replace('`', '``', $subject_table) . "` WHERE subCode = %s AND subjectClass = %d AND {$flag_column} = 1 LIMIT 1",
-													$code,
-													$info_class
-												));
-											}
-											if ($sub_id) {
-												$subject_ids[] = (string) $sub_id;
-											}
-										}
-										$subject_ids = array_values(array_unique($subject_ids));
-										$info_data[$field] = wp_json_encode($subject_ids);
-									}
-								}
-
 								$info_data['infoStdid'] = $new_student_id;
 								$info_insert = $wpdb->insert($studentinfo_table, $info_data);
 								if ($info_insert === false) {
@@ -1436,28 +1053,13 @@ if (isset($_POST['s3school_import_stage']) && isset($_POST['s3school_import_nonc
 
 						fclose($handle);
 
-						$message = sprintf(
-							esc_html__('Import completed. Inserted: %1$d, Skipped: %2$d.', 's3schoolManagment'),
-							$inserted,
-							$skipped
-						);
-
-						$download_url = '';
-						// Store skipped rows for export if any
-						if (!empty($skipped_rows)) {
-							$skipped_token = wp_generate_password(32, false);
-							set_transient('s3school_skipped_rows_' . $skipped_token, $skipped_rows, 3600); // 1 hour
-							$download_url = add_query_arg([
-								's3school_export_skipped' => '1',
-								's3school_skipped_token' => $skipped_token,
-								's3school_export_nonce' => wp_create_nonce('s3school_export_skipped')
-							], home_url('/import-export'));
-						}
-
 						$import_result = [
 							'type' => 'success',
-							'message' => $message,
-							'download_url' => $download_url,
+							'message' => sprintf(
+								esc_html__('Import completed. Inserted: %1$d, Skipped: %2$d.', 's3schoolManagment'),
+								$inserted,
+								$skipped
+							),
 						];
 						$cleanup_token = true;
 					}
@@ -1484,49 +1086,6 @@ if (isset($_POST['s3school_import_stage']) && isset($_POST['s3school_import_nonc
 			}
 		}
 	}
-}
-
-// Export skipped rows handler
-if (isset($_GET['s3school_export_skipped']) && isset($_GET['s3school_skipped_token']) && isset($_GET['s3school_export_nonce'])) {
-	if (!check_admin_referer('s3school_export_skipped', 's3school_export_nonce')) {
-		wp_die(esc_html__('Invalid export request.', 's3schoolManagment'));
-	}
-
-	$skipped_token = sanitize_text_field($_GET['s3school_skipped_token']);
-	$skipped_rows = get_transient('s3school_skipped_rows_' . $skipped_token);
-
-	if (empty($skipped_rows) || !is_array($skipped_rows)) {
-		wp_die(esc_html__('Skipped rows data not found or expired. Please try importing again.', 's3schoolManagment'));
-	}
-
-	// Clean up transient after retrieval
-	delete_transient('s3school_skipped_rows_' . $skipped_token);
-
-	// Prepare CSV export
-	$filename = 'skipped-students-' . gmdate('Y-m-d-His') . '.csv';
-	
-	header('Content-Type: text/csv; charset=utf-8');
-	header('Content-Disposition: attachment; filename="' . $filename . '"');
-	header('Pragma: no-cache');
-	header('Expires: 0');
-
-	$output = fopen('php://output', 'w');
-	
-	// Add BOM for UTF-8
-	fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
-
-	// Write headers (use keys from first row)
-	if (!empty($skipped_rows[0])) {
-		fputcsv($output, array_keys($skipped_rows[0]));
-	}
-
-	// Write data rows
-	foreach ($skipped_rows as $row) {
-		fputcsv($output, array_values($row));
-	}
-
-	fclose($output);
-	exit;
 }
 
 // Export handler triggers before any HTML output.
@@ -1737,14 +1296,20 @@ if (isset($_POST['s3school_default_info']) && is_array($_POST['s3school_default_
 	$default_info_submission = wp_unslash($_POST['s3school_default_info']);
 }
 
-$default_selected_class = isset($default_info_submission['className']) ? sanitize_text_field($default_info_submission['className']) : '';
-$default_selected_class = trim($default_selected_class);
+$default_selected_class = isset($default_info_submission['className']) ? absint($default_info_submission['className']) : 0;
+if ($default_selected_class && !isset($class_lookup[$default_selected_class])) {
+	$default_selected_class = 0;
+}
 
-$default_selected_section = isset($default_info_submission['sectionName']) ? sanitize_text_field($default_info_submission['sectionName']) : '';
-$default_selected_section = trim($default_selected_section);
+$default_selected_section = isset($default_info_submission['sectionName']) ? absint($default_info_submission['sectionName']) : 0;
+if ($default_selected_section && !isset($section_lookup[$default_selected_section])) {
+	$default_selected_section = 0;
+}
 
-$default_selected_group = isset($default_info_submission['groupName']) ? sanitize_text_field($default_info_submission['groupName']) : '';
-$default_selected_group = trim($default_selected_group);
+$default_selected_group = isset($default_info_submission['groupName']) ? absint($default_info_submission['groupName']) : 0;
+if ($default_selected_group && !isset($group_lookup[$default_selected_group])) {
+	$default_selected_group = 0;
+}
 
 $default_selected_year = isset($default_info_submission['year']) ? sanitize_text_field($default_info_submission['year']) : '';
 $default_selected_year = trim($default_selected_year);
@@ -2168,31 +1733,13 @@ get_header();
 		box-shadow: none;
 		opacity: .65;
 	}
-
-	.s3school-map-field-highlighted {
-		background: #fef3c7;
-		border-radius: 6px;
-		padding: 0.5rem;
-	}
-
-	.s3school-map-field-highlighted strong {
-		color: #92400e;
-		font-weight: 700;
-	}
 </style>
 
 <div class="s3school-panel">
 	<?php if ($import_result) : ?>
-		<div class="notice notice-<?php echo esc_attr($import_result['type']); ?>" style="color: green;">
-			<p><?php echo wp_kses_post($import_result['message']); ?></p>	
+		<div class="notice notice-<?php echo esc_attr($import_result['type']); ?>">
+			<p><?php echo esc_html($import_result['message']); ?></p>
 		</div>
-		<?php if (!empty($import_result['download_url'])) : ?>
-			<script>
-				setTimeout(function() {
-					window.location.href = "<?php echo esc_url_raw($import_result['download_url']); ?>";
-				}, 1500);
-			</script>
-		<?php endif; ?>
 	<?php endif; ?>
 
 	<div class="s3school-flex">
@@ -2205,25 +1752,33 @@ get_header();
 					<input type="hidden" name="s3school_import_stage" value="process_import" />
 					<input type="hidden" name="s3school_import_token" value="<?php echo esc_attr($mapping_token); ?>" />
 					<div class="s3school-map-grid">
-						<?php foreach ($import_field_categories as $category_key => $category) : ?>
-							<span class="s3school-map-heading"><?php echo esc_html($category['label']); ?></span>
-							<?php foreach ($category['fields'] as $column_name) : ?>
-								<?php
-								$highlighted_fields = ['stdCurrentClass', 'className', 'sectionName', 'year', 'groupName', 'roll', 'stdName', 'stdGender', 'stdPhone', 'stdFather', 'stdReligion'];
-								$is_highlighted = in_array($column_name, $highlighted_fields, true);
-								?>
-								<div class="s3school-map-field<?php echo $is_highlighted ? ' s3school-map-field-highlighted' : ''; ?>">
-									<strong><?php echo esc_html($column_name); ?></strong>
-									<?php $normalized_column_name = s3school_normalize_header_label($column_name); ?>
-									<select name="s3school_column_map[<?php echo esc_attr($column_name); ?>]">
-										<option value="__skip"><?php esc_html_e('Skip', 's3schoolManagment'); ?></option>
-										<?php foreach ($mapping_header as $header_label) : ?>
-											<?php $auto_match = $normalized_column_name !== '' && $normalized_column_name === s3school_normalize_header_label($header_label); ?>
-											<option value="<?php echo esc_attr($header_label); ?>" <?php selected($auto_match); ?>><?php echo esc_html($header_label); ?></option>
-										<?php endforeach; ?>
-									</select>
-								</div>
-							<?php endforeach; ?>
+						<span class="s3school-map-heading"><?php esc_html_e('Student Table Columns', 's3schoolManagment'); ?></span>
+						<?php foreach ($student_columns as $column_name) : ?>
+							<div class="s3school-map-field">
+								<strong><?php echo esc_html($column_name); ?></strong>
+								<?php $normalized_column_name = s3school_normalize_header_label($column_name); ?>
+								<select name="s3school_column_map[<?php echo esc_attr($column_name); ?>]">
+									<option value="__skip"><?php esc_html_e('Skip', 's3schoolManagment'); ?></option>
+									<?php foreach ($mapping_header as $header_label) : ?>
+										<?php $auto_match = $normalized_column_name !== '' && $normalized_column_name === s3school_normalize_header_label($header_label); ?>
+										<option value="<?php echo esc_attr($header_label); ?>" <?php selected($auto_match); ?>><?php echo esc_html($header_label); ?></option>
+									<?php endforeach; ?>
+								</select>
+							</div>
+						<?php endforeach; ?>
+						<span class="s3school-map-heading"><?php esc_html_e('Student Info & Related Columns', 's3schoolManagment'); ?></span>
+						<?php foreach ($additional_export_columns as $column_name) : ?>
+							<div class="s3school-map-field">
+								<strong><?php echo esc_html($column_name); ?></strong>
+								<?php $normalized_column_name = s3school_normalize_header_label($column_name); ?>
+								<select name="s3school_column_map[<?php echo esc_attr($column_name); ?>]">
+									<option value="__skip"><?php esc_html_e('Skip', 's3schoolManagment'); ?></option>
+									<?php foreach ($mapping_header as $header_label) : ?>
+										<?php $auto_match = $normalized_column_name !== '' && $normalized_column_name === s3school_normalize_header_label($header_label); ?>
+										<option value="<?php echo esc_attr($header_label); ?>" <?php selected($auto_match); ?>><?php echo esc_html($header_label); ?></option>
+									<?php endforeach; ?>
+								</select>
+							</div>
 						<?php endforeach; ?>
 					</div>
 
@@ -2232,15 +1787,42 @@ get_header();
 						<div class="s3school-defaults-grid">
 							<label class="s3school-defaults-field">
 								<span><?php esc_html_e('Default Class', 's3schoolManagment'); ?></span>
-								<input type="text" name="s3school_default_info[className]" value="<?php echo esc_attr($default_selected_class); ?>" placeholder="<?php esc_attr_e('Enter default class name', 's3schoolManagment'); ?>" />
+								<select name="s3school_default_info[className]" id="s3school_default_class">
+									<option value=""><?php esc_html_e('No default', 's3schoolManagment'); ?></option>
+									<?php if (!empty($class_options)) : ?>
+										<?php foreach ($class_options as $class_option) : ?>
+											<?php $class_id = (int) $class_option['classid']; ?>
+											<option value="<?php echo esc_attr($class_id); ?>" <?php selected($default_selected_class, $class_id); ?>><?php echo esc_html($class_option['className']); ?></option>
+										<?php endforeach; ?>
+									<?php endif; ?>
+								</select>
 							</label>
 							<label class="s3school-defaults-field">
 								<span><?php esc_html_e('Default Section', 's3schoolManagment'); ?></span>
-								<input type="text" name="s3school_default_info[sectionName]" value="<?php echo esc_attr($default_selected_section); ?>" placeholder="<?php esc_attr_e('Enter default section name', 's3schoolManagment'); ?>" />
+								<select name="s3school_default_info[sectionName]" id="s3school_default_section" <?php disabled(!$default_selected_class); ?>>
+									<option value=""><?php esc_html_e('No default', 's3schoolManagment'); ?></option>
+									<?php if (!empty($section_options)) : ?>
+										<?php foreach ($section_options as $section_option) : ?>
+											<?php
+											$section_id    = (int) $section_option['sectionid'];
+											$section_class = isset($section_option['forClass']) ? (int) $section_option['forClass'] : 0;
+											?>
+											<option value="<?php echo esc_attr($section_id); ?>" data-class="<?php echo esc_attr($section_class); ?>" <?php selected($default_selected_section, $section_id); ?>><?php echo esc_html($section_option['sectionName']); ?></option>
+										<?php endforeach; ?>
+									<?php endif; ?>
+								</select>
 							</label>
 							<label class="s3school-defaults-field">
 								<span><?php esc_html_e('Default Group', 's3schoolManagment'); ?></span>
-								<input type="text" name="s3school_default_info[groupName]" value="<?php echo esc_attr($default_selected_group); ?>" placeholder="<?php esc_attr_e('Enter default group name', 's3schoolManagment'); ?>" />
+								<select name="s3school_default_info[groupName]">
+									<option value=""><?php esc_html_e('No default', 's3schoolManagment'); ?></option>
+									<?php if (!empty($group_options)) : ?>
+										<?php foreach ($group_options as $group_option) : ?>
+											<?php $group_id = (int) $group_option['groupId']; ?>
+											<option value="<?php echo esc_attr($group_id); ?>" <?php selected($default_selected_group, $group_id); ?>><?php echo esc_html($group_option['groupName']); ?></option>
+										<?php endforeach; ?>
+									<?php endif; ?>
+								</select>
 							</label>
 							<label class="s3school-defaults-field">
 								<span><?php esc_html_e('Default Year', 's3schoolManagment'); ?></span>
@@ -2259,11 +1841,7 @@ get_header();
 					<div
 						id="s3school-unused-columns"
 						class="s3school-unused-wrapper"
-						data-available="<?php 
-							$excluded_unmapped = ['Sl No', 'Institute Name', 'EIIN No', 'Comment'];
-							$filtered_mapping_header = array_diff($mapping_header, $excluded_unmapped);
-							echo esc_attr(wp_json_encode(array_values($filtered_mapping_header))); 
-						?>"
+						data-available="<?php echo esc_attr(wp_json_encode(array_values($mapping_header))); ?>"
 						data-ajax-url="<?php echo esc_url(admin_url('admin-ajax.php')); ?>">
 						<strong><?php esc_html_e('Unmapped File Columns (Columns from your file that are not mapped yet)', 's3schoolManagment'); ?></strong>
 						<ul class="s3school-unused-list" aria-live="polite"></ul>
@@ -2290,6 +1868,7 @@ get_header();
 				</form>
 			<?php endif; ?>
 		</div>
+
 
 		<div class="s3school-card">
 			<span class="s3school-pill"><?php esc_html_e('Quick Export', 's3schoolManagment'); ?></span>
@@ -2704,48 +2283,6 @@ if ($import_stage === 'mapping' && !empty($mapping_header)) :
 <?php endif; ?>
 
 <script>
-	document.addEventListener('DOMContentLoaded', function() {
-		// Auto-sync stdCurrentClass and className selections
-		var stdCurrentClassSelect = document.querySelector('select[name="s3school_column_map[stdCurrentClass]"]');
-		var classNameSelect = document.querySelector('select[name="s3school_column_map[className]"]');
-
-		// Auto-sync year and stdCurntYear selections
-		var yearSelect = document.querySelector('select[name="s3school_column_map[year]"]');
-		var stdCurntYearSelect = document.querySelector('select[name="s3school_column_map[stdCurntYear]"]');
-
-		var syncSelections = function(sourceSelect, targetSelect) {
-			var selectedValue = sourceSelect.value;
-			if (selectedValue && selectedValue !== '__skip') {
-				targetSelect.value = selectedValue;
-				// Trigger change event on target select to update unused columns
-				var changeEvent = new Event('change', { bubbles: true });
-				targetSelect.dispatchEvent(changeEvent);
-			}
-		};
-
-		if (stdCurrentClassSelect && classNameSelect) {
-			stdCurrentClassSelect.addEventListener('change', function() {
-				syncSelections(stdCurrentClassSelect, classNameSelect);
-			});
-
-			classNameSelect.addEventListener('change', function() {
-				syncSelections(classNameSelect, stdCurrentClassSelect);
-			});
-		}
-
-		if (yearSelect && stdCurntYearSelect) {
-			yearSelect.addEventListener('change', function() {
-				syncSelections(yearSelect, stdCurntYearSelect);
-			});
-
-			stdCurntYearSelect.addEventListener('change', function() {
-				syncSelections(stdCurntYearSelect, yearSelect);
-			});
-		}
-	});
-</script>
-
-<script>
 	(function($) {
 		var exportForm = $('#s3school-export-form');
 		if (!exportForm.length) {
@@ -2881,8 +2418,6 @@ if ($import_stage === 'mapping' && !empty($mapping_header)) :
 		}
 	})(jQuery);
 </script>
-
-
 
 <?php
 get_footer();

@@ -1,4 +1,22 @@
 <?php 
+
+require_once dirname(__DIR__) . '/functions/teacher-access.php';
+
+$teacherAccess = s3s_get_teacher_access_context();
+$isTeacher = $teacherAccess['is_teacher'];
+$teacherRecord = $teacherAccess['teacher'];
+$teacherRestrictions = $teacherAccess['restrictions'];
+$hasAssignedClass = $teacherAccess['has_assignment'];
+
+// Capture any section assignments even if the teacher is currently unrestricted
+$teacher_assignSection = [];
+if ($teacherRecord && !empty($teacherRecord->assignSection)) {
+  $teacher_assignSection = json_decode($teacherRecord->assignSection, true);
+  if (!is_array($teacher_assignSection)) {
+    $teacher_assignSection = [];
+  }
+}
+
 if (!function_exists('s3s_format_dob_display')) {
   function s3s_format_dob_display($value)
   {
@@ -33,11 +51,10 @@ if (isset($_GET['edit']))
     $edit = $edit[0];
     
     $showGroup = false;
-      $result = $wpdb->get_row("SELECT havegroup, haveShift FROM ct_class WHERE classid = '$stdclass'");
+      $result = $wpdb->get_row("SELECT havegroup FROM ct_class WHERE classid = '$stdclass'");
       if ($result && $result->havegroup == 1) {
         $showGroup = true;
       }
-      $showShift = ($result && isset($result->haveShift) && $result->haveShift == 1);
     ?>
     <form accept="" method="POST" class="applyForm fronendAdmin">
       
@@ -80,7 +97,7 @@ if (isset($_GET['edit']))
                   $stdDobDisplay = s3s_format_dob_display($stdDobIso);
                 ?>
                 <div class="dob-input-wrapper">
-                  <input class="form-control dob-text" type="text" name="stdBrith_text" placeholder="dd/mm/yyyy or dd-mm-yyyy" value="<?= esc_attr($stdDobDisplay); ?>">
+                  <input class="form-control dob-text" type="text" name="stdBrith_text" placeholder="dd/mm/yyyy or dd-mm-yyyy" value="<?= esc_attr($stdDobDisplay); ?>" required>
                   <input class="form-control dob-picker" type="date" name="stdBrith_picker" value="<?= esc_attr($stdDobIso); ?>" aria-label="Pick date from calendar">
                   <input class="dob-hidden" type="hidden" name="stdBrith" value="<?= esc_attr($stdDobIso); ?>">
                 </div>
@@ -142,6 +159,15 @@ if (isset($_GET['edit']))
                 </div>
               </div>
               
+              
+              <div class="form-group">
+                <label>Permanent Address</label>
+                <input class="form-control" type="text" name="stdPermanent" placeholder="Permanent Address" value="<?= $edit->stdPermanent ?>">
+              </div>
+              <div class="form-group">
+                <label>Present Address</label>
+                <input class="form-control" type="text" name="stdPresent" placeholder="Present Address" value="<?= $edit->stdPresent ?>">
+              </div>
               <div class="form-group">
                     <label>Admission Type <span>*</span></label>
 
@@ -156,7 +182,45 @@ if (isset($_GET['edit']))
                     </select>
                   </div>
                   <div class="row">
-                      <!-- Transport fields removed -->
+                    <div class="col-md-6">
+                    <div class="form-group">
+                          <label>Transport Required </label><br>
+                          <label class="labelRadio">
+                            <input type="radio" name="transport_required" value="1" <?= $edit->transport_required == 1 ? 'checked' : '' ?>> Yes
+                          </label>
+                          <label class="labelRadio">
+                            <input type="radio" name="transport_required" value="0" <?= $edit->transport_required == '' || $edit->transport_required == 2 ? 'checked' : '' ?>> No
+                          </label>
+                  </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="form-group">
+                            <label>Transport Type </label><br>
+                            <label class="labelRadio">
+                              <input type="radio" name="transport_type" value="1" <?= $edit->transport_type == 1 ? 'checked' : '' ?>> One Way
+                            </label>
+                            <label class="labelRadio">
+                              <input type="radio" name="transport_type" value="2" <?= $edit->transport_type == '' || $edit->transport_type == 2 ? 'checked' : '' ?>> Two Way
+                            </label>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                <div class="form-group">
+                      <label>Select Transport Fee </label><br>
+                      <select class="form-control" name="transport_fee_id">
+                        <?php foreach( $transportFeeInfo as $val){?>
+                          <option value="<?= $val->id?>" <?= $edit->transport_fee_id == $val->id? "selected": '' ?>><?= $val->fee_name?> (<?= $val->distance?>) (<?= $val->amount?>Tk)</option>
+
+                        <?php }?>
+                      </select>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="form-group">
+                    <label>Transport Activation Date </label><br>
+                    <input class="form-control" type="date" name="transport_activation_date" value="<?= $edit->transport_activation_date ?>" placeholder="Transport Activation" >                
+                </div>
+              </div>
               </div>
                   
             </div>
@@ -228,25 +292,16 @@ if (isset($_GET['edit']))
                     </select>
                 </div>
               </div>
-              
-              
-              <?php 
-              
-              $sessionTypeQuery = "SELECT session FROM ct_class WHERE classid=$edit->infoClass";
-              $sessionType = $wpdb->get_var($sessionTypeQuery);
-              
-              ?>
-
               <div class="col-md-6">
                 <label>Year <span>*</span></label>
                 <input type="hidden" name="prevYear" value="<?= $edit->stdCurntYear ?>">
                 <select class="form-control" name="stdCurntYear" id="stdCurntYear" required>
                   <option value="">Select A Year..</option>
                    <?php 
-                   if($sessionType == 'session'){
+                   if($edit->infoClass == 71 || $edit->infoClass == 72){
                   $current_year = date("Y");
                   
-                  for ($i=-3; $i < 5; $i++) { 
+                  for ($i=-3; $i < 1; $i++) { 
                      $year = $current_year + $i;
                      $sec = $year . "-" . ($year + 1);
                     $selected = ($edit->stdCurntYear == $sec) ? 'selected' : '';
@@ -254,8 +309,10 @@ if (isset($_GET['edit']))
                       <option value="<?= $sec; ?>" <?= $selected; ?>><?= $sec; ?></option>
                     <?php
                   }}else{ ?>
-                  <?php for ($i = -3; $i < 5; $i++) { 
-                    $startYear = date("Y") + $i;
+                  <?php for ($i = -3; $i < 1; $i++) { 
+                    $startYear = date("Y") - $i;
+                    // $endYear = $startYear + 1;
+                    // $value = $startYear . '-' . $endYear;
                     $selected = ($edit->stdCurntYear == $startYear) ? 'selected' : '';
                 ?>
                   <option value="<?= $startYear; ?>" <?= $selected; ?>><?= $startYear; ?></option>
@@ -277,6 +334,29 @@ if (isset($_GET['edit']))
                   $sections_query = "SELECT sectionid,sectionName FROM ct_section WHERE forClass = '$class'";
                   $allowed_sections = array();
                   $has_all = false;
+                  
+                  if ($isTeacher) {
+                      // Add subject-assigned sections
+                      if (!empty($teacher_assignSection)) {
+                          if (in_array('all', $teacher_assignSection)) {
+                              $has_all = true;
+                              $teacher_assignSection = array_diff($teacher_assignSection, ['all']);
+                          }
+                          if (!empty($teacher_assignSection)) {
+                              $allowed_sections = array_merge($allowed_sections, $teacher_assignSection);
+                          }
+                      }
+                      // Add class teacher section
+                      if ($hasAssignedClass && $teacherRestrictions && (int) $teacherRestrictions->teacherOfClass === (int) $class) {
+                          $allowed_sections[] = $teacherRestrictions->teacherOfSection;
+                      }
+                      if ($has_all) {
+                          // Show all sections
+                      } elseif (!empty($allowed_sections)) {
+                          $allowed_sections = array_unique($allowed_sections);
+                          $sections_query .= " AND sectionid IN (" . implode(',', array_map('intval', $allowed_sections)) . ")";
+                      }
+                  }
                   
                   $sections = $wpdb->get_results($sections_query);
                   
@@ -315,17 +395,9 @@ if (isset($_GET['edit']))
                   ?>
                 </select>
               </div>
-
-              <div class="form-group col-md-6" id="stdShiftId" style="display: <?= $showShift ? 'block' : 'none' ?>;">
-                <label>Shift</label>
-                <select name="stdShift" class="form-control">
-                  <option value="">Select Shift</option>
-                  <option value="Morning" <?= (isset($edit->stdShift) && $edit->stdShift == 'Morning') ? 'selected' : '' ?>>Morning</option>
-                  <option value="Day" <?= (isset($edit->stdShift) && $edit->stdShift == 'Day') ? 'selected' : '' ?>>Day</option>
-                </select>
-              </div>
             </div>
 
+            
             <div class="form-group optionalSubDiv">
               <label>Optional Subject(s):</label><br>
               <?php 
@@ -351,9 +423,6 @@ if (isset($_GET['edit']))
                 }
                 echo "<br>";
                 $std4th = @json_decode($edit->info4thSub);
-                if (!is_array($std4th)) {
-                    $std4th = empty($edit->info4thSub) ? [] : [$edit->info4thSub];
-                }
                 $subjects4th = $wpdb->get_results( "SELECT subjectid,subjectName FROM ct_subject WHERE subjectClass = '$stdclass' AND sub4th = 1 ORDER BY subjectName" );
                 
                 if(!empty($subjects4th)){
@@ -413,18 +482,22 @@ if (isset($_GET['edit']))
                             </div>
                           </div>
                           <div class="form-group">
-                            <label>Father's Profession
-                            </label>
-                            <input class="form-control" type="text" name="stdFatherProf" placeholder="Father Profession" value="<?= $edit->stdFatherProf ?>">
+                            <label>Father's Name (Bangla)</label>
+                            <input class="form-control" type="text" name="stdFatherBangla" placeholder="Father's Name (Bangla)" value="<?= $edit->stdFatherBangla ?>">
                           </div>
                           <div class="form-group">
-                            <label>Father's NID</label>
-                            <input class="form-control" type="text" name="stdFatherNID" placeholder="Father NID" value="<?= isset($edit->stdFatherNID) ? $edit->stdFatherNID : '' ?>">
+                            <label>Father Profession
+                            </label>
+                            <input class="form-control" type="text" name="stdFatherProf" placeholder="Father Profession" value="<?= $edit->stdFatherProf ?>">
                           </div>
                           <div class="form-group">
                             <label>Parental Monthly Income:
                             </label>
                             <input class="form-control" type="text" name="stdParentIncome" placeholder="Parental monthly income" value="<?= $edit->stdParentIncome ?>">
+                          </div>
+                          <div class="form-group">
+                            <label>Guardian NID</label>
+                            <input class="form-control" type="text" name="stdGuardianNID" placeholder="Guardian NID" value="<?= $edit->stdGuardianNID ?>">
                           </div>
                     </div>
                     <!--middle-->
@@ -444,6 +517,10 @@ if (isset($_GET['edit']))
                               </div>
                             </div>
                           </div>
+                          <div class="form-group">
+                            <label>Mother's Name (Bangla)</label>
+                            <input class="form-control" type="text" name="stdMotherBangla" placeholder="Mother's Name (Bangla)" value="<?= $edit->stdMotherBangla ?>">
+                          </div>
                    
                           <div class="form-group">
                             <label>Mother's Profession
@@ -451,43 +528,22 @@ if (isset($_GET['edit']))
                             <input class="form-control" type="text" name="stdMotherProf" placeholder="Mother's Profession" value="<?= $edit->stdMotherProf ?>">
                           </div>
                           <div class="form-group">
-                            <label>Mother's NID</label>
-                            <input class="form-control" type="text" name="stdMotherNID" placeholder="Mother's NID" value="<?= isset($edit->stdMotherNID) ? $edit->stdMotherNID : '' ?>">
+                            <label>Local Guardian Name</label>
+                            <input class="form-control" type="text" name="stdlocalGuardian" placeholder="Local Guardian Name" value="<?= $edit->stdlocalGuardian ?>">
+                          </div>
+                          <div class="form-group">
+                            <label>Guardian Phone No:</label>
+                            <input class="form-control" type="text" name="stdPhone" placeholder="Phone Number" value="<?= $edit->stdPhone ?>">
+                          </div>
+                          <div class="form-group">
+                            <label>Emergency Phone No:</label>
+                            <input class="form-control" type="text" name="stdEmergencyPhone" placeholder="Emergency Phone Number" value="<?= $edit->stdEmergencyPhone ?>">
                           </div>
                     </div>
                 </div>
             </div>
         </div>
         <div class="panel panel-default">
-          <div class="panel-heading"><b><center>Contact Info & Address</center></b></div>
-          <div class="panel-body">
-            <div class="row">
-              <div class="col-md-6">
-                <div class="form-group">
-                  <label>Present Address</label>
-                  <input class="form-control" type="text" name="stdPresent" value="<?= isset($edit->stdPresent) ? $edit->stdPresent : '' ?>" placeholder="Present Address">
-                </div>
-                <div class="form-group">
-                  <label>Permanent Address</label>
-                  <input class="form-control" type="text" name="stdPermanent" value="<?= isset($edit->stdPermanent) ? $edit->stdPermanent : '' ?>" placeholder="Permanent Address">
-                </div>
-              </div>
-              <div class="col-md-6">
-                <div class="form-group">
-                  <label>Phone</label>
-                  <input class="form-control" type="text" name="stdPhone" value="<?= isset($edit->stdPhone) ? $edit->stdPhone : '' ?>" placeholder="Phone">
-                </div>
-                <div class="form-group">
-                  <label>Emergency Phone 2</label>
-                  <input class="form-control" type="text" name="stdEmergencyPhone" value="<?= isset($edit->stdEmergencyPhone) ? $edit->stdEmergencyPhone : '' ?>" placeholder="Emergency Phone 2">
-                </div>
-                <div class="form-group">
-                  <label>Email</label>
-                  <input class="form-control" type="email" name="stdEmail" value="<?= isset($edit->stdEmail) ? $edit->stdEmail : '' ?>" placeholder="Email">
-                </div>
-              </div>
-            </div>
-          </div>
           <div class="panel-heading"><b><center> Public Examination & Others Info Details</center></b>
           </div>
           <div class="panel-body">
@@ -609,9 +665,9 @@ else{ ?>
               </div>
             </div>
             <div class="form-group">
-              <label>Date Of Birth</label>
+              <label>Date Of Birth <span>*</span></label>
               <div class="dob-input-wrapper">
-                <input class="form-control dob-text" type="text" name="stdBrith_text" placeholder="dd/mm/yyyy or dd-mm-yyyy">
+                <input class="form-control dob-text" type="text" name="stdBrith_text" placeholder="dd/mm/yyyy or dd-mm-yyyy" required>
                 <input class="form-control dob-picker" type="date" name="stdBrith_picker" aria-label="Pick date from calendar">
                 <input class="dob-hidden" type="hidden" name="stdBrith" value="">
               </div>
@@ -653,6 +709,17 @@ else{ ?>
               </div>
             </div>
 
+            
+            <div class="form-group">
+              <label>Permanent Address:
+              </label>
+              <input class="form-control" type="text" name="stdPermanent" placeholder="Permanent Address">
+            </div>
+            <div class="form-group">
+              <label>Present Address:
+              </label>
+              <input class="form-control" type="text" name="stdPresent" placeholder="Present Address">
+            </div>
             <div class="form-group">
               <label>Admission Type <span>*</span></label>
               <select class="form-control" name="admission_type">
@@ -661,7 +728,45 @@ else{ ?>
               </select>
             </div>
             <div class="row">
-                <!-- Transport fields removed -->
+              <div class="col-md-6">
+              <div class="form-group">
+                    <label>Transport Required </label><br>
+                    <label class="labelRadio">
+                      <input type="radio" name="transport_required" value="1"> Yes
+                    </label>
+                    <label class="labelRadio">
+                      <input type="radio" name="transport_required" value="0" checked> No
+                    </label>
+            </div>
+              </div>
+              <div class="col-md-6">
+                <div class="form-group">
+                      <label>Transport Type </label><br>
+                      <label class="labelRadio">
+                        <input type="radio" name="transport_type" value="1"> One Way
+                      </label>
+                      <label class="labelRadio">
+                        <input type="radio" name="transport_type" value="2" checked> Two Way
+                      </label>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="form-group">
+                      <label>Select Transport Fee </label><br>
+                      <select class="form-control" name="transport_fee_id">
+                        <?php foreach( $transportFeeInfo as $val){?>
+                          <option value="<?= $val->id?>"><?= $val->fee_name?> (<?= $val->distance?>) (<?= $val->amount?>Tk)</option>
+
+                        <?php }?>
+                      </select>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="form-group">
+                <label>Transport Activation Date </label><br>
+              <input class="form-control" type="date" name="transport_activation_date" placeholder="Transport Activation" >
+                </div>
+              </div>
 
             </div>
             
@@ -725,8 +830,15 @@ else{ ?>
                     
                     echo "<option disabled selected value=''>Select a Class..</option>";
                     
+                    // If teacher, only show their assigned class
+                    if ($isTeacher && $hasAssignedClass && $teacherRestrictions) {
+                      $classes = $wpdb->get_results( $wpdb->prepare(
+                        "SELECT classid,className FROM ct_class WHERE classid = %d",
+                        $teacherRestrictions->teacherOfClass
+                      ));
+                    } else {
                       $classes = $wpdb->get_results("SELECT classid,className FROM ct_class");
-                    
+                    }
                     
                     foreach ($classes as $class) {
                       ?>
@@ -762,15 +874,6 @@ else{ ?>
                   <?php
                 }
               ?>
-            </select>
-          </div>
-
-          <div class="form-group" id="stdShiftId" style="display:none;">
-            <label>Shift</label>
-            <select name="stdShift" class="form-control">
-              <option value="">Select Shift</option>
-              <option value="Morning">Morning</option>
-              <option value="Day">Day</option>
             </select>
           </div>
 
@@ -818,18 +921,22 @@ else{ ?>
                           </div>
                         </div>
                         <div class="form-group">
-                          <label>Father's Profession
-                          </label>
-                          <input class="form-control" type="text" name="stdFatherProf" placeholder="Father Profession">
+                          <label>Father's Name (Bangla)</label>
+                          <input class="form-control" type="text" name="stdFatherBangla" placeholder="Father's Name (Bangla)">
                         </div>
                         <div class="form-group">
-                           <label>Father's NID</label>
-                          <input class="form-control" type="text" name="stdFatherNID" placeholder="Father NID" >
+                          <label>Father Profession
+                          </label>
+                          <input class="form-control" type="text" name="stdFatherProf" placeholder="Father Profession">
                         </div>
                         <div class="form-group">
                           <label>Parental Monthly Income
                           </label>
                           <input class="form-control" type="text" name="stdParentIncome" placeholder="Parental monthly income">
+                        </div>
+                        <div class="form-group">
+                          <label>Guardian NID</label>
+                          <input class="form-control" type="text" name="stdGuardianNID" placeholder="Guardian NID" >
                         </div>
                     </div>
                     <!--middle-->
@@ -848,50 +955,36 @@ else{ ?>
                             </div>
                           </div>
                         </div>
+                        <div class="form-group">
+                          <label>Mother's Name (Bangla)</label>
+                          <input class="form-control" type="text" name="stdMotherBangla" placeholder="Mother's Name (Bangla)">
+                        </div>
                  
                         <div class="form-group">
                           <label>Mother's Profession
                           </label>
                           <input class="form-control" type="text" name="stdMotherProf" placeholder="Mother Profession">
                         </div>
+                        
                         <div class="form-group">
-                          <label>Mother's NID</label>
-                          <input class="form-control" type="text" name="stdMotherNID" placeholder="Mother's NID" >
+                          <label>Local Guardian Name</label>
+                          <input class="form-control" type="text" name="stdlocalGuardian" placeholder="Local Guardian Name">
+                        </div>
+                        <div class="form-group">
+                          <label>Guardian Phone Number
+                          </label>
+                          <input class="form-control" type="text" name="stdPhone" placeholder="Guardian Phone Number">
+                        </div>
+                        <div class="form-group">
+                          <label>Emergency Phone Number
+                          </label>
+                          <input class="form-control" type="text" name="stdEmergencyPhone" placeholder="Emergency Phone Number">
                         </div>
                     </div>
                 </div>
             </div>
         </div>
         <div class="panel panel-default">
-          <div class="panel-heading"><b><center>Contact Info & Address</center></b></div>
-          <div class="panel-body">
-            <div class="row">
-              <div class="col-md-6">
-                <div class="form-group">
-                  <label>Present Address</label>
-                  <input class="form-control" type="text" name="stdPresent" placeholder="Present Address">
-                </div>
-                <div class="form-group">
-                  <label>Permanent Address</label>
-                  <input class="form-control" type="text" name="stdPermanent" placeholder="Permanent Address">
-                </div>
-              </div>
-              <div class="col-md-6">
-                <div class="form-group">
-                  <label>Phone</label>
-                  <input class="form-control" type="text" name="stdPhone" placeholder="Phone">
-                </div>
-                <div class="form-group">
-                  <label>Emergency Phone</label>
-                  <input class="form-control" type="text" name="stdEmergencyPhone" placeholder="Phone 2">
-                </div>
-                <div class="form-group">
-                  <label>Email</label>
-                  <input class="form-control" type="email" name="stdEmail" placeholder="Email">
-                </div>
-              </div>
-            </div>
-          </div>
           <div class="panel-heading"><b><center> Public Examination & Others Info Details</center></b>
           </div>
           <div class="panel-body">
@@ -1075,7 +1168,6 @@ else{ ?>
         return;
       }
 
-
       $wrappers.each(function() {
         var $wrap = $(this);
         var $text = $wrap.find('.dob-text');
@@ -1097,13 +1189,13 @@ else{ ?>
 
         function syncFromText(isSubmit) {
           var value = $text.val().trim();
-          if (value === '' || value == '00/00/0000' || value == '00-00-0000') {
+          if (!value) {
+            setValidity('This field is required.');
             $hidden.val('');
             if ($picker.length) {
               $picker.val('');
             }
-            setValidity('');
-            return true;
+            return false;
           }
           var iso = s3sParseDobInput(value);
           if (iso) {
@@ -1124,8 +1216,7 @@ else{ ?>
 
         $text.on('blur change', function() {
           if (!$text.val().trim()) {
-            // No longer required, so just clear error
-            setValidity('');
+            setValidity('This field is required.');
             return;
           }
           syncFromText(false);
@@ -1146,8 +1237,6 @@ else{ ?>
       });
 
       $('.applyForm').off('submit.s3sDob').on('submit.s3sDob', function(event) {
-        // No longer required, so skip DOB validation for required
-        // But still validate format if filled
         var formValid = true;
         $(this).find('.dob-input-wrapper').each(function() {
           var validator = $(this).data('s3sValidateDob');
@@ -1160,6 +1249,7 @@ else{ ?>
             }
           }
         });
+
         if (!formValid) {
           event.preventDefault();
           event.stopImmediatePropagation();
@@ -1170,9 +1260,10 @@ else{ ?>
     s3sInitDobFields();
 
 	$('#stdGroup').change(function(event) {
+    //   $('#stdRoll').val('');
       var $siteUrl = $('#theSiteURL').text();
       $.ajax({
-        url: "",
+        url: $siteUrl+"/inc/ajaxAction.php",
         method: "POST",
         data: { class : $('#admitClass').val(), group: $('#stdGroup').val(), type : 'getOpt4thSubjectByGroup' },
         dataType: "html"
@@ -1183,9 +1274,10 @@ else{ ?>
   	
   	$('#admitClass').change(function(event) {
       $('#stdRoll').val('');
-      var selectedGroup= $('select[name="stdGroup"]').val();
+var religionName = $('select[name="stdReligion"]').val();
+var selectedGroup= $('select[name="stdGroup"]').val();
 
-      $data = { class : $(this).val(), group: selectedGroup, type : 'getOptionalSubject' }; 
+      $data = { class : $(this).val(), group: selectedGroup,  stdReligion : religionName, type : 'getOptionalSubject' }; 
       if (selectedGroup > 0) { 
       	$data = { class :  $('#admitClass').val(), group: $('#stdGroup').val(), type : 'getOpt4thSubjectByGroup' };
       }
@@ -1193,7 +1285,7 @@ else{ ?>
       var $siteUrl = $('#theSiteURL').text();
       $classdata = { class : $(this).val(), type : 'hasGroup' };
       $.ajax({
-          url: "",
+          url: $siteUrl + "/inc/ajaxAction.php",
           method: "POST",
           data: $classdata,
           dataType: "html"
@@ -1204,22 +1296,9 @@ else{ ?>
             $("#stdGroupId").hide();
           }
         });
-
-      $.ajax({
-      url: "",
-        method: "POST",
-        data: { class : $(this).val(), type : 'hasShift' },
-        dataType: "html"
-      }).done(function(msg) {
-        if (msg === 'true') {
-          $("#stdShiftId").show();
-        } else {
-          $("#stdShiftId").hide();
-        }
-      });
       
       $.ajax({
-        url: "",
+        url: $siteUrl+"/inc/ajaxAction.php",
         method: "POST",
         data: $data,
         dataType: "html"
@@ -1228,7 +1307,7 @@ else{ ?>
       });
 
       $.ajax({
-        url: "",
+        url: $siteUrl+"/inc/ajaxAction.php",
         method: "POST",
         data: { class : $(this).val(), type : 'getSection' },
         dataType: "html"
@@ -1245,7 +1324,7 @@ else{ ?>
       });
 
       $.ajax({
-        url: "",
+        url: $siteUrl+"/inc/ajaxAction.php",
         method: "POST",
         data: { class : $(this).val(), type : 'getYearSection' },
         dataType: "html"
@@ -1267,7 +1346,7 @@ else{ ?>
         var $year     = $this.data('year');
 
         $.ajax({
-          url: "",
+          url: $('#theSiteURL').text()+"/inc/ajaxAction.php",
           method: "POST",
           data: { year : $year, class : $class, section : $section, type : 'getAllStudentByClass', siteUrl : $siteUrl },
           dataType: "html"
@@ -1280,184 +1359,3 @@ else{ ?>
     });
   })( jQuery );
 </script>
-
-<?php
-// ==============================================
-// FIX 409 CONFLICT - HANDLE AJAX ACTIONS LOCALLY
-// ==============================================
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['type'])) {
-
-  // Clean output buffer to ensure JSON/HTML response is valid
-  while (ob_get_level()) {
-    ob_end_clean();
-  }
-
-  // ------------------------------------------
-  // Get Section
-  // ------------------------------------------
-  if ($_POST['type'] == 'getSection') {
-    $class = $_POST['class'];
-    $sections_query = "SELECT sectionid,sectionName FROM ct_section WHERE forClass = '$class'";
-    
-    $sections_query .= " ORDER BY sectionName";
-    $sections = $wpdb->get_results($sections_query);
-
-    if (!empty($sections)) {
-      echo "<option value=''>Section</option>";
-      foreach ($sections as $section) {
-        echo "<option value='{$section->sectionid}'>{$section->sectionName}</option>";
-      }
-    } else {
-      echo "<option value=''>No sections available</option>";
-    }
-    exit;
-  }
-
-
-  // ------------------------------------------
-  // Get Optional and 4th sub Subject
-  // ------------------------------------------
-  elseif ($_POST['type'] == 'getOptionalSubject' || $_POST['type'] == 'getOpt4thSubjectByGroup') {
-    $class = $_POST['class'];
-    $group = (empty($_POST['group']) || $_POST['group'] == 0) ? 'all' : $_POST['group'];
-
-    $subjects = $wpdb->get_results("
-          SELECT subjectid, subjectName 
-          FROM ct_subject 
-          WHERE subjectClass = '$class' 
-            AND subOptinal = 1 
-            AND (forGroup IN ('$group', 'all') OR forGroup LIKE '%\"$group\"%') 
-          ORDER BY subjectName
-      ");
-
-    if (!empty($subjects)) {
-      echo "<label>Optional Subject(s)</label><br>";
-    }
-
-    foreach ($subjects as $subjct) {
-      echo '<label class="labelRadio"><input type="checkbox" name="stdOptionals[]" value="' . $subjct->subjectid . '" checked> ' . $subjct->subjectName . '</label>';
-    }
-
-    $subjects4th = $wpdb->get_results("SELECT subjectid,subjectName FROM ct_subject WHERE subjectClass = '$class' AND sub4th = 1 AND (forGroup IN ('$group', 'all') OR forGroup LIKE '%\"$group\"%') ORDER BY subjectName");
-
-    if (!empty($subjects4th)) {
-      echo "<br><br><label>4th Subject</label><br>";
-    }
-
-    $first = true;
-    foreach ($subjects4th as $subjct) {
-      $checked = $first ? 'checked' : '';
-      echo '<label class="labelRadio"><input type="checkbox" name="std4thsub[]" value="' . $subjct->subjectid . '" ' . $checked . '> ' . $subjct->subjectName . '</label>';
-      $first = false;
-    }
-    exit;
-  }
-
-  // ------------------------------------------
-  // Get Year Section
-  // ------------------------------------------
-  elseif ($_POST['type'] == 'getYearSection') {
-    $classid = $_POST['class'];
-    $subs = $wpdb->get_results("SELECT session FROM ct_class WHERE classid = $classid LIMIT 1");
-    $session = isset($subs[0]->session) ? $subs[0]->session : '';
-
-    $options = '';
-    $currentYear = date("Y");
-    if ($session == 'year') {
-      for ($i = -3; $i < 7; $i++) {
-        $sec = (date("Y") - $i);
-        $selected = ($currentYear == $sec) ? 'selected' : '';
-        $options .= "<option value='$sec' $selected>$sec</option>";
-      }
-    } else {
-      $currentYear = date("Y") . "-" . (date("Y") + 1);
-      for ($i = -3; $i < 7; $i++) {
-        $sec = (date("Y") - ($i + 1)) . "-" . (date("Y") - $i);
-        $selected = ($currentYear == $sec) ? 'selected' : '';
-        $options .= "<option value='$sec' $selected>$sec</option>";
-      }
-    }
-    echo $options;
-    exit;
-  }
-
-  // ------------------------------------------
-  // Has Group
-  // ------------------------------------------
-  elseif ($_POST['type'] == 'hasGroup') {
-    $class = $_POST['class'];
-    $classInfo = $wpdb->get_results("SELECT havegroup FROM ct_class WHERE classid = '$class' ");
-    if (!empty($classInfo) && $classInfo[0]->havegroup == 1) {
-      echo "true";
-    } else {
-      echo "false";
-    }
-    exit;
-  }
-
-  // ------------------------------------------
-  // Has Shift
-  // ------------------------------------------
-  elseif ($_POST['type'] == 'hasShift') {
-    $class = $_POST['class'];
-    $classInfo = $wpdb->get_results("SELECT haveShift FROM ct_class WHERE classid = '$class' ");
-    if (!empty($classInfo) && isset($classInfo[0]->haveShift) && $classInfo[0]->haveShift == 1) {
-      echo "true";
-    } else {
-      echo "false";
-    }
-    exit;
-  }
-
-  // ------------------------------------------
-  // Get All Student By Class
-  // ------------------------------------------
-  elseif ($_POST['type'] == 'getAllStudentByClass') {
-    $class     = $_POST['class'];
-    $year     = $_POST['year'];
-    $section   = $_POST['section'];
-?>
-    <table class="table table-bordered table-responsive">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Group</th>
-          <th>Roll</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        <?php
-        $students = $wpdb->get_results("SELECT studentid,stdName,stdRoll,groupName FROM ct_student
-                    LEFT JOIN ct_group ON ct_student.stdGroup = ct_group.groupId 
-                    WHERE ct_student.stdAdmitClass = $class AND ct_student.stdCurntYear = '$year' AND ct_student.stdSection = $section AND ct_student.stdStatus = 1 ORDER BY ct_student.stdRoll ASC");
-
-        foreach ($students as $student) {
-        ?>
-          <tr>
-            <td><?= $student->stdName; ?></td>
-            <td><?= $student->groupName; ?></td>
-            <td><?= $student->stdRoll; ?></td>
-            <td>
-              <form class="pull-right actionForm" method="POST" action="">
-                <input type="hidden" name="id" value="<?= $student->studentid; ?>">
-                <a href="?page=student&option=view&id=<?= $student->studentid; ?>" class="btn-link">
-                  <span class="dashicons dashicons-visibility"></span></span>
-                </a>
-                <button type="submit" class="btn-link btnDelete" name="deleteStudent">
-                  <span class="dashicons dashicons-trash"></span>
-                </button>
-              </form>
-            </td>
-          </tr>
-        <?php
-        }
-        ?>
-      </tbody>
-    </table>
-<?php
-    exit;
-  }
-}
-?>

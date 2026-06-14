@@ -2,7 +2,7 @@
 	global $s3sRedux, $wp, $post;
 	if (is_object($post)) {
   	$current = $post->post_name;
-  	$allpage = array("frontend-admin", "admin-applicants","admin-student","admin-attendance","admin-class","admin-section","admin-group","admin-examattendance","admin-admitcard","admin-seatcard","admin-result","admin-meritlist","admin-faillist","admin-tabulation","admin-promotion","admin-idcard","admin-testimonial","admin-tc","admin-revenue","admin-studentfee","admin-sms");
+  	$allpage = array("frontend-admin","admin-student","admin-attendance","admin-class","admin-section","admin-group","admin-examattendance","admin-admitcard","admin-seatcard","admin-result","admin-meritlist","admin-faillist","admin-tabulation","admin-promotion","admin-idcard","admin-testimonial","admin-tc","admin-revenue","admin-studentfee","admin-sms");
   	if(in_array($current, $allpage) && !is_user_logged_in()){
   		wp_redirect( home_url() ."/login/");exit;
   	}
@@ -48,10 +48,10 @@
 	<div class="socialShare">
 	  <ul class="list-unstyled">
 	    <li title="Share With Facebook">
-	      <a target="_blank" href="<?= home_url($s3sRedux['footerFbUrl']); ?>" class="fa fa-facebook"></a>
+	      <a target="_blank" href="https://www.facebook.com/sharer/sharer.php?u=<?= home_url( $wp->request ) ?>" class="fa fa-facebook"></a>
 	    </li>
-	    <li title="Share With Youtube" style="background:red;">
-	      <a target="_blank" href="<?= home_url($s3sRedux['footerTwtUrl']); ?>" class="fa fa-youtube"></a>
+	    <li title="Share With Twitter">
+	      <a target="_blank" href="https://twitter.com/home?status=<?= home_url( $wp->request ) ?>" class="fa fa-twitter"></a>
 	    </li>
 	    <li title="Share With Google+">
 	      <a target="_blank" href="https://plus.google.com/share?url=<?= home_url( $wp->request ) ?>" class="fa fa-google"></a>

@@ -33,7 +33,7 @@ get_header();
 								<?php
 
 									if (!isset($_GET['t'])) {
-										$teachers = $wpdb->get_results( "SELECT `teacherid`, `teacherName`, `teacherImg`,`teacherDesignation` FROM ct_teacher" );				
+										$teachers = $wpdb->get_results( "SELECT `teacherid`, `teacherName`, `teacherImg`,`teacherDesignation` FROM ct_teacher order by teacher_serial" );				
 						
 										foreach ($teachers as $teacher) {
 											?>

@@ -102,24 +102,13 @@
 										      		<?php
 
 										      		//resStdRoll
-										      		if($resClass == 41){
-										      		    $students = $wpdb->get_results( "SELECT resStudentId,stdName,infoRoll,groupName,sectionName,sectionid FROM ct_result
-										      				LEFT JOIN ct_studentinfo ON ct_result.resStudentId = ct_studentinfo.infoStdid AND ct_studentinfo.infoClass = $resClass AND ct_studentinfo.infoYear = '$curYear'
-										      				LEFT JOIN ct_student ON ct_result.resStudentId = ct_student.studentid
-										      				LEFT JOIN ct_group ON ct_studentinfo.infoGroup = ct_group.groupId  
-										      				LEFT JOIN ct_section ON ct_studentinfo.infoSection = ct_section.sectionid 
-																	WHERE resultYear = '$curYear' AND resExam = $examid GROUP BY resStudentId ORDER BY groupName DESC, sectionid,infoRoll ASC" );
-										      		    
-										      		}else{
-										      		    $students = $wpdb->get_results( "SELECT resStudentId,stdName,infoRoll,groupName,sectionName,sectionid FROM ct_result
+
+										      			$students = $wpdb->get_results( "SELECT resStudentId,stdName,infoRoll,groupName,sectionName,sectionid FROM ct_result
 										      				LEFT JOIN ct_studentinfo ON ct_result.resStudentId = ct_studentinfo.infoStdid AND ct_studentinfo.infoClass = $resClass AND ct_studentinfo.infoYear = '$curYear'
 										      				LEFT JOIN ct_student ON ct_result.resStudentId = ct_student.studentid
 										      				LEFT JOIN ct_group ON ct_studentinfo.infoGroup = ct_group.groupId  
 										      				LEFT JOIN ct_section ON ct_studentinfo.infoSection = ct_section.sectionid 
 																	WHERE resultYear = '$curYear' AND resExam = $examid GROUP BY resStudentId ORDER BY sectionid,infoRoll" );
-										      		}
-
-										      			
 
 
 										      			foreach ($students as $student) {

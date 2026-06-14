@@ -6,14 +6,11 @@ global $wpdb; global $s3sRedux;
 global $admissionFeeSubHeadId;
 global $admissionFormSubHeadId;
 global $monthlyFeeSubHeadId;
-global $examFeeSubHeadId;
 global $transportFeeSubHeadId;
 global $ictFeeSubHeadId;
 global $registrationFeeSubHeadId;
 global $coachingFeeSubHeadId;
-global $dairySubHeadId;
-global $idcardSubHeadId;
-function saveLeadger($sub_head_id,$credit,$debit,$reference,$monthly_fee_id,$yearly_fee_id,$exam_fee_id, $date=null,$info_id = null){
+function saveLeadger($sub_head_id,$credit,$debit,$reference,$monthly_fee_id,$yearly_fee_id,$exam_fee_id, $date=null){
 	// save ledger table
 	global $wpdb;
 	if($date == null){
@@ -29,7 +26,6 @@ function saveLeadger($sub_head_id,$credit,$debit,$reference,$monthly_fee_id,$yea
 			'monthly_fee_id' 	=> $monthly_fee_id,
 			'yearly_fee_id' 	=> $yearly_fee_id,
 			'exam_fee_id' 	=> $exam_fee_id,
-			'info_id' 	=> $info_id,
 			'date' 	=> $date,
 			// 'exam_id' 	=> $_POST['revDate'],
 			'created_by' 	=> get_current_user_id(),
@@ -302,27 +298,22 @@ if (isset($_POST['delRevinew'])) {
 		<div class="col-md-12" style="margin-top: 5px">
 	
 		<h2 class="resmangh2" style="padding-bottom: 10px;">
-			<?php if(wp_get_current_user()->roles[0] == 'um_headmaster'  || wp_get_current_user()->roles[0] == 'administrator'){?>
+			<?php if(wp_get_current_user()->roles[0] != 'um_teachers'){?>
 				<a href="?page=studentFeeManagement" class="btn btn-primary pull-right">Fee Management</a>
 			<?php } ?>
 			<a href="?page=studentFeeManagement&view=dueList" class="btn btn-primary pull-right">Due List </a>
 			<a href="?page=studentFeeManagement&view=monthlyFeeReport" class="btn btn-primary pull-right">Monthly Fee Report </a>
-			<a href="?page=studentFeeManagement&view=dailyFeeReport" class="btn btn-primary pull-right">Daily Fee Report </a>
-			<a href="?page=studentFeeManagement&view=absentRemission" class="btn btn-primary pull-right">Absent Poor Fund List </a>
+			<a href="?page=studentFeeManagement&view=absentRemission" class="btn btn-primary pull-right">Absent Remission List </a>
 			<a href="?page=studentFeeManagement&view=fullFree" class="btn btn-primary pull-right">Full Free Half Free List </a>
 			<a href="?page=studentFeeManagement&view=studentFeeYearlySummary" class="btn btn-primary pull-right">Student Fee Yearly Summary Report </a>
-			<?php if(wp_get_current_user()->roles[0] != 'um_teachers' || wp_get_current_user()->roles[0] == 'um_accounts'){?>
+			<?php if(wp_get_current_user()->roles[0] != 'um_teachers'){?>
 				<a href="?page=studentFeeManagement&view=transport" class="btn btn-primary pull-right">Transport Fee </a>
 				<a href="?page=studentFeeManagement&view=promoted" class="btn btn-primary pull-right">Promoted Admission Fee </a>
 				<a href="?page=studentFeeManagement&view=activeCollectionFee" class="btn btn-primary pull-right">Active Collection Fee</a>
 				<a href="?page=studentFeeManagement&view=activeExam" class="btn btn-primary pull-right">Active Exam</a>
 				<a href="<?= home_url('datewise-fees-information'); ?>" target="_blank" class="btn btn-primary pull-right">Section wise Fee Report</a>
-			<?php } else if(wp_get_current_user()->roles[0] == 'um_accounts-user'){?>
-				<a href="?page=studentFeeManagement&view=activeCollectionFee" class="btn btn-primary pull-right">Active Collection Fee</a>
-				<a href="?page=studentFeeManagement&view=activeExam" class="btn btn-primary pull-right">Active Exam</a>
-				<a href="<?= home_url('datewise-fees-information'); ?>" target="_blank" class="btn btn-primary pull-right">Section wise Fee Report</a>
 			<?php } ?>
-
+			
 		</h2>
 		</div>
 		<!-- Show Status message -->
@@ -412,7 +403,7 @@ if (isset($_POST['delRevinew'])) {
   	<?php }else if($_GET['view'] == 'absentRemission'){ ?>
 
 		<div class="panel panel-info">
-			<div class="panel-heading"><h3>Absent Poor Fund Late Fee List</h3></div>
+			<div class="panel-heading"><h3>Absent Remission Late Fee List</h3></div>
 				
 			<div class="panel-body">
 			  <form action="" method="POST" class="form-inline">
@@ -544,7 +535,7 @@ if (isset($_POST['delRevinew'])) {
 				  			<img height="80px" style="position: absolute;left: 10px;top: 10px" src="<?= $s3sRedux['instLogo']['url'] ?>">
 		  					<h2 style="margin:  0;"><b><?= $s3sRedux['institute_name'] ?></b></h2>
 					  		<p style="color:#2b5591; font-size: 14px; margin: 0;"><?= $s3sRedux['institute_address'] ?></p>
-					  		<p style="margin:  0;">Abesent, Late & Poor Fund Information</p>
+					  		<p style="margin:  0;">Abesent, Late & Remission Information</p>
 					  		<p style="margin:  0;">From: <?=date('d-m-Y', strtotime($from_date))?> To: <?=date('d-m-Y', strtotime($to_date))?></p>
 					  		<p style="margin:  0;">Class: <?= getClassNameById($class)?> (Section: <?= getSectionNameById($sec)?>)</p>
 				  		</div>
@@ -558,7 +549,7 @@ if (isset($_POST['delRevinew'])) {
 					  				<!-- <th style=" text-align: center;">Roll</th> -->
 					  				<th style=" text-align: center;">Abesent Fees</th>
 					  				<th style=" text-align: center;">Late Fees</th>
-					  				<th style=" text-align: center;">Poor Fund Fees</th>
+					  				<th style=" text-align: center;">Remission Fees</th>
 					  			</tr>
 								  <?php 
 								 	$totalAbsentFee = 0; 
@@ -903,14 +894,9 @@ if (isset($_POST['delRevinew'])) {
 			"December" => getFeeAmountByStudent($val->infoStdid, 12, $year, $transportFeeSubHeadId, $class)];
 			$allLists[$key]['admissionFee'] =  getYearlyFeeAmountByStudent($val->infoStdid, $year, $admissionFeeSubHeadId, $class);
 			$allLists[$key]['admissionFormFee'] =  getYearlyFeeAmountByStudent($val->infoStdid, $year, $admissionFormSubHeadId, $class);
-			$allLists[$key]['registrationFee'] =  getYearlyFeeAmountByStudent($val->infoStdid, $year, $registrationFeeSubHeadId, $class);
 			$allLists[$key]['ictFee'] =  getYearlyFeeAmountByStudent($val->infoStdid, $year, $ictFeeSubHeadId, $class);
-			$allLists[$key]['idcardFee'] =  getYearlyFeeAmountByStudent($val->infoStdid, $year, $idcardSubHeadId, $class);
-			$allLists[$key]['dairyFee'] =  getYearlyFeeAmountByStudent($val->infoStdid, $year, $dairySubHeadId, $class);
-			$allLists[$key]['remissionFee'] = getSumOfRemissionFeeByDate($val->infoStdid,date('Y').'-01-01',date('Y').'-12-31');
-
 			foreach($examInfo as $key2=>$examval){
-				$allLists[$key]['examFee'][$key2] = getExamFeeAmountByStudent($val->infoStdid, $examval->examid, $year, $examFeeSubHeadId, $class);
+				$allLists[$key]['examFee'][$key2] = getExamFeeAmountByStudent($val->infoStdid, $examval->examid, $year, $monthlyFeeSubHeadId, $class);
 			}
 		}
 		
@@ -956,24 +942,19 @@ if (isset($_POST['delRevinew'])) {
 					  				<th style=" text-align: center;">Student Name</th>
 					  				<th style=" text-align: center;">ID NO</th>
 					  				<th style=" text-align: center;">Admission Fees</th>
-					  				<th style=" text-align: center;">Session Fee</th>
-					  				
+					  				<th style=" text-align: center;">Admission Form</th>
+					  				<th style=" text-align: center;">Others</th>
 									  <?php
 										foreach($monthArray as $monthname){
 									  ?>
 					  					<th style=" text-align: center;"><?= $monthname?></th>
 									  <?php }?>
-									    <th style=" text-align: center;">Registration Fee</th>
-    					  				<th style=" text-align: center;">ICT</th>
-    					  				<th style=" text-align: center;">ID Card</th>
-    					  				<th style=" text-align: center;">Diary</th>
 									  <?php
 										foreach($examInfo as $val){
 									  ?>
 					  					<th style=" text-align: center;"><?= $val->examName?></th>
 									  <?php }?>
 									  
-									  <th style=" text-align: center;">Poor Fund</th>
 									  <th style=" text-align: center;">Total</th>
 									  <th style=" text-align: center;">Paid</th>
 					  			</tr>
@@ -989,15 +970,11 @@ if (isset($_POST['delRevinew'])) {
 									<td><?= $val['roll']?></td>
 									<td><?=  $val['admissionFee']['fees']?></td>
 									<td><?=  $val['admissionFormFee']['fees']?></td>
-									
+									<td><?=  $val['ictFee']['fees']?></td>
 									<?php
 										$totalFee += $val['admissionFee']['fees'];
 										$totalFee += $val['admissionFormFee']['fees'];
-										$totalFee += $val['registrationFee']['fees'];
 										$totalFee += $val['ictFee']['fees'];
-										$totalFee += $val['idcardFee']['fees'];
-										$totalFee += $val['dairyFee']['fees'];
-										$totalFee -= $val['remissionFee'];
 										foreach($monthArray as $monthname){
 											$totalFee += $val['monthlyFee'][$monthname]['fees'];
 											$totalFee += $val['transportFee'][$monthname]['fees'];
@@ -1012,10 +989,7 @@ if (isset($_POST['delRevinew'])) {
 										
 									  <?php }?>
 									  
-									  <td><?=  $val['registrationFee']['fees']?></td>
-    									<td><?=  $val['ictFee']['fees']?></td>
-    									<td><?=  $val['idcardFee']['fees']?></td>
-    									<td><?=  $val['dairyFee']['fees']?></td>
+									  
 										<?php
 										if($examInfo){
 										foreach($val['examFee'] as $key2=>$examval){
@@ -1023,7 +997,6 @@ if (isset($_POST['delRevinew'])) {
 										?>
 											<td><?=  $examval?></td>
 										<?php }}?>
-										<td><?=  $val['remissionFee']?></td>
 										<td><?=  $totalFee?></td>
 										<td>
 											<?php if($paid){?>
@@ -1245,7 +1218,6 @@ if (isset($_POST['delRevinew'])) {
 						}
 						
 						$feeInfo = $wpdb->get_results($feeInfoQuery);
-						
 						if(!$feeInfo){
 							if($sub_head_id == $monthlyFeeSubHeadId){
 								if($studentInfo[0]->facilities == 'Full free' || $studentInfo[0]->facilities == 'Scholarship'){
@@ -1414,7 +1386,6 @@ if (isset($_POST['delRevinew'])) {
 					}
 					
 					$feeInfo = $wpdb->get_results($feeInfoQuery);
-				
 					if(!$feeInfo){
 						if($subval->id == $monthlyFeeSubHeadId){
 							if($studentInfo[0]->facilities == 'Full free' || $studentInfo[0]->facilities == 'Scholarship'){
@@ -1444,25 +1415,9 @@ if (isset($_POST['delRevinew'])) {
 									$fees = 0;
 								}
 								$sumOfFees += $fees;
-								
 							}else{
 								$sumOfFees += 0;
 							}
-						}else if($subval->id == $coachingFeeSubHeadId){
-							$checkfees = "SELECT amount FROM ct_student_wise_fee WHERE fee_type = 1 AND student_id = $val->infoStdid  AND class_id = $class AND year = '$year'";
-							if(isset($section) && !empty($section)){
-								$checkfees .= " AND section = $section";
-							}
-							if(isset($group) && !empty($group)){
-								$checkfees .= " AND group_id = $group";
-							}
-							$studentwisefees = $wpdb->get_results($checkfees);
-							if($studentwisefees && $studentwisefees[0]->amount > 0){						
-								$fees = $studentwisefees[0]->amount;
-							}else{
-								$fees = 0;
-							}
-							$sumOfFees += $fees;
 						}else{
 							$sumOfFees += $fees;
 						}
@@ -1473,7 +1428,7 @@ if (isset($_POST['delRevinew'])) {
 				}
 				
 				$allLists[$key]['due'] += $sumOfFees;
-					
+				
 
 			}else if($subval->type == 2){
 				// yearly
@@ -1486,49 +1441,17 @@ if (isset($_POST['delRevinew'])) {
 				}
 				$feeInfo = $wpdb->get_results($feeInfoQuery);
 					if(!$feeInfo){
-						// check admission fee for new or promoted student
-				if( $subval->id == $admissionFeeSubHeadId){
-					if($studentInfo[0]->admission_type == 1){
 						$allLists[$key]['due'] += $fees;
-					}else{
-						$feesquery = "SELECT amount FROM ct_admission_fee_promoted WHERE class = $class";
-						$fees = $wpdb->get_results($feesquery);
-						if($fees){						
-							$fees = $fees[0]->amount;
-						}else{
-							$fees = 0;
-						}
-						$allLists[$key]['due'] += $fees;
-					}
-				}else if($subval->id == $registrationFeeSubHeadId){
-					$checkfees = "SELECT amount FROM ct_student_wise_fee WHERE fee_type = 2 AND student_id = $val->infoStdid  AND class_id = $class AND year = '$year'";
-					if(isset($section) && !empty($section)){
-						$checkfees .= " AND section = $section";
-					}
-					if(isset($group) && !empty($group)){
-						$checkfees .= " AND group_id = $group";
-					}
-					$studentwisefees = $wpdb->get_results($checkfees);
-					if($studentwisefees && $studentwisefees[0]->amount > 0){						
-						$fees = $studentwisefees[0]->amount;
-					}else{
-						$fees = 0;
-					}
-					$allLists[$key]['due'] += $fees;
-				}else{
-					$allLists[$key]['due'] += $fees;
-				}
 					}else{
 						$allLists[$key]['due'] += 0;
 					}
-					
 			}else if($subval->type == 3){
 				// exam
 				// get active exam id
-				$activeExamId = $wpdb->get_results("SELECT examid FROM ct_exam WHERE examClass = $class and active_for_collection = 1 LIMIT 1");
-				if($activeExamId){
-					$activeExamId = $activeExamId[0]->examid;
-					$feeInfoQuery = "SELECT fee FROM ct_student_exam_fee_summary WHERE sub_head_id = $subval->id AND class_id = $class AND exam_id = $activeExamId AND year = '$year' AND student_id = $val->infoStdid";
+				// $activeExamId = $wpdb->get_results("SELECT examid FROM ct_exam WHERE active_for_collection = 1 LIMIT 1");
+				// if($activeExamId){
+					// $activeExamId = $activeExamId[0]->examid;
+					$feeInfoQuery = "SELECT fee FROM ct_student_exam_fee_summary WHERE sub_head_id = $subval->id AND class_id = $class AND year = '$year' AND student_id = $val->infoStdid";
 					if(isset($sec) && !empty($sec)){
 						$feeInfoQuery .= " AND section = $sec";
 					}
@@ -1542,7 +1465,7 @@ if (isset($_POST['delRevinew'])) {
 					}else{
 						$allLists[$key]['due'] += 0;
 					}	
-				}
+				// }
 				
 			}else if($subval->type == 4){
 				$allLists[$key]['due'] += $fees;
@@ -1746,11 +1669,7 @@ if (isset($_POST['delRevinew'])) {
 			$post_id = $_GET['delete_post'];
 			$deleteCollectionInfo = $wpdb->get_results( "DELETE FROM ct_student_fee_collection_info WHERE id = $post_id" ); 
 			$deleteCollectionDetails = $wpdb->get_results( "DELETE FROM ct_student_fee_collection_details WHERE info_id = $post_id" ); 
-			$deleteExamSummary = $wpdb->get_results( "DELETE FROM ct_student_exam_fee_summary WHERE info_id = $post_id" ); 
-			$deleteYearlySummary = $wpdb->get_results( "DELETE FROM ct_student_yearly_fee_summary WHERE info_id = $post_id" ); 
-			$deleteMonthlySummary = $wpdb->get_results( "DELETE FROM ct_student_monthly_fee_summary WHERE info_id = $post_id" ); 
-			$deleteLedger = $wpdb->get_results( "DELETE FROM ct_ledger WHERE info_id = $post_id" );   
-		}
+		  }
 
 		if(isset($_POST['monthlyFeeReport'])):
 			$month 	= $_POST['fee-month'] ?? ''; 
@@ -1890,135 +1809,6 @@ if (isset($_POST['delRevinew'])) {
 								  <td><?= count(array_column($allLists,'total'));?></td>
 								  <td><?= array_sum(array_column($allLists,'total'));?></td>
 								  </tr>
-					  		</table>
-					  		
-					  </div>
-					</div>
-			  </div>
-			</div>
-			
-		</div>
-
-		<?php 
-	endif; ?>
-  	<?php }else if($_GET['view'] == 'dailyFeeReport'){ ?>
-		<div class="panel panel-info">
-			<div class="panel-heading"><h3>Daily Fee Report</h3></div>
-				
-			<div class="panel-body">
-			  <form action="" method="POST" class="form-inline">
-				  <div class="row pl-10">
-                    <div class="form-group">
-						<label>Date</label>
-						<input id="from-date" type="date" name="from-date" >
-
-					</div>
-					
-			        <div class="form-group">
-						<input class="form-control btn-success" name="daillyFeeReport" type="submit" value="Search">
-						<input class="btn btn-info" type="reset" value="Reset" >
-					</div>
-					  
-					
-				  </div>			  		
-					</form>
-		  </div>
-
-
-
-
-
-
-
-		  <?php
-
-		if(isset($_POST['daillyFeeReport'])):
-			$from_date = $_POST['from-date'];
-							
-                    			$feesQuery = "SELECT SUM(total) as total, sectionName,className  FROM ct_student_fee_collection_info
-                    			LEFT JOIN ct_section ON ct_student_fee_collection_info.section = ct_section.sectionid
-                    			LEFT JOIN ct_class ON ct_student_fee_collection_info.class_id = ct_class.classid
-                    			WHERE date(date) = date('$from_date') ";
-                    
-                    		
-                    			$feesQuery .= " GROUP BY className, sectionName  ORDER BY classid, sectionName ASC";
-                    			$fees = $wpdb->get_results($feesQuery);
-			
-			
-
-                    		$classes = [];
-                            foreach ($fees as $item) {
-                                $className = $item->className;
-                                if (!isset($classes[$className])) {
-                                    $classes[$className] = [];
-                                }
-                                $classes[$className][] = ['sectionName' => $item->sectionName, 'total' => $item->total];
-                            }
-			
-			$totalSum = array_sum(array_column($fees, 'total'));
-		?>
-		<div class="container-fluid maxAdminpages">
-			
-			<div class="row">
-				<div class="col-md-12">
-			  	<button onclick="print('printArea')" class="pull-right btn btn-primary">Print</button>
-			  </div>
-			  <div class="col-md-12">
-			  	<div id="printArea" class="col-md-12 printBG" style="width: 8.27in">
-					  <div class="printArea" style="margin: 10px 30px 0;">
-					  	<style type="text/css">
-					  		table tr{ page-break-inside: avoid !important; }
-					  		table tr a{ text-decoration: none;color: #000; }
-					  		@page { size: 210mm 297mm !important; margin: 0 !important; }
-					  	</style>
-						  <style>
-	
-							table th, table td {
-								border:1px solid #000;
-								padding:0.5em;
-							}
-							.table-bordered{
-								border-collapse: collapse;
-							}
-						</style>
-
-				  		<div style="text-align: center; position: relative;">
-				  			<img height="80px" style="position: absolute;left: 10px;top: 10px" src="<?= $s3sRedux['instLogo']['url'] ?>">
-		  					<h2 style="margin-bottom: 0;"><b><?= $s3sRedux['institute_name'] ?></b></h2>
-					  		<p style="color:#2b5591; font-size: 14px; margin: 0;"><?= $s3sRedux['institute_address'] ?></p>
-					  		<span style="font-size: 17px;">Daily Fee Report </span>
-					  		<br><span style="font-size: 17px;">Date: <?= date('d-m-Y',strtotime($from_date)) ?> </span>
-				  		</div>
-				  		<br>
-
-					  		<table class="table table-bordered" style="width: 100%; text-align: center;">
-					  		    <thead>
-					  		        <tr style="text-align: center;">
-					  				<th style=" text-align: center;">Class Name</th>
-					  				<th style=" text-align: center;">Section Name</th>
-					  				<th style=" text-align: center;">Total</th>
-					  			</tr>
-					  		    </thead>
-					  			
-								 <tbody>
-                                    <?php foreach ($classes as $className => $sections): ?>
-                                        <tr>
-                                            <td rowspan="<?= count($sections) ?>"><?php echo $className; ?></td>
-                                            <td><?php echo $sections[0]['sectionName']; ?></td>
-                                            <td><?php echo $sections[0]['total']; ?></td>
-                                        </tr>
-                                        <?php for ($i = 1; $i < count($sections); $i++): ?>
-                                            <tr>
-                                                <td><?php echo $sections[$i]['sectionName']; ?></td>
-                                                <td><?php echo $sections[$i]['total']; ?></td>
-                                            </tr>
-                                        <?php endfor; ?>
-                                    <?php endforeach; ?>
-                                    <tr>
-                                        <td colspan="2" style="text-align: right; font-weight: bold;">Total Sum:</td>
-                                        <td style="font-weight: bold;"><?php echo $totalSum; ?></td>
-                                    </tr>
-                                </tbody>
 					  		</table>
 					  		
 					  </div>
@@ -2195,7 +1985,6 @@ if (isset($_POST['delRevinew'])) {
 						  <input id="resultRoll" type="text" name="roll" required>
 					  </div>
 					  <input type="hidden" id="admissionFeeSubHeadId" name="admissionFeeSubHeadId" value="<?= $admissionFeeSubHeadId?>">
-					  <input type="hidden" id="admissionFormSubHeadId" name="admissionFormSubHeadId" value="<?= $admissionFormSubHeadId?>">
 					  <input type="hidden" id="monthlyFeeSubHeadId" name="monthlyFeeSubHeadId" value="<?= $monthlyFeeSubHeadId?>">
 					  <input type="hidden" id="transportFeeSubHeadId" name="transportFeeSubHeadId" value="<?= $transportFeeSubHeadId?>">
 					  <input type="hidden" id="coachingFeeSubHeadId" name="coachingFeeSubHeadId" value="<?= $coachingFeeSubHeadId?>">
@@ -2244,7 +2033,7 @@ if (isset($_POST['delRevinew'])) {
 								<input id="sub-total" type="number" name="sub-total" value="0" readonly>
 						</div>
 						<div class="form-group ">
-								<label>Poor Fund </label><br>
+								<label>Remission </label><br>
 								<input id="remission" onChange="getTotal()" type="number" name="remission" value="0">
 						</div>
 						<div class="form-group ">
@@ -2253,7 +2042,7 @@ if (isset($_POST['delRevinew'])) {
 						</div>
 						<br>
 					  <div class="form-group">
-					  <strong>Poor Fund Category: </strong> 
+					  <strong>Remission Category: </strong> 
 						  <?php foreach($remissionCategory as $key=>$val) {?>
 						  	<input type="checkbox"  class="remission_category" name="remission_category[]" id="remission_category<?= $val->id?>" value="<?= $val->id?>"> <label for="remission_category<?= $val->id?>"><?= $val->sub_head_name?></label>
 						  <?php }?>
@@ -2338,11 +2127,11 @@ $insert = $wpdb->insert(
 $info_id = $wpdb->insert_id;
 
 // save cash in ledger table $reference,$monthly_fee_id,$yearly_fee_id,$exam_fee_id
-saveLeadger($cashSubHeadId ,$_POST['grand-total'],0, 'Collection Reference ID-'.$info_id,null,null,null,$_POST['fee-date'],$info_id);
+saveLeadger($cashSubHeadId ,$_POST['grand-total'],0, 'Collection Reference ID-'.$info_id,null,null,null,$_POST['fee-date']);
 
 // remission
 if(isset($_POST['remission']) != 0){
-	saveLeadger(0,0 ,$_POST['remission'], 'Collection Reference ID-'.$info_id.'. Remission Category '.$remission_category,null,null,null,$_POST['fee-date'],$info_id);
+	saveLeadger(0,0 ,$_POST['remission'], 'Collection Reference ID-'.$info_id.'. Remission Category '.$remission_category,null,null,null,$_POST['fee-date']);
 }
 
 
@@ -2397,8 +2186,7 @@ if($val->type == 1){
 				'month' => $i,
 				'class_id' 	=> $class,
 				'section' 	=> $section,
-				'group_id' 	=> $group,
-				'info_id' 	=> $info_id,						
+				'group_id' 	=> $group,						
 				'sub_head_id' 	=> $val->id,
 				'fee' 	=> $fees,
 				'status' 	=> 1,
@@ -2410,7 +2198,7 @@ if($val->type == 1){
 		);
 		$last_id_month = $wpdb->insert_id;
 		// save ledger $reference,$monthly_fee_id,$yearly_fee_id,$exam_fee_id
-		saveLeadger($val->id ,$fees,0, 'Collection Reference ID-'.$info_id,$last_id_month,null,null,$_POST['fee-date'],$info_id);
+		saveLeadger($val->id ,$fees,0, 'Collection Reference ID-'.$info_id,$last_id_month,null,null,$_POST['fee-date']);
 
 		$sumOfFees += $fees;
 	}else{
@@ -2437,8 +2225,7 @@ if($val->type == 1){
 							'month' => $i,
 							'class_id' 	=> $class,
 							'section' 	=> $section,
-							'group_id' 	=> $group,		
-							'info_id' 	=> $info_id,				
+							'group_id' 	=> $group,						
 							'sub_head_id' 	=> $val->id,
 							'fee' 	=> 0,
 							'status' 	=> 1,
@@ -2450,7 +2237,7 @@ if($val->type == 1){
 					);
 					$last_id_month = $wpdb->insert_id;
 					// save ledger $reference,$monthly_fee_id,$yearly_fee_id,$exam_fee_id
-					saveLeadger($val->id ,0,0, 'Collection Reference ID ('.$facilities.')-'.$info_id,$last_id_month,null,null,$_POST['fee-date'],$info_id);
+					saveLeadger($val->id ,0,0, 'Collection Reference ID ('.$facilities.')-'.$info_id,$last_id_month,null,null,$_POST['fee-date']);
 		
 					$sumOfFees += 0;
 					$fee_month_list[] = $monthArray[$i-1];
@@ -2463,8 +2250,7 @@ if($val->type == 1){
 							'month' => $i,
 							'class_id' 	=> $class,
 							'section' 	=> $section,
-							'group_id' 	=> $group,	
-							'info_id' 	=> $info_id,					
+							'group_id' 	=> $group,						
 							'sub_head_id' 	=> $val->id,
 							'fee' 	=> $fees/2,
 							'status' 	=> 1,
@@ -2476,7 +2262,7 @@ if($val->type == 1){
 					);
 					$last_id_month = $wpdb->insert_id;
 					// save ledger $reference,$monthly_fee_id,$yearly_fee_id,$exam_fee_id
-					saveLeadger($val->id ,$fees/2,0, 'Collection Reference ID ('.$facilities.')-'.$info_id,$last_id_month,null,null,$_POST['fee-date'],$info_id);
+					saveLeadger($val->id ,$fees/2,0, 'Collection Reference ID ('.$facilities.')-'.$info_id,$last_id_month,null,null,$_POST['fee-date']);
 		
 					$sumOfFees += $fees/2;
 					$fee_month_list[] = $monthArray[$i-1];
@@ -2495,8 +2281,7 @@ if($val->type == 1){
 							'month' => $i,
 							'class_id' 	=> $class,
 							'section' 	=> $section,
-							'group_id' 	=> $group,	
-							'info_id' 	=> $info_id,					
+							'group_id' 	=> $group,						
 							'sub_head_id' 	=> $val->id,
 							'fee' 	=> $fees,
 							'status' 	=> 1,
@@ -2508,7 +2293,7 @@ if($val->type == 1){
 					);
 					$last_id_month = $wpdb->insert_id;
 					// save ledger $reference,$monthly_fee_id,$yearly_fee_id,$exam_fee_id
-					saveLeadger($val->id ,$fees,0, 'Collection Reference ID-'.$info_id,$last_id_month,null,null,$_POST['fee-date'],$info_id);
+					saveLeadger($val->id ,$fees,0, 'Collection Reference ID-'.$info_id,$last_id_month,null,null,$_POST['fee-date']);
 		
 					$sumOfFees += $fees;
 					$fee_month_list[] = $monthArray[$i-1];
@@ -2539,8 +2324,7 @@ if($val->type == 1){
 									'month' => $i,
 									'class_id' 	=> $class,
 									'section' 	=> $section,
-									'group_id' 	=> $group,
-									'info_id' 	=> $info_id,						
+									'group_id' 	=> $group,						
 									'sub_head_id' 	=> $val->id,
 									'fee' 	=> $fees,
 									'status' 	=> 1,
@@ -2552,7 +2336,7 @@ if($val->type == 1){
 							);
 							$last_id_month = $wpdb->insert_id;
 							// save ledger $reference,$monthly_fee_id,$yearly_fee_id,$exam_fee_id
-							saveLeadger($val->id ,$fees,0, 'Collection Reference ID (One way transport)-'.$info_id,$last_id_month,null,null,$_POST['fee-date'],$info_id);
+							saveLeadger($val->id ,$fees,0, 'Collection Reference ID (One way transport)-'.$info_id,$last_id_month,null,null,$_POST['fee-date']);
 				
 							$sumOfFees += $fees;
 							$fee_month_list[] = $monthArray[$i-1];
@@ -2566,8 +2350,7 @@ if($val->type == 1){
 									'month' => $i,
 									'class_id' 	=> $class,
 									'section' 	=> $section,
-									'group_id' 	=> $group,	
-									'info_id' 	=> $info_id,					
+									'group_id' 	=> $group,						
 									'sub_head_id' 	=> $val->id,
 									'fee' 	=> $fees,
 									'status' 	=> 1,
@@ -2579,7 +2362,7 @@ if($val->type == 1){
 							);
 							$last_id_month = $wpdb->insert_id;
 							// save ledger $reference,$monthly_fee_id,$yearly_fee_id,$exam_fee_id
-							saveLeadger($val->id ,$fees,0, 'Collection Reference ID (Two way transport)-'.$info_id,$last_id_month,null,null,$_POST['fee-date'],$info_id);
+							saveLeadger($val->id ,$fees,0, 'Collection Reference ID (Two way transport)-'.$info_id,$last_id_month,null,null,$_POST['fee-date']);
 				
 							$sumOfFees += $fees;
 							$fee_month_list[] = $monthArray[$i-1];
@@ -2611,8 +2394,7 @@ if($val->type == 1){
 						'month' => $i,
 						'class_id' 	=> $class,
 						'section' 	=> $section,
-						'group_id' 	=> $group,	
-						'info_id' 	=> $info_id,					
+						'group_id' 	=> $group,						
 						'sub_head_id' 	=> $val->id,
 						'fee' 	=> $fees,
 						'status' 	=> 1,
@@ -2624,7 +2406,7 @@ if($val->type == 1){
 				);
 				$last_id_month = $wpdb->insert_id;
 				// save ledger $reference,$monthly_fee_id,$yearly_fee_id,$exam_fee_id
-				saveLeadger($val->id ,$fees,0, 'Collection Reference ID (Coaching fee)-'.$info_id,$last_id_month,null,null,$_POST['fee-date'],$info_id);
+				saveLeadger($val->id ,$fees,0, 'Collection Reference ID (Coaching fee)-'.$info_id,$last_id_month,null,null,$_POST['fee-date']);
 	
 				$sumOfFees += $fees;
 				$fee_month_list[] = $monthArray[$i-1];
@@ -2637,8 +2419,7 @@ if($val->type == 1){
 						'month' => $i,
 						'class_id' 	=> $class,
 						'section' 	=> $section,
-						'group_id' 	=> $group,	
-						'info_id' 	=> $info_id,					
+						'group_id' 	=> $group,						
 						'sub_head_id' 	=> $val->id,
 						'fee' 	=> $fees,
 						'status' 	=> 1,
@@ -2650,7 +2431,7 @@ if($val->type == 1){
 				);
 				$last_id_month = $wpdb->insert_id;
 				// save ledger $reference,$monthly_fee_id,$yearly_fee_id,$exam_fee_id
-				saveLeadger($val->id ,$fees,0, 'Collection Reference ID-'.$info_id,$last_id_month,null,null,$_POST['fee-date'],$info_id);
+				saveLeadger($val->id ,$fees,0, 'Collection Reference ID-'.$info_id,$last_id_month,null,null,$_POST['fee-date']);
 	
 				$sumOfFees += $fees;
 				$fee_month_list[] = $monthArray[$i-1];
@@ -2696,15 +2477,12 @@ if($val->type == 1){
 	}
 	$feeInfo = $wpdb->get_results($feeInfoQuery);
 		if(!$feeInfo){
-			if( $val->id == $admissionFeeSubHeadId || $val->id == $ictFeeSubHeadId){
+			if( $val->id == $admissionFeeSubHeadId || $val->id == $admissionFormSubHeadId || $val->id == $ictFeeSubHeadId){
 				$fees = $_POST['subheadid'][$key]; //for editable admission fee etc
 				// echo '<pre>';print_r($_POST);exit;
 				if($admission_type == 1){
 					// NEW ADMITTED STUDENT
 					// save yearly summary 
-				// 	if($facilities == 'Half free' ){
-				// 	    $fees = ($fees/2);
-				// 	}
 					$insert = $wpdb->insert(
 						'ct_student_yearly_fee_summary',
 						array(
@@ -2712,8 +2490,7 @@ if($val->type == 1){
 							'year' 	=> $year,
 							'class_id' 	=> $class,
 							'section' 	=> $section,
-							'group_id' 	=> $group,
-							'info_id' 	=> $info_id,						
+							'group_id' 	=> $group,						
 							'sub_head_id' 	=> $val->id,
 							'fee' 	=> $fees,
 							'status' 	=> 1,
@@ -2726,7 +2503,7 @@ if($val->type == 1){
 
 					$last_id_year = $wpdb->insert_id;
 					// save ledger $reference,$monthly_fee_id,$yearly_fee_id,$exam_fee_id
-					saveLeadger($val->id ,$fees,0, 'Collection Reference ID (NEW ADMITTED)-'.$info_id,null,$last_id_year,null,$_POST['fee-date'],$info_id);
+					saveLeadger($val->id ,$fees,0, 'Collection Reference ID (NEW ADMITTED)-'.$info_id,null,$last_id_year,null,$_POST['fee-date']);
 
 					// save yearly collection details here
 					$insert = $wpdb->insert(
@@ -2743,20 +2520,15 @@ if($val->type == 1){
 						)
 					);
 				}else{
-				//     if($facilities == 'Half free' ){
-				// 	    $fees = ($fees/2);
-				// 	}
 					// PROMOTED STUDENT
 					// save yearly summary 
-					$feesquery = "SELECT amount FROM ct_admission_fee_promoted WHERE class = $class";
-					$promotedfees = $wpdb->get_results($feesquery);
-					if(@$promotedfees && @$promotedfees[0]->amount > 0){						
-						$fees = $promotedfees[0]->amount;
-						if($facilities == 'Half free' ){
-    					    $fees = ($fees/2);
-    					}
-					}
-					 
+					// $feesquery = "SELECT amount FROM ct_admission_fee_promoted WHERE class = $class";
+					// $fees = $wpdb->get_results($feesquery);
+					// if($fees){						
+					// 	$fees = $fees[0]->amount;
+					// }else{
+					// 	$fees = 0;
+					// }
 					$insert = $wpdb->insert(
 						'ct_student_yearly_fee_summary',
 						array(
@@ -2764,8 +2536,7 @@ if($val->type == 1){
 							'year' 	=> $year,
 							'class_id' 	=> $class,
 							'section' 	=> $section,
-							'group_id' 	=> $group,	
-							'info_id' 	=> $info_id,					
+							'group_id' 	=> $group,						
 							'sub_head_id' 	=> $val->id,
 							'fee' 	=> $fees,
 							'status' 	=> 1,
@@ -2778,7 +2549,7 @@ if($val->type == 1){
 
 					$last_id_year = $wpdb->insert_id;
 					// save ledger $reference,$monthly_fee_id,$yearly_fee_id,$exam_fee_id
-					saveLeadger($val->id ,$fees,0, 'Collection Reference ID (PROMOTED)-'.$info_id,null,$last_id_year,null,$_POST['fee-date'],$info_id);
+					saveLeadger($val->id ,$fees,0, 'Collection Reference ID (PROMOTED)-'.$info_id,null,$last_id_year,null,$_POST['fee-date']);
 
 					// save yearly collection details here
 					$insert = $wpdb->insert(
@@ -2807,7 +2578,7 @@ if($val->type == 1){
 				if($studentwisefees && $studentwisefees[0]->amount > 0){						
 					$fees = $studentwisefees[0]->amount;
 				}else{
-					$fees = $fees;
+					$fees = 0;
 				}
 				$insert = $wpdb->insert(
 					'ct_student_yearly_fee_summary',
@@ -2816,8 +2587,7 @@ if($val->type == 1){
 						'year' 	=> $year,
 						'class_id' 	=> $class,
 						'section' 	=> $section,
-						'group_id' 	=> $group,	
-						'info_id' 	=> $info_id,					
+						'group_id' 	=> $group,						
 						'sub_head_id' 	=> $val->id,
 						'fee' 	=> $fees,
 						'status' 	=> 1,
@@ -2830,7 +2600,7 @@ if($val->type == 1){
 
 				$last_id_year = $wpdb->insert_id;
 				// save ledger $reference,$monthly_fee_id,$yearly_fee_id,$exam_fee_id
-				saveLeadger($val->id ,$fees,0, 'Collection Reference ID (Registration Fee)-'.$info_id,null,$last_id_year,null,$_POST['fee-date'],$info_id);
+				saveLeadger($val->id ,$fees,0, 'Collection Reference ID (Registration Fee)-'.$info_id,null,$last_id_year,null,$_POST['fee-date']);
 
 				// save yearly collection details here
 				$insert = $wpdb->insert(
@@ -2846,47 +2616,6 @@ if($val->type == 1){
 						'created_at' 	=> date('Y-m-d H-i-s')
 					)
 				);
-			}else if($val->id == $admissionFormSubHeadId){
-					if($facilities == 'Half free' ){
-    					    $fees = ($fees/2);
-    					}
-				$insert = $wpdb->insert(
-					'ct_student_yearly_fee_summary',
-					array(
-						'student_id' 		=> $std_id,
-						'year' 	=> $year,
-						'class_id' 	=> $class,
-						'section' 	=> $section,
-						'group_id' 	=> $group,	
-						'info_id' 	=> $info_id,					
-						'sub_head_id' 	=> $val->id,
-						'fee' 	=> $fees,
-						'status' 	=> 1,
-						'notes' 	=> 'Yearly Summary (Session Fee)',
-						'date' 	=> $_POST['fee-date'],
-						'created_by' 	=> get_current_user_id(),
-						'created_at' 	=> date('Y-m-d H-i-s')
-					)
-				);
-
-				$last_id_year = $wpdb->insert_id;
-				// save ledger $reference,$monthly_fee_id,$yearly_fee_id,$exam_fee_id
-				saveLeadger($val->id ,$fees,0, 'Collection Reference ID (Session Fee)-'.$info_id,null,$last_id_year,null,$_POST['fee-date'],$info_id);
-
-				// save yearly collection details here
-				$insert = $wpdb->insert(
-					'ct_student_fee_collection_details',
-					array(
-						'info_id' 		=> $info_id,								
-						'sub_head_id' 	=> $val->id,
-						'fee' 	=> $fees,
-						'status' 	=> 1,
-						'reference' 	=> 'Yearly Collection (Session Fee)',
-						'date' 	=> $_POST['fee-date'],
-						'created_by' 	=> get_current_user_id(),
-						'created_at' 	=> date('Y-m-d H-i-s')
-					)
-				);
 			}else{
 				// save yearly summary 
 				$insert = $wpdb->insert(
@@ -2896,8 +2625,7 @@ if($val->type == 1){
 						'year' 	=> $year,
 						'class_id' 	=> $class,
 						'section' 	=> $section,
-						'group_id' 	=> $group,	
-						'info_id' 	=> $info_id,					
+						'group_id' 	=> $group,						
 						'sub_head_id' 	=> $val->id,
 						'fee' 	=> $fees,
 						'status' 	=> 1,
@@ -2910,7 +2638,7 @@ if($val->type == 1){
 
 				$last_id_year = $wpdb->insert_id;
 				// save ledger $reference,$monthly_fee_id,$yearly_fee_id,$exam_fee_id
-				saveLeadger($val->id ,$fees,0, 'Collection Reference ID-'.$info_id,null,$last_id_year,null,$_POST['fee-date'],$info_id);
+				saveLeadger($val->id ,$fees,0, 'Collection Reference ID-'.$info_id,null,$last_id_year,null,$_POST['fee-date']);
 
 				// save yearly collection details here
 				$insert = $wpdb->insert(
@@ -2956,8 +2684,7 @@ if($val->type == 1){
 					'year' 	=> $year,
 					'class_id' 	=> $class,
 					'section' 	=> $section,
-					'group_id' 	=> $group,	
-					'info_id' 	=> $info_id,					
+					'group_id' 	=> $group,						
 					'exam_id' 	=> $activeExamId,						
 					'sub_head_id' 	=> $val->id,
 					'fee' 	=> $fees,
@@ -2971,7 +2698,7 @@ if($val->type == 1){
 
 			$last_id_exam = $wpdb->insert_id;
 			// save ledger $reference,$monthly_fee_id,$yearly_fee_id,$exam_fee_id
-			saveLeadger($val->id ,$fees,0, 'Collection Reference ID-'.$info_id,null,null,$last_id_exam,$_POST['fee-date'],$info_id);
+			saveLeadger($val->id ,$fees,0, 'Collection Reference ID-'.$info_id,null,null,$last_id_exam,$_POST['fee-date']);
 
 			// save yearly collection details here
 			$insert = $wpdb->insert(
@@ -3008,7 +2735,7 @@ if($val->type == 1){
 	);
 	
 	// save ledger $reference,$monthly_fee_id,$yearly_fee_id,$exam_fee_id
-	saveLeadger($val->id ,$fees,0, 'Collection Reference ID-'.$info_id,null,null,null,$_POST['fee-date'],$info_id);
+	saveLeadger($val->id ,$fees,0, 'Collection Reference ID-'.$info_id,null,null,null,$_POST['fee-date']);
 }
 }
 // echo '<pre>'; print_r($result);exit;
@@ -3023,13 +2750,11 @@ $collection_info_id = $info_id;;
 //   echo  $_SESSION['collection_info_id'];exit;
 
 
-
     
-        $qry = "SELECT sfci.*,ct_student.stdName, ct_student.stdPhone, sm_users.display_name
+        $qry = "SELECT sfci.*,ct_student.stdName
             FROM ct_student_fee_collection_info as sfci  
             LEFT JOIN ct_studentinfo ON sfci.student_id = ct_studentinfo.infoStdid AND ct_studentinfo.infoClass = sfci.class_id AND ct_studentinfo.infoYear = sfci.year
             LEFT JOIN ct_student ON sfci.student_id = ct_student.studentid
-            LEFT JOIN sm_users ON sfci.created_by = sm_users.ID
             LEFT JOIN ct_group ON ct_studentinfo.infoGroup = ct_group.groupId  
             LEFT JOIN ct_section ON ct_studentinfo.infoSection = ct_section.sectionid         
             WHERE sfci.id = '$collection_info_id' GROUP BY student_id ORDER BY sectionid,infoRoll";
@@ -3040,8 +2765,6 @@ $collection_info_id = $info_id;;
 
       
     $feeInfo = $wpdb->get_results( $qry );
-    
-    
 
         $qry2 = "SELECT fee, sub_head_id
             FROM ct_student_fee_collection_details
@@ -3053,36 +2776,6 @@ $collection_info_id = $info_id;;
     foreach($feeDetails as $val){
         $feeDetailsArray[$val->sub_head_id] = $val->fee;
     }
-    
-    // send sms
-    
-    try{
-    $post_url = "http://api.smsinbd.com/sms-api/sendsms" ;  
-      
-			$post_values = array( 
-			'api_token' => 'Pjjwy7TqETCErp02CPvzl1HeBBKIHiXZnMjEBbbr',
-			'senderid' => '8801969908462',
-			'message' => 'Dear '.$feeInfo[0]->stdName.', Your fee amount '.$feeInfo[0]->total.'TK has been received on '.date("d-m-Y").' for '. $monthArray[$feeInfo[0]->month - 1] .'-'. $feeInfo[0]->year.'.',
-			'contact_number' => $stdPhone,
-			);
-			
-			$post_string = "";
-			foreach( $post_values as $key => $value )
-				{ $post_string .= "$key=" . urlencode( $value ) . "&"; }
-			   $post_string = rtrim( $post_string, "& " );
-			  
-			$request = curl_init($post_url);
-				curl_setopt($request, CURLOPT_HEADER, 0);
-				curl_setopt($request, CURLOPT_RETURNTRANSFER, 1);  
-				curl_setopt($request, CURLOPT_POSTFIELDS, $post_string); 
-				curl_setopt($request, CURLOPT_SSL_VERIFYPEER, FALSE);  
-				$post_response = curl_exec($request);  
-			   curl_close ($request);  
-		
-			$array =  json_decode( preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $post_response), true ); 
-}catch(Exception $ex){
-    
-}
 ?>
 
 <button onclick="print('printArea')" class="pull-right btn btn-primary">Print</button>
@@ -3129,26 +2822,8 @@ $collection_info_id = $info_id;;
 </style>
 <style>
 	.width-43{
-		width: 45%  !important;
+		width: 30%  !important;
 	}
-</style>
-<style>
-@media print {
-  .bottom-row {
-    position: fixed;
-    bottom: 0;
-    width: 45%;
-    page-break-after: always;
-  }
-
-  .bottom-row.left {
-    left: 0;
-  }
-
-  .bottom-row.right {
-    right: 0;
-  }
-}
 </style>
         <div style="margin-left: 5px;">
         <div class="container">
@@ -3241,7 +2916,7 @@ $collection_info_id = $info_id;;
 																	<span style="display: grid;text-align: end;">
 																		<span>Total Fee</span>
 																		<span style="margin-top:5px;;">Gross Total</span>
-																		<span>Poor Fund</span>
+																		<span>Remission</span>
 																		<span>Total Received</span>
 																	</span>  
 															</td>
@@ -3273,17 +2948,9 @@ $collection_info_id = $info_id;;
 									</tr>
 								</tbody>
 							</table>
-							<div style="margin-top: 30px;" class="bottom-row">
+							<div style="margin-top: 30px;">
 								<div class="row">
 									<table>
-									    <tr>
-											<td style="width:200px">
-											</td>
-											<td style="width:200px"></td>
-											<td style="width:200px">
-											    <p><?= $feeInfo[0]->display_name?></p>
-											</td>
-										</tr>
 										<tr>
 											<td style="width:200px">
 												<h6>Student's Signature</h6>
@@ -3313,7 +2980,7 @@ $collection_info_id = $info_id;;
 										border-left: 1px dotted black;
 										height: 100%;
 										position: absolute;
-										left: 50%;
+										left: 33%;
 										/* margin-left: -3px; */
 										top: 0;
 									}
@@ -3325,7 +2992,7 @@ $collection_info_id = $info_id;;
 								<div>
 								<!-- <div class="container"> -->
 									<div class="form-heading-content" style="text-align: center; margin: 10px 0px;">
-									<img height="50px" style="position: absolute;left: 54%;top: 40px" src="<?= $s3sRedux['instLogo']['url'] ?>">
+									<img height="50px" style="position: absolute;left: 34%;top: 40px" src="<?= $s3sRedux['instLogo']['url'] ?>">
 										<h4 style="margin-bottom: 0px"><?= $s3sRedux['institute_name'] ?></h4>
 										<span style="color:#2b5591; font-size: 14px; margin: 0;"><?= $s3sRedux['institute_address'] ?></span><br>
 										<span>Student Fees Memo</span><br>
@@ -3403,7 +3070,7 @@ $collection_info_id = $info_id;;
 																	<span style="display: grid;text-align: end;">
 																		<span>Total Fee</span>
 																		<span style="margin-top:5px;;">Gross Total</span>
-																		<span>Poor Fund</span>
+																		<span>Remission</span>
 																		<span>Total Received</span>
 																	</span>  
 															</td>
@@ -3435,17 +3102,9 @@ $collection_info_id = $info_id;;
 									</tr>
 								</tbody>
 							</table>
-							<div style="margin-top: 30px;" class="bottom-row">
+							<div style="margin-top: 30px;">
 								<div class="row">
 									<table>
-									    <tr>
-											<td style="width:200px">
-											</td>
-											<td style="width:200px"></td>
-											<td style="width:200px">
-											    <p><?= $feeInfo[0]->display_name?></p>
-											</td>
-										</tr>
 										<tr>
 											<td style="width:200px">
 												<h6>Student's Signature</h6>
@@ -3470,20 +3129,161 @@ $collection_info_id = $info_id;;
 							</div>
 		
 						</td>
-						<!--<td>-->
-						<!--	<style>-->
-						<!--		.vl2 {-->
-						<!--				border-left: 1px dotted black;-->
-						<!--				height: 100%;-->
-						<!--				position: absolute;-->
-						<!--				left: 69%;-->
-										<!--/* margin-left: -3px; */-->
-						<!--				top: 0;-->
-						<!--			}-->
-						<!--	</style>-->
-						<!--	<div class="vl2"></div>-->
-						<!--</td>-->
-						
+						<td>
+							<style>
+								.vl2 {
+										border-left: 1px dotted black;
+										height: 100%;
+										position: absolute;
+										left: 69%;
+										/* margin-left: -3px; */
+										top: 0;
+									}
+							</style>
+							<div class="vl2"></div>
+						</td>
+						<td class="width-43">
+						<div class="form-heading">
+								<div>
+								<!-- <div class="container"> -->
+									<div class="form-heading-content" style="text-align: center; margin: 10px 0px;">
+									<img height="50px" style="position: absolute;left: 70%;top: 40px" src="<?= $s3sRedux['instLogo']['url'] ?>">
+										<h4 style="margin-bottom: 0px"><?= $s3sRedux['institute_name'] ?></h4>
+										<span style="color:#2b5591; font-size: 14px; margin: 0;"><?= $s3sRedux['institute_address'] ?></span><br>
+										<span>Student Fees Memo</span><br>
+										<span>Bank Copy</span><br>
+									</div>
+								</div>
+							</div>
+							<table class="table table-bordered" style="border: 1px solid black; font-size:12px;">            
+								<tbody style="border-top: 0px;">
+									<tr>
+										<td style="width: 200px;">Transaction No: <?= $feeInfo[0]->id ?></td>
+										<td style="width: 200px;">Student ID: <?= $feeInfo[0]->student_roll ?></td>
+										<td style="width: 200px;">Date: <?= date("d/m/Y", strtotime($feeInfo[0]->date) )?></td>     
+									</tr>
+								</tbody>
+							</table>
+							<table class="table table-bordered" style="border: 1px solid black;font-size:13px;">            
+								<tbody style="border-top: 0px;">
+									<tr>
+										<td style="width: 300px;">Name: <?= $std_name?></td>
+										<!-- <td style="width: 300px;">Name: <?= $feeInfo[0]->stdName?></td> -->
+										<td style="width: 150px;">Phone: <?= $stdPhone ?></td>
+										<!-- <td style="width: 150px;">ID NO: <?= $feeInfo[0]->student_roll ?></td>      -->
+									</tr>
+								</tbody>
+							</table>
+							<table class="table table-bordered" style="border: 1px solid black;font-size:12px;">            
+								<tbody style="border-top: 0px;">
+									<tr>
+										<td style="width: 200px;">Class: <?= getClassNameById($feeInfo[0]->class_id) ?></td>
+										<td style="width: 200px;">Section: Section <?= getSectionNameById($feeInfo[0]->section) ?></td>
+										<td style="width: 200px;">Month: <?= $monthArray[$feeInfo[0]->month - 1]?> - <?= $feeInfo[0]->year ?></td>     
+									</tr>
+								</tbody>
+							</table>
+							<table class="table table-bordered feeTbl" style="border: 1px solid black;">            
+								<tbody style="border-top: 0px;">
+							   
+									<tr>
+										<td style="text-align: center;width: 200px;border: 1px solid black ">SL No</td>
+										<td style="width: 400px; border: 1px solid black ">Particular</td>
+										<td style="text-align: end;width: 200px; border: 1px solid black ">Tk</td>     
+									</tr>
+									<?php
+										// $subHeadInfo = $wpdb->get_results("SELECT * FROM ct_sub_head
+										// WHERE  relation_to = 1  ORDER BY sort_order ASC");
+		
+										$i = 1;
+										foreach($subHeadInfo as $val){
+									?>
+									<tr style="border: 1px solid black;">
+										<td style="text-align: center;border: 1px solid black "><?= $i ?></td>
+										<td style="width: 400px;border: 1px solid black "><?= $subHeadInfo[$i-1]->sub_head_name  ?></td>
+										<td style="text-align: end;border: 1px solid black "><?= @$feeDetailsArray[$val->id] == null ? '0.00' : @$feeDetailsArray[$val->id]?></td>     
+									</tr>
+									
+									<?php
+									   $i++; }
+									?>
+									
+								   
+									<tr>
+										<td style="text-align: center;"></td>
+										<td style="width: 400px;">
+										<table>
+														<tr>
+															<td style="width:200px">
+																<table class="table table-bordered" style="border: 1px solid #000; width:100%;margin-left: 20px">
+																	<tr><td style="border: 1px solid #000;">Total Due</td></tr>
+																	<tr><td style="border: 1px solid #000;">0</td></tr>
+																</table>
+															</td>
+															<td style="width:200px">
+																
+																	<span style="display: grid;text-align: end;">
+																		<span>Total Fee</span>
+																		<span style="margin-top:5px;;">Gross Total</span>
+																		<span>Remission</span>
+																		<span>Total Received</span>
+																	</span>  
+															</td>
+														</tr>
+													</table>
+										</td>
+										<td style="text-align: end; padding-left: 0;
+										padding-right: 0px;">
+											<span style="padding-right: 0.5rem;"><?= $feeInfo[0]->sub_total ?></span>
+											
+											<div style="margin-top:5px;;border-top: 1px solid #000;">
+												<span style="padding-right: 0.5rem;"><?= $feeInfo[0]->sub_total ?></span> <br>
+												<span style="padding-right: 0.5rem;"><?= $feeInfo[0]->remission ?></span>
+											</div>
+											<div style="border-top: 1px solid #000;">
+												<span style="padding-right: 0.5rem;"><?= $feeInfo[0]->total ?></span> <br>
+											</div>
+											
+										</td>     
+									</tr>
+								</tbody>
+							</table>
+							<table class="table table-bordered" style="border: 1px solid #000;font-size:13px;">            
+								<tbody style="border-top: 0px;">
+									<tr>
+										<td style="width: 150px; text-align: center;">In Words</td>
+										<td style="width: 350px;"><?= convertNumberToWord($feeInfo[0]->total)?></td>
+										 
+									</tr>
+								</tbody>
+							</table>
+							<div style="margin-top: 30px;">
+								<div class="row">
+									<table>
+										<tr>
+											<td style="width:200px">
+												<h6>Student's Signature</h6>
+											</td>
+											<td style="width:200px"></td>
+											<td style="width:200px">
+												<h6>Official's Signature</h6>
+											</td>
+										</tr>
+									</table>
+									<!-- <div class="col-md-6">
+										<div class="stdnt-signature">
+											<h6>Student's Signature</h6>
+										</div>
+									</div>
+									<div class="col-md-6">
+										<div class="officals-signature" style="text-align: end;">
+											<h6>Official's Signature</h6>
+										</div>
+									</div> -->
+								</div>
+							</div>
+		
+						</td>
 					</tr>
 				</table>
                 
@@ -3897,39 +3697,19 @@ if($collectionInfo){
 				page-break-after: always;
 			}
 		}
-		
 </style>
 <style>
 	.width-43{
-		width: 45%  !important;
+		width: 30%  !important;
 	}
-</style>
-<style>
-@media print {
-  .bottom-row {
-    position: fixed;
-    bottom: 0;
-    width: 45%;
-    page-break-after: always;
-  }
-
-  .bottom-row.left {
-    left: 0;
-  }
-
-  .bottom-row.right {
-    right: 0;
-  }
-}
 </style>
 <?php
 
 	foreach($collectionInfo as $val){
-		$qry = "SELECT sfci.*,ct_student.stdName, ct_student.stdPhone, sm_users.display_name
+		$qry = "SELECT sfci.*,ct_student.stdName, ct_student.stdPhone
 		FROM ct_student_fee_collection_info as sfci  
 		LEFT JOIN ct_studentinfo ON sfci.student_id = ct_studentinfo.infoStdid AND ct_studentinfo.infoClass = sfci.class_id AND ct_studentinfo.infoYear = sfci.year
 		LEFT JOIN ct_student ON sfci.student_id = ct_student.studentid
-		LEFT JOIN sm_users ON sfci.created_by = sm_users.ID
 		LEFT JOIN ct_group ON ct_studentinfo.infoGroup = ct_group.groupId  
 		LEFT JOIN ct_section ON ct_studentinfo.infoSection = ct_section.sectionid         
 		WHERE sfci.id = '$val->id' GROUP BY student_id ORDER BY sectionid,infoRoll";
@@ -3940,6 +3720,7 @@ if($collectionInfo){
 
   
 $feeInfo = $wpdb->get_results( $qry );
+
 	$qry2 = "SELECT fee, sub_head_id
 		FROM ct_student_fee_collection_details
 		WHERE info_id = '$val->id'";
@@ -4045,7 +3826,7 @@ foreach($feeDetails as $val){
 																	<span style="display: grid;text-align: end;">
 																		<span>Total Fee</span>
 																		<span style="margin-top:5px;;">Gross Total</span>
-																		<span>Poor Fund</span>
+																		<span>Remission</span>
 																		<span>Total Received</span>
 																	</span>  
 															</td>
@@ -4078,18 +3859,9 @@ foreach($feeDetails as $val){
 									</tr>
 								</tbody>
 							</table>
-							
-							<div style="margin-top: 30px;" class="bottom-row">
+							<div style="margin-top: 30px;">
 								<div class="row">
 									<table>
-									    <tr>
-											<td style="width:200px">
-											</td>
-											<td style="width:200px"></td>
-											<td style="width:200px">
-											    <p><?= $feeInfo[0]->display_name?></p>
-											</td>
-										</tr>
 										<tr>
 											<td style="width:200px">
 												<h6>Student's Signature</h6>
@@ -4100,16 +3872,16 @@ foreach($feeDetails as $val){
 											</td>
 										</tr>
 									</table>
-									<!-- <div class="col-md-6">-->
-									<!--	<div class="stdnt-signature">-->
-									<!--		<h6>Student's Signature</h6>-->
-									<!--	</div>-->
-									<!--</div>-->
-									<!--<div class="col-md-6">-->
-									<!--	<div class="officals-signature" style="text-align: end;">-->
-									<!--		<h6>Official's Signature</h6>-->
-									<!--	</div>-->
-									<!--</div> -->
+									<!-- <div class="col-md-6">
+										<div class="stdnt-signature">
+											<h6>Student's Signature</h6>
+										</div>
+									</div>
+									<div class="col-md-6">
+										<div class="officals-signature" style="text-align: end;">
+											<h6>Official's Signature</h6>
+										</div>
+									</div> -->
 								</div>
 							</div>
 						</td>
@@ -4119,7 +3891,7 @@ foreach($feeDetails as $val){
 										border-left: 1px dotted black;
 										height: 100%;
 										position: absolute;
-										left:50%;
+										left: 33%;
 										/* margin-left: -3px; */
 										top: 0;
 									}
@@ -4131,7 +3903,7 @@ foreach($feeDetails as $val){
 								<div>
 								<!-- <div class="container"> -->
 									<div class="form-heading-content" style="text-align: center; margin: 10px 0px;">
-									<img height="50px" style="position: absolute;left: 54%;top: 40px" src="<?= $s3sRedux['instLogo']['url'] ?>">
+									<img height="50px" style="position: absolute;left: 34%;top: 40px" src="<?= $s3sRedux['instLogo']['url'] ?>">
 										<h4 style="margin-bottom: 0px"><?= $s3sRedux['institute_name'] ?></h4>
 										<span style="color:#2b5591; font-size: 14px; margin: 0;"><?= $s3sRedux['institute_address'] ?></span><br>
 										<span>Student Fees Memo</span><br>
@@ -4208,7 +3980,7 @@ foreach($feeDetails as $val){
 													<div style="display: grid;text-align: end;">
 														<span>Total Fee</span>
 														<span style="margin-top:5px;;">Gross Total</span>
-														<span>Poor Fund</span>
+														<span>Remission</span>
 														<span>Total Received</span>
 													</div>
 												</div>
@@ -4226,7 +3998,7 @@ foreach($feeDetails as $val){
 																	<span style="display: grid;text-align: end;">
 																		<span>Total Fee</span>
 																		<span style="margin-top:5px;;">Gross Total</span>
-																		<span>Poor Fund</span>
+																		<span>Remission</span>
 																		<span>Total Received</span>
 																	</span>  
 															</td>
@@ -4258,17 +4030,9 @@ foreach($feeDetails as $val){
 									</tr>
 								</tbody>
 							</table>
-							<div style="margin-top: 30px;"  class="bottom-row">
+							<div style="margin-top: 30px;">
 								<div class="row">
 									<table>
-									    <tr>
-											<td style="width:200px">
-											</td>
-											<td style="width:200px"></td>
-											<td style="width:200px">
-											    <p><?= $feeInfo[0]->display_name?></p>
-											</td>
-										</tr>
 										<tr>
 											<td style="width:200px">
 												<h6>Student's Signature</h6>
@@ -4293,20 +4057,178 @@ foreach($feeDetails as $val){
 							</div>
 		
 						</td>
-						<!--<td>-->
-						<!--	<style>-->
-						<!--		.vl2 {-->
-						<!--				border-left: 1px dotted black;-->
-						<!--				height: 100%;-->
-						<!--				position: absolute;-->
-						<!--				left: 69%;-->
-										<!--/* margin-left: -3px; */-->
-						<!--				top: 0;-->
-						<!--			}-->
-						<!--	</style>-->
-						<!--	<div class="vl2"></div>-->
-						<!--</td>-->
-						
+						<td>
+							<style>
+								.vl2 {
+										border-left: 1px dotted black;
+										height: 100%;
+										position: absolute;
+										left: 69%;
+										/* margin-left: -3px; */
+										top: 0;
+									}
+							</style>
+							<div class="vl2"></div>
+						</td>
+						<td class="width-43">
+						<div class="form-heading">
+								<div>
+								<!-- <div class="container"> -->
+									<div class="form-heading-content" style="text-align: center; margin: 10px 0px;">
+									<img height="50px" style="position: absolute;left: 70%;top: 40px" src="<?= $s3sRedux['instLogo']['url'] ?>">
+										<h4 style="margin-bottom: 0px"><?= $s3sRedux['institute_name'] ?></h4>
+										<span style="color:#2b5591; font-size: 14px; margin: 0;"><?= $s3sRedux['institute_address'] ?></span><br>
+										<span>Student Fees Memo</span><br>
+										<span>Bank Copy</span><br>
+									</div>
+								</div>
+							</div>
+							<table class="table table-bordered" style="border: 1px solid black; font-size:12px;">            
+								<tbody style="border-top: 0px;">
+									<tr>
+										<td style="width: 200px;">Transaction No: <?= $feeInfo[0]->id ?></td>
+										<td style="width: 200px;">Student ID: <?= $feeInfo[0]->student_roll ?></td>
+										<td style="width: 200px;">Date: <?= date("d/m/Y", strtotime($feeInfo[0]->date) )?></td>     
+									</tr>
+								</tbody>
+							</table>
+							<table class="table table-bordered" style="border: 1px solid black;font-size:13px;">            
+								<tbody style="border-top: 0px;">
+									<tr>
+										<!-- <td style="width: 300px;">Name: <?= $std_name?></td> -->
+										<td style="width: 300px;">Name: <?= $feeInfo[0]->stdName?></td>
+										<td style="width: 150px;">Phone: <?= $feeInfo[0]->stdPhone ?></td>
+										<!-- <td style="width: 150px;">Roll: <?= $feeInfo[0]->student_roll ?></td>      -->
+									</tr>
+								</tbody>
+							</table>
+							<table class="table table-bordered" style="border: 1px solid black;font-size:12px;">            
+								<tbody style="border-top: 0px;">
+									<tr>
+										<td style="width: 200px;">Class: <?= getClassNameById($feeInfo[0]->class_id) ?></td>
+										<td style="width: 200px;">Section: Section <?= getSectionNameById($feeInfo[0]->section) ?></td>
+										<td style="width: 200px;">Month: <?= $monthArray[$feeInfo[0]->month - 1]?> - <?= $feeInfo[0]->year ?></td>     
+									</tr>
+								</tbody>
+							</table>
+							<table class="table table-bordered feeTbl" style="border: 1px solid black;">            
+								<tbody style="border-top: 0px;">
+							   
+									<tr>
+										<td style="text-align: center;width: 200px;border: 1px solid black ">SL No</td>
+										<td style="width: 400px; border: 1px solid black ">Particular</td>
+										<td style="text-align: end;width: 200px; border: 1px solid black ">Tk</td>     
+									</tr>
+									<?php
+										// $subHeadInfo = $wpdb->get_results("SELECT * FROM ct_sub_head
+										// WHERE  relation_to = 1 and isHidden is null ORDER BY sort_order ASC");
+		
+										$i = 1;
+										foreach($subHeadInfo as $val){
+									?>
+									<tr style="border: 1px solid black;">
+										<td style="text-align: center;border: 1px solid black "><?= $i ?></td>
+										<td style="width: 400px;border: 1px solid black "><?= $subHeadInfo[$i-1]->sub_head_name  ?></td>
+										<td style="text-align: end;border: 1px solid black "><?= @$feeDetailsArray[$val->id] == null ? '0.00' : @$feeDetailsArray[$val->id]?></td>     
+									</tr>
+									
+									<?php
+									   $i++; }
+									?>
+									
+								   
+									<tr>
+										<td style="text-align: center;"></td>
+										<td style="width: 400px;">
+											<!-- <div class="row">
+												<div class="col-md-6">
+													<div style="display:grid; border: 1px solid #000; width: 200px; text-align: center; margin-left: 48px;
+													margin-top: 22px;">
+														<span>Total Due</span>
+														<span style="border-top: 1px solid #000;">0</span>
+													</div>
+												</div>
+												<div class="col-md-6">
+													<div style="display: grid;text-align: end;">
+														<span>Total Fee</span>
+														<span style="margin-top:5px;;">Gross Total</span>
+														<span>Remission</span>
+														<span>Total Received</span>
+													</div>
+												</div>
+											</div>    -->
+											<table>
+														<tr>
+															<td style="width:200px">
+																<table class="table table-bordered" style="border: 1px solid #000; width:100%;margin-left: 20px">
+																	<tr><td style="border: 1px solid #000;">Total Due</td></tr>
+																	<tr><td style="border: 1px solid #000;">0</td></tr>
+																</table>
+															</td>
+															<td style="width:200px">
+																
+																	<span style="display: grid;text-align: end;">
+																		<span>Total Fee</span>
+																		<span style="margin-top:5px;;">Gross Total</span>
+																		<span>Remission</span>
+																		<span>Total Received</span>
+																	</span>  
+															</td>
+														</tr>
+													</table>
+										</td>
+										<td style="text-align: end; padding-left: 0;
+										padding-right: 0px;">
+											<span style="padding-right: 0.5rem;"><?= $feeInfo[0]->sub_total ?></span>
+											
+											<div style="margin-top:5px;;border-top: 1px solid #000;">
+												<span style="padding-right: 0.5rem;"><?= $feeInfo[0]->sub_total ?></span> <br>
+												<span style="padding-right: 0.5rem;"><?= $feeInfo[0]->remission ?></span>
+											</div>
+											<div style="border-top: 1px solid #000;">
+												<span style="padding-right: 0.5rem;"><?= $feeInfo[0]->total ?></span> <br>
+											</div>
+											
+										</td>     
+									</tr>
+								</tbody>
+							</table>
+							<table class="table table-bordered" style="border: 1px solid #000;font-size:13px;">            
+								<tbody style="border-top: 0px;">
+									<tr>
+										<td style="width: 150px; text-align: center;">In Words</td>
+										<td style="width: 350px;"><?= convertNumberToWord($feeInfo[0]->total)?></td>
+										 
+									</tr>
+								</tbody>
+							</table>
+							<div style="margin-top: 30px;">
+								<div class="row">
+									<table>
+										<tr>
+											<td style="width:200px">
+												<h6>Student's Signature</h6>
+											</td>
+											<td style="width:200px"></td>
+											<td style="width:200px">
+												<h6>Official's Signature</h6>
+											</td>
+										</tr>
+									</table>
+									<!-- <div class="col-md-6">
+										<div class="stdnt-signature">
+											<h6>Student's Signature</h6>
+										</div>
+									</div>
+									<div class="col-md-6">
+										<div class="officals-signature" style="text-align: end;">
+											<h6>Official's Signature</h6>
+										</div>
+									</div> -->
+								</div>
+							</div>
+		
+						</td>
 					</tr>
 				</table>
                 
@@ -4523,7 +4445,7 @@ var selectedActiveExam;
 	  $.ajax({
 			url: $siteUrl+"/inc/ajaxAction.php",
 			method: "POST",
-			data: { class : $('#resultClass').val(), section : $('#resultSection').val(), group : $('#resultGroup').val(), year : $('#resultYear').val(), roll : $('#resultRoll').val(), month: $('#fee-month').val(), admissionFeeSubHeadId:$('#admissionFeeSubHeadId').val(), admissionFormSubHeadId:$('#admissionFormSubHeadId').val(), monthlyFeeSubHeadId:$('#monthlyFeeSubHeadId').val(), registrationFeeSubHeadId:$('#registrationFeeSubHeadId').val(), coachingFeeSubHeadId:$('#coachingFeeSubHeadId').val(), transportFeeSubHeadId:$('#transportFeeSubHeadId').val(), type : 'getStudentInfo' },
+			data: { class : $('#resultClass').val(), section : $('#resultSection').val(), group : $('#resultGroup').val(), year : $('#resultYear').val(), roll : $('#resultRoll').val(), month: $('#fee-month').val(), admissionFeeSubHeadId:$('#admissionFeeSubHeadId').val(), monthlyFeeSubHeadId:$('#monthlyFeeSubHeadId').val(), registrationFeeSubHeadId:$('#registrationFeeSubHeadId').val(), coachingFeeSubHeadId:$('#coachingFeeSubHeadId').val(), transportFeeSubHeadId:$('#transportFeeSubHeadId').val(), type : 'getStudentInfo' },
 			dataType: "json"
 		}).success(function( data ) {
 			// console.log( data)
@@ -4697,296 +4619,4 @@ var selectedActiveExam;
 		document.getElementById('grand-total').value = grandtotal;
 	}
 
-</script>
-
-<?php
-// ===============================================================
-// FIX 409 CONFLICT - HANDLE AJAX ACTIONS LOCALLY (At End of File)
-// ===============================================================
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['type'])) {
-
-  // Clean output buffer to ensure JSON/HTML response is valid
-  while (ob_get_level()) {
-    ob_end_clean();
-  }
-
-  // ------------------------------------------
-  // Get Exams
-  // ------------------------------------------
-  if ($_POST['type'] == 'getExams') {
-    $class = $_POST['class'];
-    $exams = $wpdb->get_results("SELECT examid,examName FROM ct_exam WHERE examClass = '$class'");
-    if (empty($exams)) {
-      echo "<option value=''>No Exam for this Class</option>";
-    } else {
-      echo "<option value=''>Select An Exam</option>";
-    }
-    foreach ($exams as $exam) {
-      echo "<option value='{$exam->examid}'>{$exam->examName}</option>";
-    }
-    exit;
-  }
-
-  // ------------------------------------------
-  // Get Years
-  // ------------------------------------------
-  elseif ($_POST['type'] == 'getYears') {
-    $class = $_POST['class'];
-    $years = $wpdb->get_results("SELECT infoYear FROM ct_studentinfo WHERE infoClass = $class GROUP BY infoYear ORDER BY infoYear ASC");
-    if (empty($years)) {
-      echo "<option value=''>No Student In this class</option>";
-    } else {
-      echo "<option value=''>Year</option>";
-    }
-    foreach ($years as $year) {
-      echo "<option value='{$year->infoYear}'>{$year->infoYear}</option>";
-    }
-    exit;
-  }
-
-  // ------------------------------------------
-  // Get Section
-  // ------------------------------------------
-  elseif ($_POST['type'] == 'getSection') {
-    $class = $_POST['class'];
-    $sections_query = "SELECT sectionid,sectionName FROM ct_section WHERE forClass = '$class'";
-    
-    $sections_query .= " ORDER BY sectionName";
-    $sections = $wpdb->get_results($sections_query);
-
-    if (!empty($sections)) {
-      echo "<option value=''>Section</option>";
-      foreach ($sections as $section) {
-        echo "<option value='{$section->sectionid}'>{$section->sectionName}</option>";
-      }
-    } else {
-      echo "<option value=''>No sections available</option>";
-    }
-    exit;
-  }
-
-  // ------------------------------------------
-  // Get Groups
-  // ------------------------------------------
-  elseif ($_POST['type'] == 'getGroupsByClass') {
-    $class = $_POST['class'];
-    $groups_query = "SELECT DISTINCT ct_group.groupId, ct_group.groupName 
-            FROM ct_group 
-            INNER JOIN ct_studentinfo ON ct_studentinfo.infoGroup = ct_group.groupId 
-            WHERE ct_studentinfo.infoClass = '$class'";
-    
-    $groups_query .= " ORDER BY ct_group.groupName ASC";
-    $groups = $wpdb->get_results($groups_query);
-
-    echo "<option value=''>All Groups</option>";
-    foreach ($groups as $group) {
-      echo "<option value='{$group->groupId}'>{$group->groupName}</option>";
-    }
-    exit;
-  }
-
-  // ------------------------------------------
-  // Get Exam Subjects
-  // ------------------------------------------
-  elseif ($_POST['type'] == 'getExamSubject') {
-    $exam = intval($_POST['exam']);
-    $group = isset($_POST['group']) ? $_POST['group'] : '';
-    $subjects = [];
-
-    $subs = $wpdb->get_results("SELECT examSubjects FROM ct_exam WHERE examid = $exam");
-
-    if (!empty($subs[0]->examSubjects)) {
-      $subs = json_decode($subs[0]->examSubjects, true);
-    } else {
-      $subs = [];
-    }
-
-    if (!empty($subs)) {
-      $subs_escaped = array_map('intval', $subs);
-      $subjectQuery = "SELECT subjectid,subjectName FROM ct_subject 
-                WHERE subjectid IN (" . implode(',', $subs_escaped) . ")";
-
-      if (!empty($group)) {
-        $subjectQuery .= " AND (forGroup = 'all' OR forGroup = '$group' OR forGroup LIKE '%\"$group\"%')";
-      }
-
-      $subjectQuery .= " ORDER BY subjectName ASC";
-      $subjects = $wpdb->get_results($subjectQuery);
-    }
-
-    if (empty($subjects)) {
-      echo "<option value=''>No subject!</option>";
-    } else {
-      echo "<option value=''>Select Subject</option>";
-      foreach ($subjects as $subject) {
-        echo '<option value="' . $subject->subjectid . '">' . $subject->subjectName . '</option>';
-      }
-    }
-    exit;
-  }
-}
-
-if (isset($_POST['updateAllResult'])) {
-  $cq = $_POST['CQ'];
-  $mcq = $_POST['MCQ'];
-  $prc = $_POST['P'];
-  $ca = $_POST['ca'];
-  $response = false;
-  foreach ($_POST['id'] as $id) {
-    $update = $wpdb->update(
-      'ct_result',
-      array(
-        'resCQ'     => $cq[$id],
-        'resMCQ'     => $mcq[$id],
-        'resPrec'   => $prc[$id],
-        'resCa'   => $ca[$id],
-        'resTotal'   => isnum($cq[$id]) + isnum($mcq[$id]) + isnum($prc[$id]) + isnum($ca[$id])
-      ),
-      array('resultId' => $id)
-    );
-    if ($update) {
-      $response = $update;
-    }
-  }
-  if ($response) {
-    $message = array('status' => 'success', 'message' => 'Successfully updated');
-  } else {
-    $message = array('status' => 'faild', 'message' => 'Something wrong please try again');
-  }
-} ?>
-
-<script type="text/javascript">
-  // ==================================
-  // HANDLE AJAX ACTIONS LOCALLY
-  // ==================================
-  (function($) {
-    // Use current page as AJAX URL for standalone processing
-    var ajaxUrl = '';
-
-    $('#resultClass').change(function() {
-      var selectedClass = $(this).val();
-
-      // Fetch Exams
-      $.ajax({
-        url: ajaxUrl,
-        method: "POST",
-        data: {
-          class: selectedClass,
-          type: 'getExams'
-        },
-        dataType: "html"
-      }).done(function(msg) {
-        $("#resultExam").html(msg);
-        $("#resultExam").prop('disabled', false);
-        // Reset dependent dropdowns
-        $("#resultSubject").prop('disabled', true).html('<option disabled selected>Select exam First</option>');
-      });
-
-      // Fetch Years
-      $.ajax({
-        url: ajaxUrl,
-        method: "POST",
-        data: {
-          class: selectedClass,
-          type: 'getYears'
-        },
-        dataType: "html"
-      }).done(function(msg) {
-        $("#resultYear").html(msg);
-        $("#resultYear").prop('disabled', false);
-      });
-
-      // Fetch Sections
-      $.ajax({
-        url: ajaxUrl,
-        method: "POST",
-        data: {
-          class: selectedClass,
-          type: 'getSection'
-        },
-        dataType: "html"
-      }).done(function(msg) {
-        $("#resultSection").html(msg);
-        $("#resultSection").prop('disabled', false);
-      });
-
-      // Fetch All Groups
-      $.ajax({
-        url: ajaxUrl,
-        method: "POST",
-        data: {
-          class: selectedClass,
-          type: 'getGroupsByClass'
-        },
-        dataType: "html"
-      }).done(function(msg) {
-        $("#resultGroup").html(msg);
-        $("#resultGroup").prop('disabled', false);
-      });
-    });
-
-    // Fetch Subjects when Exam Changes
-    $('#resultExam').change(function() {
-      var selectedExam = $(this).val();
-      var selectedGroup = $('#resultGroup').val();
-
-      $.ajax({
-        url: ajaxUrl,
-        method: "POST",
-        data: {
-          exam: selectedExam,
-          group: selectedGroup,
-          type: 'getExamSubject'
-        },
-        dataType: "html"
-      }).done(function(msg) {
-        $("#resultSubject").html(msg);
-        $("#resultSubject").prop('disabled', false);
-      });
-    });
-
-    // Fetch Subjects when Group Changes
-    $('#resultGroup').change(function() {
-      var selectedExam = $('#resultExam').val();
-      var selectedGroup = $(this).val();
-
-      if (selectedExam) {
-        $.ajax({
-          url: ajaxUrl,
-          method: "POST",
-          data: {
-            exam: selectedExam,
-            group: selectedGroup,
-            type: 'getExamSubject'
-          },
-          dataType: "html"
-        }).done(function(msg) {
-          $("#resultSubject").html(msg);
-          $("#resultSubject").prop('disabled', false);
-        });
-      }
-    });
-
-    // Interactive validation for result inputs (Client-side only)
-    $('.resultInput').keyup(function(event) {
-      $this = $(this);
-      $val = $this.val();
-      $max = $this.data('max');
-
-      if ($val == '' || $val < ($max + 1) || $val == 'A' || $val == 'a') {
-        $this.css('border-color', '#ddd');
-        $this.removeClass('haserror');
-      } else {
-        $this.addClass('haserror');
-        $this.css('border-color', 'red');
-        $('.resultSubmit').prop('disabled', true);
-      }
-
-      if ($('.resultInput.haserror').length == 0) {
-        $('.resultSubmit').prop('disabled', false);
-      }
-    });
-
-  })(jQuery);
 </script>

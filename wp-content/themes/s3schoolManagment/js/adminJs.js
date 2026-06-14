@@ -119,6 +119,7 @@
 
 
     var media_uploader = '';
+    var MAX_UPLOAD_FILE_SIZE_BYTES = 60 * 1024; // Enforce 60 KB limit for student images
     $('.mediaUploader').click(function(event) {
       var $this = $(this);
       media_uploader = wp.media({
@@ -129,6 +130,30 @@
 
       media_uploader.on("insert", function(){
         var json = media_uploader.state().get("selection").first().toJSON();
+        var mime = json.mime || '';
+        var fileSize = json.filesizeInBytes || 0;
+
+        if(!fileSize && json.filesizeHumanReadable){
+          var parts = json.filesizeHumanReadable.trim().split(' ');
+          if(parts.length === 2){
+            var sizeValue = parseFloat(parts[0]);
+            var unit = parts[1].toUpperCase();
+            var multiplier = 1;
+            if(unit.indexOf('KB') === 0){ multiplier = 1024; }
+            else if(unit.indexOf('MB') === 0){ multiplier = 1024 * 1024; }
+            else if(unit.indexOf('GB') === 0){ multiplier = 1024 * 1024 * 1024; }
+            if(!isNaN(sizeValue)){
+              fileSize = sizeValue * multiplier;
+            }
+          }
+        }
+
+        if(mime.indexOf('image/') === 0 && fileSize > MAX_UPLOAD_FILE_SIZE_BYTES){
+          alert('Please select an image that is 60 KB or smaller.');
+          media_uploader.open();
+          return;
+        }
+
         var image_url = json.url;
         var image_caption = json.caption;
         var image_title = json.title;

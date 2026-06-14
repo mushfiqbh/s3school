@@ -3,15 +3,7 @@
  * Template Name: Gallery
  */
 get_header(); ?>
-<style>
-    .b-blog-classic img{
-        width:185px;
-        height:200px;
-    }
-    .gallery-item-content .gallery-item-caption .item-category{
-        font-weight:200;
-    }
-</style>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/magnific-popup.js/1.1.0/jquery.magnific-popup.min.js"></script>
 
 
@@ -26,7 +18,13 @@ get_header(); ?>
 		</div>
 	</div>
 </div>
-
+<style>
+    .gallery-item-content .gallery-item-img img{
+        max-height:220px;
+        min-height:220px;
+        width:100%;
+    }
+</style>
 <div class="b-layer-main">
 	<div class="page-arrow">
 		<i class="fa fa-angle-down" aria-hidden="true"></i>
@@ -53,7 +51,7 @@ get_header(); ?>
 									if ( has_post_thumbnail() ) {
 										$img = get_the_post_thumbnail_url();
 										?>
-											<div class="b-gallery-2__item col-md-3 col-sm-6">
+											<div class="b-gallery-2__item col-md-4 col-sm-6">
 					              <div class="gallery-item-content">
 					                <div class="gallery-item-img">
 					                  <img src="<?= $img  ?>" alt="<?php the_title() ?>" class="img-responsive">
@@ -72,7 +70,7 @@ get_header(); ?>
 					                </div>
 					              </div>
 					            </div>
-										<?php
+						<?php
 									}
 								}
 								

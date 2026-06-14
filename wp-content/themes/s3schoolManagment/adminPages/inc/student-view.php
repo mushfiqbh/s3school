@@ -42,10 +42,6 @@ foreach ($students as $student) {
         <p><?= $student->groupName ?></p>
         <label>Section Name</label>
         <p><?= $student->sectionName ?></p>
-        <?php if(!empty($student->stdShift)){ ?>
-        <label>Shift</label>
-        <p><?= $student->stdShift ?></p>
-        <?php } ?>
 
         <label>SSC Roll</label>
         <p><?= $student->sscRoll ?></p>
@@ -71,14 +67,28 @@ foreach ($students as $student) {
       <div class="col-md-4">
         <label>Father</label>
         <p><?= $student->stdFather ?></p>
+        <label>Father (Bangla)</label>
+        <p><?= $student->stdFatherBangla ?></p>
         <label>Profession</label>
         <p><?= $student->stdFatherProf ?></p>
       </div>
       <div class="col-md-4">
         <label>Mother</label>
         <p><?= $student->stdMother ?></p>
+        <label>Mother (Bangla)</label>
+        <p><?= $student->stdMotherBangla ?></p>
         <label>Profession</label>
         <p><?= $student->stdMotherProf ?></p>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-6">
+        <label>Guardian Phone</label>
+        <p><?= $student->stdPhone ?></p>
+      </div>
+      <div class="col-md-6">
+        <label>Emergency Phone</label>
+        <p><?= $student->stdEmergencyPhone ?></p>
       </div>
     </div>
   </div>

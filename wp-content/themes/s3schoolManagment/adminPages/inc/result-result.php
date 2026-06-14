@@ -298,20 +298,25 @@ if (isset($_GET['roll'])) {
 							/*==================
 								For Combine mark
 							====================*/
-							$optionals = implode (", ",json_decode($student->infoOptionals));
+						//	$optionals = implode (", ",json_decode($student->infoOptionals));
 							$fourth = $student->info4thSub;
-							$optionals = ($optionals == 0) ? $optionals.",".$fourth : $optionals; 
+						//	$optionals = ($optionals == 0) ? $optionals.",".$fourth : $optionals; 
 
-							$combines = $wpdb->get_results("SELECT * FROM `ct_subject`
+				// 			$combines = $wpdb->get_results("SELECT * FROM `ct_subject`
+				// 				LEFT JOIN ct_result ON resSubject = subjectid AND resExam = $exam AND resClass = $class AND resStudentId = $stdnt
+				// 				LEFT JOIN ct_class ON $class = ct_class.classid
+				// 				WHERE (subjectClass = $class AND subOptinal = 0 AND sub4th = 0 AND subCombineMark = 1) OR subjectid IN ($optionals) ORDER BY sub4th,subOptinal,subCode ASC");
+
+$combines = $wpdb->get_results("SELECT * FROM `ct_subject`
 								LEFT JOIN ct_result ON resSubject = subjectid AND resExam = $exam AND resClass = $class AND resStudentId = $stdnt
 								LEFT JOIN ct_class ON $class = ct_class.classid
-								WHERE (subjectClass = $class AND subOptinal = 0 AND sub4th = 0 AND subCombineMark = 1) OR subjectid IN ($optionals) ORDER BY sub4th,subOptinal,subCode ASC");
+								WHERE (subjectClass = $class AND subOptinal = 0 AND sub4th = 0 AND subCombineMark = 1)  ORDER BY sub4th,subOptinal,subCode ASC");
 
 
 							$results2 = $wpdb->get_results( "SELECT * FROM `ct_subject`
 								LEFT JOIN ct_result ON resSubject = subjectid AND resExam = $exam AND resClass = $class AND resStudentId = $stdnt
 								LEFT JOIN ct_class ON $class = ct_class.classid
-								WHERE (subjectClass = $class AND subOptinal = 0 AND sub4th = 0 AND subCombineMark = 0) OR subjectid IN ($optionals) ORDER BY sub4th,subOptinal,subCode ASC" );
+								WHERE (subjectClass = $class AND subOptinal = 0 AND sub4th = 0 AND subCombineMark = 0)  ORDER BY sub4th,subOptinal,subCode ASC" );
 
 							$numberOf = sizeof($combines) + sizeof($results2);
 							$gpaNotPrinted = true;
