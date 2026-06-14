@@ -1,0 +1,62 @@
+# ----------------------------------------------------------------------
+# OS generated files
+# ----------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ----------------------------------------------------------------------
+# WordPress Configuration & Core
+# ----------------------------------------------------------------------
+# NEVER commit your config file (contains database credentials)
+wp-config.php
+
+# (Optional) Ignore WP Core files if you are only versioning wp-content
+# wp-admin/
+# wp-includes/
+# *.php
+# !wp-config-sample.php
+# !index.php
+
+# ----------------------------------------------------------------------
+# WordPress Content & Caching
+# ----------------------------------------------------------------------
+wp-content/uploads/
+wp-content/blogs.dir/
+wp-content/upgrade/
+wp-content/backup-db/
+wp-content/advanced-cache.php
+wp-content/wp-cache-config.php
+wp-content/cache/
+wp-content/temp/
+wp-content/w3tc-config/
+
+# ----------------------------------------------------------------------
+# Logs
+# ----------------------------------------------------------------------
+*.log
+wp-content/debug.log
+
+# ----------------------------------------------------------------------
+# Theme & Plugin Development
+# ----------------------------------------------------------------------
+node_modules/
+npm-debug.log
+yarn-error.log
+vendor/
+wp-admin/
+wp-includes/
+.env
+
+# ----------------------------------------------------------------------
+# IDE / Editor Directories
+# ----------------------------------------------------------------------
+.idea/
+.vscode/
+.puku/
+*.sublime-workspace
+*.sublime-project
