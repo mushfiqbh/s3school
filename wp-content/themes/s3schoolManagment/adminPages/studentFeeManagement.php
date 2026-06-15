@@ -1350,11 +1350,20 @@ if (isset($_POST['delRevinew'])) {
 						$feeInfoQuery .= " AND group_id = $grou";
 					}
 					$feeInfo = $wpdb->get_results($feeInfoQuery);
-						if(!$feeInfo){
+					if(!$feeInfo){
+						// Safety net: check collection_details in case summary wasn't updated
+						$paidInCollection = $wpdb->get_var("SELECT cd.id FROM ct_student_fee_collection_details cd
+							LEFT JOIN ct_student_fee_collection_info ci ON ci.id = cd.info_id
+							WHERE ci.class_id = $class AND ci.year = '$year'
+							AND ci.student_id = $val->infoStdid AND cd.sub_head_id = $sub_head_id LIMIT 1");
+						if(!$paidInCollection){
 							$allLists[$key]['due'] = $fees;
 						}else{
 							$allLists[$key]['due'] = 0;
 						}
+					}else{
+						$allLists[$key]['due'] = 0;
+					}
 				}else if($subHeadType == 3){
 					// exam
 					// get active exam id
@@ -1371,10 +1380,19 @@ if (isset($_POST['delRevinew'])) {
 						$feeInfo = $wpdb->get_results($feeInfoQuery);
 
 						if(!$feeInfo){
-							$allLists[$key]['due'] = $fees;
+							// Safety net: check collection_details in case summary wasn't updated
+							$paidInCollection = $wpdb->get_var("SELECT cd.id FROM ct_student_fee_collection_details cd
+								LEFT JOIN ct_student_fee_collection_info ci ON ci.id = cd.info_id
+								WHERE ci.class_id = $class AND ci.year = '$year'
+								AND ci.student_id = $val->infoStdid AND cd.sub_head_id = $sub_head_id LIMIT 1");
+							if(!$paidInCollection){
+								$allLists[$key]['due'] = $fees;
+							}else{
+								$allLists[$key]['due'] = 0;
+							}
 						}else{
 							$allLists[$key]['due'] = 0;
-						}	
+						}
 					// }
 					
 				}else if($subHeadType == 4){
@@ -1426,6 +1444,31 @@ if (isset($_POST['delRevinew'])) {
 			$allLists[$key]['name'] = $studentInfo[0]->stdName;
 			$allLists[$key]['roll'] = $val->infoRoll;
 			$allLists[$key]['due'] = 0;
+
+			// Pre-fetch already-paid yearly and exam fee sub_head_ids from collection_details (safety net)
+			$yearlyPaidInCollection = array();
+			$examPaidInCollection = array();
+
+			$yearlyPaidQuery = "SELECT DISTINCT cd.sub_head_id FROM ct_student_fee_collection_details cd
+				LEFT JOIN ct_student_fee_collection_info ci ON ci.id = cd.info_id
+				LEFT JOIN ct_sub_head sh ON sh.id = cd.sub_head_id
+				WHERE ci.class_id = $class AND ci.year = '$year'
+				AND ci.student_id = $val->infoStdid AND sh.type = 2";
+			if(isset($sec) && !empty($sec)){ $yearlyPaidQuery .= " AND ci.section = $sec"; }
+			if(isset($grou) && !empty($grou)){ $yearlyPaidQuery .= " AND ci.group_id = $grou"; }
+			$yearlyPaidInCollection = $wpdb->get_col($yearlyPaidQuery);
+			if(!$yearlyPaidInCollection) $yearlyPaidInCollection = array();
+
+			$examPaidQuery = "SELECT DISTINCT cd.sub_head_id FROM ct_student_fee_collection_details cd
+				LEFT JOIN ct_student_fee_collection_info ci ON ci.id = cd.info_id
+				LEFT JOIN ct_sub_head sh ON sh.id = cd.sub_head_id
+				WHERE ci.class_id = $class AND ci.year = '$year'
+				AND ci.student_id = $val->infoStdid AND sh.type = 3";
+			if(isset($sec) && !empty($sec)){ $examPaidQuery .= " AND ci.section = $sec"; }
+			if(isset($grou) && !empty($grou)){ $examPaidQuery .= " AND ci.group_id = $grou"; }
+			$examPaidInCollection = $wpdb->get_col($examPaidQuery);
+			if(!$examPaidInCollection) $examPaidInCollection = array();
+
 			//  get active collection sub head id
 			$subHeadId = $wpdb->get_results("SELECT * FROM ct_sub_head
 			WHERE  active_for_collection = 1  AND relation_to = 1 and isHidden is null ORDER BY sub_head_name ASC");
@@ -1466,7 +1509,7 @@ if (isset($_POST['delRevinew'])) {
 					}
 					$feeInfo = $wpdb->get_results($feeInfoQuery);
 
-					if(!$feeInfo){
+					if(!$feeInfo && !in_array($subval->id, $examPaidInCollection)){
 						$allLists[$key]['due'] += $fees;
 					}else{
 						$allLists[$key]['due'] += 0;
@@ -1560,7 +1603,7 @@ if (isset($_POST['delRevinew'])) {
 					$feeInfoQuery .= " AND group_id = $grou";
 				}
 				$feeInfo = $wpdb->get_results($feeInfoQuery);
-					if(!$feeInfo){
+					if(!$feeInfo && !in_array($subval->id, $yearlyPaidInCollection)){
 						// check admission fee for new or promoted student
 				if( $subval->id == $admissionFeeSubHeadId){
 					if($studentInfo[0]->admission_type == 1){
@@ -1604,33 +1647,30 @@ if (isset($_POST['delRevinew'])) {
 			
 		} //end of sub head
 		
-		
 				/**
-    			 * Fetch paystation total from ct_student_fee_collection_info for selected month
-    			 * Deduct Online Paid Amount	
-    			 * If due amount is Unearned Revenue (Exceed amount paid): move exceeded portion into next month
-    			 * 
-    			 * Commit: 2026-3-6 20:00
-    			 * Author: mushfiqbh
-    			*/
-				$onlinePaidTotalAmountQuery = "SELECT id, SUM(total) AS totalPaid FROM ct_student_fee_collection_info WHERE  class_id = $class AND year = '$year' AND month = $month AND student_id = $val->infoStdid GROUP BY student_id";
-				
+				 * Deduct already-paid MONTHLY amounts for the selected month (same logic as getPaystationFeeInfo)
+				 * Only monthly fees (sh.type = 1) are deducted — yearly and exam fees are already excluded
+				 * via the summary + collection_details safety net checks above.
+				 */
+				$onlinePaidTotalAmountQuery = "SELECT SUM(cd.fee) AS totalPaid 
+					FROM ct_student_fee_collection_details cd
+					LEFT JOIN ct_student_fee_collection_info ci ON ci.id = cd.info_id
+					LEFT JOIN ct_sub_head sh ON sh.id = cd.sub_head_id
+					WHERE ci.class_id = $class AND ci.year = '$year' 
+					AND ci.month = $month AND ci.student_id = $val->infoStdid 
+					AND sh.type = 1";
 				if(isset($sec) && !empty($sec)){
-					$onlinePaidTotalAmountQuery .= " AND section = $sec";
+					$onlinePaidTotalAmountQuery .= " AND ci.section = $sec";
 				}
 				if(isset($grou) && !empty($grou)){
-					$onlinePaidTotalAmountQuery .= " AND group_id = $grou";
+					$onlinePaidTotalAmountQuery .= " AND ci.group_id = $grou";
 				}
 				
-				$onlinePaidTotalAmount = $wpdb->get_results($onlinePaidTotalAmountQuery);
+				$onlinePaidTotalAmount = $wpdb->get_var($onlinePaidTotalAmountQuery);
+				$paidAmount = floatval($onlinePaidTotalAmount);
 				
-    			if($onlinePaidTotalAmount){
-    			    $netDueAmount = $allLists[$key]['due'] - $onlinePaidTotalAmount[0]->totalPaid;
-    			 //   if($netDueAmount < 0){  // Unearned Revenue
-    			 //       $netDueAmount = 0;
-    			 //   }
-    			    
-    			    $allLists[$key]['due'] = $netDueAmount;
+    			if($paidAmount > 0){
+    			    $allLists[$key]['due'] = max(0, $allLists[$key]['due'] - $paidAmount);
     			}
 		}
 	}
