@@ -191,7 +191,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['type'])) {
 
 						<div class="form-group ">
 							<label>Section</label>
-							<select id="resultSection" class="form-control" name="section" required disabled>
+							<select id="resultSection" class="form-control" name="section" disabled>
 								<option disabled selected>Select Class First</option>
 							</select>
 						</div>
@@ -229,7 +229,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['type'])) {
 
 			  		if (isset($_GET['syear'])) {
 
-			  			$querry = "SELECT stdName,infoRoll,className,sectionName,groupName,spPosition,spFaild,studentid,infoGroup,info4thSub,infoOptionals FROM `ct_studentPoint`
+			  			$querry = "SELECT stdName,infoRoll,className,sectionName,groupName,spPosition,spClassPosition,spFaild,studentid,infoGroup,info4thSub,infoOptionals FROM `ct_studentPoint`
   								LEFT JOIN ct_student ON ct_student.studentid = ct_studentPoint.spStdID
   								LEFT JOIN ct_studentinfo ON ct_student.studentid = ct_studentinfo.infoStdid AND $class = ct_studentinfo.infoClass AND '$year' = ct_studentinfo.infoYear
 									LEFT JOIN ct_class ON ct_studentinfo.infoClass = ct_class.classid
@@ -238,8 +238,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['type'])) {
 								WHERE infoYear = '$year' AND spExam = $exam AND infoClass = $class AND stdCurrentClass = $class AND stdCurntYear = '$year'";
 
 							$querry .= ($roll != "") ? " AND infoRoll = $roll" : '';
-							$querry .= ($section != "") ? " AND infoSection = $section" : '';
-							$querry .= " ORDER BY spPosition";
+							$querry .= ($section != "") ? " AND infoSection = $section ORDER BY spPosition" : ' ORDER BY spClassPosition';
 							$groupsBy = $wpdb->get_results($querry);
 			  		}
 			  		
@@ -286,19 +285,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['type'])) {
 		                  } ?>
 										</select>
 									</div>
-									<div class="form-group">
+                  <div class="form-group">
 										<label> Add additional</label>
 										<input id="addAdditional" style="width: 80px" class="form-control" type="number" >
 									</div>
-
-									<div class="form-group">
+                  
+                  <div class="form-group" style="margin-left: 8px;">
 										<label> Start from</label>
-										<input id="reorderStart" style="width: 80px" class="form-control" type="number" value="1" min="1">
+										<input id="reorderStart" style="width: 40px" class="form-control" type="text" value="1">
 									</div>
 									<button type="button" id="reorderRoll" class="btn btn-info" style="margin-right: 8px;">Reorder Roll</button>
 
+									
 			  					<input class="btn btn-success pull-right" type="submit" name="promotStu" value="Promote">
 			  				</div>
+
+                <div class="form-top" style="width: 100%; padding-top: 25px; display: flex; justify-content: flex-end; align-items: end;">									
+									<div class="form-group" style="margin-left: auto;">
+										<label> Auto Select Filter</label>
+										<select id="selectFilter" class="form-control" style="width: 150px;">
+											<option value="">Choose...</option>
+											<option value="firstHalf">First Half</option>
+                      <option value="lastHalf">Last Half</option>
+											<option value="evenStudents">Even Students</option>
+											<option value="oddStudents">Odd Students</option>
+											<option value="First Third 1/3">First Third 1/3</option>
+											<option value="Second Third 2/3">Second Third 2/3</option>
+											<option value="Last Third 3/3">Last Third 3/3</option>
+										</select>
+									</div>
+									<button type="button" id="applySelectFilter" class="btn btn-warning" style="margin-right: 8px;">Apply Selection</button>
+
+                </div>
+
 			  				<br>
 			  				<table class="table table-responsive table-striped table-bordered">
 			  					<tr>
@@ -315,6 +334,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['type'])) {
 			  					<?php
 			  					
 			  					foreach ($groupsBy as $key => $value) {
+			  					    
+			  					    $rank = 0;
+			  					    if($section != ""){ // when section is selected
+			  					        $rank = $value->spPosition;
+			  					    }else {
+			  					        $rank = $value->spClassPosition;
+			  					    }
+			  					    
 									?>
 									
 
@@ -325,15 +352,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['type'])) {
 					  					<td><?= $value->className ?></td>
 					  					<td><?= $value->sectionName ?></td>
 					  					<td><?= $value->groupName ?></td>
-					  					<td><?= $value->spPosition ?><?= ($value->spFaild > 0) ? ' ('.$value->spFaild.' Sub Fail)' : ''; ?></td>
+					  					<td><?= $rank ?><?= ($value->spFaild > 0) ? ' ('.$value->spFaild.' Sub Fail)' : ''; ?></td>
 					  					<td>
 					  						<input type="hidden" name="info4thSub[<?= $value->studentid ?>]" value='<?= str_replace("\"","",$value->info4thSub); ?>'>
 					  						<input type="hidden" name="infoOptionals[<?= $value->studentid ?>]" value='<?= str_replace("\"","",$value->infoOptionals); ?>'>
 					  						<input type="hidden" name="infoGroup[<?= $value->studentid ?>]" value='<?= $value->infoGroup; ?>'>
-					  						<input class="assignRoll" type="number" name="setRoll[<?= $value->studentid ?>]" data-position="<?= $value->spPosition ?>" value="<?= $value->spPosition ?>">
+					  						<input class="assignRoll" type="number" name="setRoll[<?= $value->studentid ?>]" data-position="<?= $rank ?>" value="<?= $rank ?>">
 					  					</td>
 					  					<td>
-					  						<input type="hidden" name="position[<?= $value->studentid ?>]" value="<?= $value->spPosition ?>">
+					  						<input type="hidden" name="position[<?= $value->studentid ?>]" value="<?= $rank ?>">
 					  						<label class="labelRadio">
 					  							<input class="stdSel" type="checkbox" name="promotion[]" value="<?= $value->studentid ?>"> Select
 					  						</label>
@@ -548,6 +575,71 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['type'])) {
       } else {
         $('.stdSel').prop('checked', false);
       }
+    });
+
+    // Apply Selection Filter (First Half / Even / Odd)
+    $('#applySelectFilter').click(function() {
+      var filter = $('#selectFilter').val();
+      if (!filter) { return; }
+
+      var $rows = $('table.table tbody tr');
+      var total = $rows.length;
+
+      // Uncheck all first
+      $('.stdSel').prop('checked', false);
+
+      if (filter === 'firstHalf') {
+        var half = Math.ceil(total / 2);
+        $rows.each(function(index) {
+          if (index < half) {
+            $(this).find('.stdSel').prop('checked', true);
+          }
+        });
+      } else if (filter === 'lastHalf') {
+        var half = Math.ceil(total / 2);
+        $rows.each(function(index) {
+          if (index >= half) {
+            $(this).find('.stdSel').prop('checked', true);
+          }
+        });
+      }
+       else if (filter === 'evenStudents') {
+        $rows.each(function(index) {
+          if ((index + 1) % 2 === 0) {
+            $(this).find('.stdSel').prop('checked', true);
+          }
+        });
+      } else if (filter === 'oddStudents') {
+        $rows.each(function(index) {
+          if ((index + 1) % 2 !== 0) {
+            $(this).find('.stdSel').prop('checked', true);
+          }
+        });
+      } else if (filter === 'First Third 1/3') {
+        var third = Math.ceil(total / 3);
+        $rows.each(function(index) {
+          if (index < third) {
+            $(this).find('.stdSel').prop('checked', true);
+          }
+        });
+      } else if (filter === 'Second Third 2/3') {
+        var third = Math.ceil(total / 3);
+        $rows.each(function(index) {
+          if (index >= third && index < 2 * third) {
+            $(this).find('.stdSel').prop('checked', true);
+          }
+        });
+      } else if (filter === 'Last Third 3/3') {
+        var third = Math.ceil(total / 3);
+        $rows.each(function(index) {
+          if (index >= 2 * third) {
+            $(this).find('.stdSel').prop('checked', true);
+          }
+        });
+      }
+
+      // Reorder Roll based on new selection
+      $('#reorderRoll').click();
     });
 
   })(jQuery);
