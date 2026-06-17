@@ -116,6 +116,7 @@ function getIdDesignConfig($no, $person_type = 'student')
         'show_image' => true,
         'show_name' => true,
         'show_id' => true,
+        'show_mpo_index' => false,
 		'show_class_section' => true,
         'show_class' => true,
         'show_section' => ($person_type !== 'teacher'),
@@ -895,6 +896,7 @@ $design_url  = getIdDesignImageUrl($design_no);
 							<label class="integrated-config-item"><input type="checkbox" name="show_image"> Image</label>
 							<label class="integrated-config-item"><input type="checkbox" name="show_name"> Name</label>
 							<label class="integrated-config-item"><input type="checkbox" name="show_id"> <span class="label-id">ID No</span></label>
+							<label class="integrated-config-item"><input type="checkbox" name="show_mpo_index"> MPO Index</label>
 							<label class="integrated-config-item"><input type="checkbox" name="show_class_section"> Class/Section</label>
 							<label class="integrated-config-item"><input type="checkbox" name="show_class"> <span class="label-class">Class</span></label>
 							<label class="integrated-config-item label-section-wrapper"><input type="checkbox" name="show_section"> Section</label>
@@ -1014,8 +1016,12 @@ $design_url  = getIdDesignImageUrl($design_no);
 									<td class="info-label">ID</td>
 									<td class="info-value"><span class="colon">:&nbsp;</span><span class="value-text">2610100</span></td>
 								</tr>
+								<tr id="prev_teacher_show_mpo_index" class="info-row">
+									<td class="info-label">MPO INDEX</td>
+									<td class="info-value"><span class="colon">:&nbsp;</span><span class="value-text">2610100</span></td>
+								</tr>
 								<tr id="prev_teacher_show_roll" class="info-row">
-									<td class="info-label">QUALIFICATION</td>
+									<td class="info-label">EDUCATION</td>
 									<td class="info-value"><span class="colon">:&nbsp;</span><span class="value-text">M.A. IN ENGLISH</span></td>
 								</tr>
 								<tr id="prev_teacher_show_father" class="info-row">
@@ -1075,6 +1081,7 @@ $design_url  = getIdDesignImageUrl($design_no);
 											<div id="prev_landscape_father" class="info-row"><b>Father:</b> <span>MR. SAMPLE FATHER</span></div>
 											<div id="prev_landscape_mother" class="info-row"><b>Mother:</b> <span>MRS. SAMPLE MOTHER</span></div>
 											<div id="prev_landscape_id" class="info-row"><b><span class="label-id">ID No</span>:</b> <span>20240001</span></div>
+											<div id="prev_landscape_mpo_index" class="info-row" style="display:none;"><b>MPO:</b> <span>2610100</span></div>
 											<div id="prev_landscape_roll" class="info-row"><b><span class="label-roll">Roll</span>:</b> <span>10</span></div>
 											<div id="prev_landscape_class_section" class="info-row"><b><span class="label-class">Class</span>:</b> <span id="prev_landscape_class_section_val">NINE (A)</span></div>
 											<div id="prev_landscape_class_only" class="info-row"><b><span class="label-class">Class</span>:</b> <span id="prev_landscape_class_only_val">NINE</span></div>
@@ -1207,7 +1214,7 @@ $design_url  = getIdDesignImageUrl($design_no);
 							<h2>ID Card Management</h2>
 							<div>
 								<button class="btn btn-warning" style="margin-bottom:10px;" onclick="openDesignConfigModal()">Configure Designs & Backgrounds</button>
-								<button class="btn btn-info" style="margin-bottom:10px;" onclick="openSamplesModal()">View Design Samples</button>
+								<!-- <button class="btn btn-info" style="margin-bottom:10px;" onclick="openSamplesModal()">View Design Samples</button> -->
 								<a href="<?= home_url("/teacher-id-card") ?>" class="btn btn-primary" style="margin-bottom:10px;">Teacher ID Card</a>
 							</div>
 						</div>
@@ -2141,7 +2148,7 @@ $design_url  = getIdDesignImageUrl($design_no);
 		
 		const fields = [
 			'show_logo', 'show_inst_name', 'show_image', 'show_name', 'show_id', 
-			'show_class_section', 'show_class', 'show_section', 'show_group', 'show_roll', 'show_year', 'show_dob', 
+			'show_mpo_index', 'show_class_section', 'show_class', 'show_section', 'show_group', 'show_roll', 'show_year', 'show_dob', 
 			'show_blood', 'show_phone', 'show_father', 'show_mother', 
 			'show_address', 'show_inst_address', 'show_student_address', 
 			'show_inst_phone', 'show_signature'
@@ -2176,7 +2183,7 @@ $design_url  = getIdDesignImageUrl($design_no);
 				const landscapeLabel = landscapeEl ? landscapeEl.querySelector('b') : null;
 				if (landscapeLabel) {
 					if (field === 'show_id') landscapeLabel.textContent = isTeacher ? 'ID:' : 'ID:';
-					if (field === 'show_roll') landscapeLabel.textContent = isTeacher ? 'Qualification:' : 'Roll:';
+					if (field === 'show_mpo_index') landscapeLabel.textContent = isTeacher ? 'MPO:' : 'MPO:';
 					if (field === 'show_father') landscapeLabel.textContent = isTeacher ? 'Father:' : 'Father:';
 					if (field === 'show_mother') landscapeLabel.textContent = isTeacher ? 'Mother:' : 'Mother:';
 					if (field === 'show_dob') landscapeLabel.textContent = isTeacher ? 'Birth Date:' : 'DOB:';
@@ -2466,6 +2473,7 @@ $design_url  = getIdDesignImageUrl($design_no);
 			show_image: 'prev_teacher_show_image',
 			show_name: 'prev_teacher_show_name',
 			show_id: 'prev_teacher_show_id',
+			show_mpo_index: 'prev_teacher_show_mpo_index',
 			show_class: 'prev_teacher_show_designation',
 			show_roll: 'prev_teacher_show_roll',
 			show_year: 'prev_teacher_show_year',
@@ -2486,7 +2494,7 @@ $design_url  = getIdDesignImageUrl($design_no);
 			const teacherLabelId = teacherPortraitBox.querySelector('#prev_teacher_show_id .info-label');
 			if (teacherLabelId) teacherLabelId.textContent = 'ID';
 			const teacherLabelRoll = teacherPortraitBox.querySelector('#prev_teacher_show_roll .info-label');
-			if (teacherLabelRoll) teacherLabelRoll.textContent = 'QUALIFICATION';
+			if (teacherLabelRoll) teacherLabelRoll.textContent = 'EDUCATION';
 			const teacherLabelYear = teacherPortraitBox.querySelector('#prev_teacher_show_year .info-label');
 			if (teacherLabelYear) teacherLabelYear.textContent = 'JOINING';
 			const teacherLabelDob = teacherPortraitBox.querySelector('#prev_teacher_show_dob .info-label');
@@ -2609,7 +2617,7 @@ $design_url  = getIdDesignImageUrl($design_no);
 		const form = document.getElementById('designConfigForm');
 		const fields = [
 			'show_logo', 'show_inst_name', 'show_image', 'show_name', 'show_id', 
-			'show_roll', 'show_year', 'show_dob', 'show_blood', 'show_phone', 
+			'show_mpo_index', 'show_roll', 'show_year', 'show_dob', 'show_blood', 'show_phone', 
 			'show_father', 'show_mother', 'show_address', 
 			'show_signature'
 		];

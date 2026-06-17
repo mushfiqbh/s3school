@@ -71,6 +71,7 @@ function getIdDesignConfig($no)
 		'show_image' => true,
 		'show_name' => true,
 		'show_id' => true,
+		'show_mpo_index' => false,
 		'show_class' => true,
 		'show_section' => false,
 		'show_roll' => true,
@@ -587,6 +588,7 @@ function generateBarcodeSVG($uid = null)
                             <?php endif; ?>
                             <div class="id-modern-list">
                                 <?php if (!empty($config['show_id'])): ?><div class="id-modern-item"><b>ID</b><span><?= htmlspecialchars($value->teacherMpo) ?></span></div><?php endif; ?>
+                                <?php if (!empty($config['show_mpo_index'])): ?><div class="id-modern-item"><b>MPO</b><span><?= htmlspecialchars($value->teacherMpo) ?></span></div><?php endif; ?>
                                 <?php if (!empty($config['show_father'])): ?><div class="id-modern-item"><b>Father</b><span><?= htmlspecialchars($value->teacherFather) ?></span></div><?php endif; ?>
                                 <?php if (!empty($config['show_dob'])): ?><div class="id-modern-item"><b>DOB</b><span><?= htmlspecialchars($value->teacherBirth) ?></span></div><?php endif; ?>
                                 <?php if (!empty($config['show_phone'])): ?><div class="id-modern-item"><b>Mobile</b><span><?= htmlspecialchars($value->teacherPhone) ?></span></div><?php endif; ?>
@@ -597,6 +599,7 @@ function generateBarcodeSVG($uid = null)
                     <div class="id-modern-footer">
                         <span class="id-modern-join">
                             <?php if (!empty($config['show_year'])): ?>JOINING: <?= htmlspecialchars($value->teacherJoining) ?><?php endif; ?>
+								<?php if (!empty($config['show_mpo_index'])): ?> | MPO: <?= htmlspecialchars($value->teacherMpo) ?><?php endif; ?>
 								<?php if (!empty($config['show_retirement'])): ?> | RETIRE: <?= htmlspecialchars($value->retirement_date) ?><?php endif; ?>
 								<?php if (!empty($config['show_job_type'])): ?> | JOB TYPE: <?= htmlspecialchars($value->job_type) ?><?php endif; ?>
 								<?php if (!empty($config['show_recruitment_authority'])): ?> | RECRUITER: <?= htmlspecialchars($value->recruitment_authority) ?><?php endif; ?>
@@ -668,9 +671,15 @@ function generateBarcodeSVG($uid = null)
                         <td class="info-value"><span class="colon">:&nbsp;</span><span class="value-text"><?= htmlspecialchars($value->teacherMpo) ?></span></td>
                     </tr>
                     <?php endif; ?>
+                    <?php if (!empty($config['show_mpo_index'])): ?>
+                    <tr class="info-row">
+                        <td class="info-label">MPO INDEX</td>
+                        <td class="info-value"><span class="colon">:&nbsp;</span><span class="value-text"><?= htmlspecialchars($value->teacherMpo) ?></span></td>
+                    </tr>
+                    <?php endif; ?>
                     <?php if (!empty($config['show_roll'])): ?>
                     <tr class="info-row">
-                        <td class="info-label">QUALIFICATION</td>
+                        <td class="info-label">EDUCATION</td>
                         <td class="info-value"><span class="colon">:&nbsp;</span><span class="value-text"><?= htmlspecialchars($value->teacherSQuali) ?></span></td>
                     </tr>
                     <?php endif; ?>
