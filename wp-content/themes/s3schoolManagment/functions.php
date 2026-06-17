@@ -89,13 +89,43 @@ function maxSchoolMngs_scripts(){
 }
 add_action('wp_enqueue_scripts', 'maxSchoolMngs_scripts');
 
-require_once ('inc/export-apis.php');
+/**
+ * Initialize global fee sub-head ID variables.
+ * These are used across admin pages (studentFeeManagement, due list, reports, etc.)
+ * and must be available on every page load.
+ */
+function s3s_init_fee_sub_head_globals() {
+    global $cashSubHeadId, $admissionFeeSubHeadId, $admissionFormSubHeadId;
+    global $examFeeSubHeadId, $monthlyFeeSubHeadId, $transportFeeSubHeadId;
+    global $ictFeeSubHeadId, $paystationSubHeadId, $coachingFeeSubHeadId;
+    global $registrationFeeSubHeadId, $dairySubHeadId, $idcardSubHeadId;
+    global $monthArray;
+
+    $cashSubHeadId            = 10;
+    $admissionFeeSubHeadId    = 1;
+    $admissionFormSubHeadId   = 2;
+    $examFeeSubHeadId         = 3;
+    $monthlyFeeSubHeadId      = 4;
+    $transportFeeSubHeadId    = 100;
+    $ictFeeSubHeadId          = 200;
+    $paystationSubHeadId      = 250;
+    $coachingFeeSubHeadId     = 300;
+    $registrationFeeSubHeadId = 400;
+    $dairySubHeadId           = 410;
+    $idcardSubHeadId          = 420;
+    $monthArray               = array("January", "February", "March", "April", "May", "June",
+                                      "July", "August", "September", "October", "November", "December");
+}
+add_action('init', 's3s_init_fee_sub_head_globals');
+
 require_once ('redux/ReduxCore/framework.php');
 require_once ('redux/sample/config.php');
 require_once ('inc/dashboard_widget.php');
 require_once ('inc/rocket_api.php');
 require_once ('inc/student-unique-id.php');
 require_once ('inc/paystation_api.php');
+require_once ('inc/export-apis.php');
+require_once ('inc/cron-job-apis.php');
 
 function load_custom_wp_admin_style(){
   wp_enqueue_style('maxSchoolMng', 'https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css');

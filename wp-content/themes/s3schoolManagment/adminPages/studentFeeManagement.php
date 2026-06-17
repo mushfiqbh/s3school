@@ -993,12 +993,8 @@ if (isset($_POST['delRevinew'])) {
 					  				<th style=" text-align: center;">ID NO</th>
 					  				<th style=" text-align: center;">Admission Fees</th>
 					  				<th style=" text-align: center;">Session Fee</th>
-					  				
-									  <?php
-										foreach($monthArray as $monthname){
-									  ?>
-					  					<th style=" text-align: center;"><?= $monthname?></th>
-									  <?php }?>
+					  				<th style=" text-align: center;">Monthly Fee</th>
+					  				<th style=" text-align: center;">Transport</th>
 									    <th style=" text-align: center;">Registration Fee</th>
     					  				<th style=" text-align: center;">ICT</th>
     					  				<th style=" text-align: center;">ID Card</th>
@@ -1027,6 +1023,15 @@ if (isset($_POST['delRevinew'])) {
 									<td><?=  $val['admissionFormFee']['fees']?></td>
 									
 									<?php
+										$monthlyTotal = 0;
+										$transportTotal = 0;
+										foreach($monthArray as $monthname){
+											$monthlyTotal += $val['monthlyFee'][$monthname]['fees'];
+											$transportTotal += $val['transportFee'][$monthname]['fees'];
+											if($val['monthlyFee'][$monthname]['paid'] == false){
+												$paid = false;
+											}
+										}
 										$totalFee += $val['admissionFee']['fees'];
 										$totalFee += $val['admissionFormFee']['fees'];
 										$totalFee += $val['registrationFee']['fees'];
@@ -1034,19 +1039,10 @@ if (isset($_POST['delRevinew'])) {
 										$totalFee += $val['idcardFee']['fees'];
 										$totalFee += $val['dairyFee']['fees'];
 										$totalFee -= $val['remissionFee'];
-										foreach($monthArray as $monthname){
-											$totalFee += $val['monthlyFee'][$monthname]['fees'];
-											$totalFee += $val['transportFee'][$monthname]['fees'];
-											if($val['monthlyFee'][$monthname]['paid'] == false){
-												$paid = false;
-											}
+										$totalFee += $monthlyTotal + $transportTotal;
 									  ?>
-										<td>
-											<?=  $val['monthlyFee'][$monthname]['fees']?><br>
-											<?=  $val['transportFee'][$monthname]['fees'] == 0 ? null : $val['transportFee'][$monthname]['fees']?>
-										</td>
-										
-									  <?php }?>
+										<td><?= $monthlyTotal > 0 ? $monthlyTotal : ''?></td>
+										<td><?= $transportTotal > 0 ? $transportTotal : ''?></td>
 									  
 									  <td><?=  $val['registrationFee']['fees']?></td>
     									<td><?=  $val['ictFee']['fees']?></td>
