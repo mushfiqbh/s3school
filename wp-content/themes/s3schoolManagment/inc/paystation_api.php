@@ -4,6 +4,16 @@
  * Handles PayStation payment initiation, status checking, and callbacks
  */
 
+
+/** ===========================================================================
+ * DOCS for Your Reference
+ * 
+ * PayStation: Sync pending transaction statuses by cron job
+ * Please check the file inc/export-apis.php
+ * Line 113 and 679
+ */
+// ============================================================================
+
 if (!defined('ABSPATH')) {
     exit;
 }

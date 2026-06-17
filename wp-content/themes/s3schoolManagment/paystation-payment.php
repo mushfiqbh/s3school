@@ -548,10 +548,10 @@ select.form-control option {
                                                     </div>
                                                 </div>
                                                 
-                                <div class="form-col-3 sectionDiv">
+                                <div class="form-col-3 sectionDiv" style="display: block;">
                                                     <div class="form-group">
-                                        <label>Section</label>
-                                                        <select id="paystationSection" name="section" class="form-control">
+                                        <label>Section *</label>
+                                                        <select id="paystationSection" name="section" class="form-control" required>
                                             <option value="">Select</option>
                                                         </select>
                                                     </div>
@@ -781,6 +781,9 @@ select.form-control option {
     // Initialize year dropdown to 2026 on page load
     $('#paystationYear').html('<option value="2026" selected>2026</option>');
     
+    // Initially disable section dropdown until a class is selected
+    $('#paystationSection').prop('disabled', true);
+    
     // PREVIOUS CODE - No year initialization (commented for rollback)
     // Year was loaded dynamically when class was selected
     
@@ -797,12 +800,15 @@ select.form-control option {
         console.log('Class changed to:', classId);
         
         if (!classId) {
-            $('#paystationSection').html('<option value="">Select Section</option>');
+            $('#paystationSection').html('<option value="">Select Section</option>').prop('disabled', true);
             $('#paystationYear').html('<option value="2026" selected>2026</option>');
             // PREVIOUS CODE - Reset to Select option (commented for rollback)
             // $('#paystationYear').html('<option value="">Select Year</option>');
             return;
         }
+        
+        // Disable section while loading
+        $('#paystationSection').prop('disabled', true).html('<option value="">Loading...</option>');
         
         // Get sections
         $.ajax({
@@ -814,19 +820,17 @@ select.form-control option {
             console.log('Section response:', msg);
             // Check if response is empty, "0", or contains "No sections"
             if (!msg || msg == '0' || msg.indexOf('No sections') > -1) {
-                $(".sectionDiv").hide();
-                $("#paystationSection").html('<option value="">No Section</option>');
+                $("#paystationSection").html('<option value="">No Section</option>').prop('disabled', true);
             } else {
-                $(".sectionDiv").show();
                 // Prepend a "Select Section" option if not present
                 if (msg.indexOf('value=""') === -1 && msg.indexOf("value=''") === -1) {
                     msg = '<option value="">Select Section</option>' + msg;
                 }
-                $("#paystationSection").html(msg);
+                $("#paystationSection").html(msg).prop('disabled', false);
             }
         }).fail(function(xhr, status, error) {
             console.error('Section AJAX error:', error);
-            $(".sectionDiv").hide();
+            $("#paystationSection").html('<option value="">Error loading sections</option>').prop('disabled', true);
         });
         
         // Get years - only show 2026
