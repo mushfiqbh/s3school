@@ -285,6 +285,10 @@ function maxAdminMenu(){
   add_submenu_page('managements', 'SMS', 'SMS', 'manage_options', 'sms', 'smsManagement');
   function smsManagement(){  require_once ('adminPages/sms.php'); }
 
+  /*Student Unified Report*/
+  add_submenu_page('managements', 'Student Unified Report', 'Student Unified Report', 'manage_options', 'student-unified-report', 'studentUnifiedReport');
+  function studentUnifiedReport(){  require_once ('adminPages/studentFeeAuditReport.php'); }
+
 }
 
 
