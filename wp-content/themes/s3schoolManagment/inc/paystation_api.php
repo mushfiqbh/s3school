@@ -93,6 +93,7 @@ function paystation_store_transaction($payment_id, $student_data, $fee_data, $pa
             fee_data longtext,
             total_amount decimal(10,2),
             status varchar(50) DEFAULT 'pending',
+            transaction_id varchar(255) DEFAULT NULL,
             paystation_response longtext,
             payment_date datetime,
             created_at datetime,
@@ -263,7 +264,12 @@ function paystation_update_transaction($payment_id, $data) {
         $update_data['invoice_number'] = $data['invoice_number'];
         $format[] = '%s';
     }
-    
+
+    if (isset($data['transaction_id'])) {
+        $update_data['transaction_id'] = $data['transaction_id'];
+        $format[] = '%s';
+    }
+
     if (!empty($update_data)) {
         $wpdb->update(
             $table_name,
@@ -457,7 +463,8 @@ function paystation_check_status($invoice_number) {
             'invoice_number' => $invoice_number,
             'merchantId' => $config['merchant_id'],
             'password' => $config['password'],
-        ),
+        ), 
+        CURLOPT_HTTPHEADER     => ['merchantId: ' . $config['merchant_id'],],
         CURLOPT_SSL_VERIFYPEER => true,
     ));
     
@@ -829,6 +836,7 @@ function paystation_confirm_payment($payment_id, $invoice_number, $transaction_d
         'status' => 'paid',
         'payment_date' => get_bdt_time(), // Use BDT time for payment date
         'invoice_number' => $invoice_number,
+        'transaction_id' => $paystation_txn_id,
     ));
     
     return array(
@@ -836,6 +844,7 @@ function paystation_confirm_payment($payment_id, $invoice_number, $transaction_d
         'payment_id' => $payment_id,
         'invoice_number' => $invoice_number,
         'collection_info_id' => $collection_info_id,
+        'transaction_id' => $paystation_txn_id,
     );
 }
 

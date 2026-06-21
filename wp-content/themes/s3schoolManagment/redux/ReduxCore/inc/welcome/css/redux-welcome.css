@@ -355,9 +355,6 @@ p.redux-actions a.review-us {
     margin-right: 0;
   }
 }
-#support_div {
-  /*form styles*/
-}
 #support_div input.hash {
   text-align: center;
 }
@@ -367,14 +364,14 @@ p.redux-actions a.review-us {
 #support_div .previous {
   opacity: 0.8;
 }
+#support_div {
+  /*form styles*/
+}
 #support_div #supportform {
   /*width: 500px;*/
   margin-top: 10px;
   text-align: center;
   position: relative;
-  /*inputs*/
-  /*buttons*/
-  /*headings*/
 }
 #support_div #supportform fieldset {
   background: white;
@@ -392,6 +389,9 @@ p.redux-actions a.review-us {
 #support_div #supportform fieldset:not(:first-of-type) {
   display: none;
 }
+#support_div #supportform {
+  /*inputs*/
+}
 #support_div #supportform input, #support_div #supportform textarea {
   padding: 15px;
   border: 1px solid #ccc;
@@ -406,6 +406,9 @@ p.redux-actions a.review-us {
 #support_div #supportform input.checkbox {
   width: initial;
   margin-top: 10px;
+}
+#support_div #supportform {
+  /*buttons*/
 }
 #support_div #supportform .action-button {
   width: 100px;
@@ -423,6 +426,9 @@ p.redux-actions a.review-us {
 }
 #support_div #supportform .action-button:hover, #support_div #supportform .action-button:focus {
   box-shadow: 0 0 0 2px white, 0 0 0 3px #27AE60;
+}
+#support_div #supportform {
+  /*headings*/
 }
 #support_div #supportform .fs-title {
   font-size: 15px;
@@ -490,8 +496,6 @@ p.redux-actions a.review-us {
   background: #666;
   position: relative;
   /*since the first link does not have a triangle before it we can reduce the left padding to make it look consistent with other links*/
-  /*adding the arrows for the breadcrumbs using rotated pseudo elements*/
-  /*we will use the :before element to show numbers*/
 }
 #support_div .breadcrumb li:first-child {
   padding-left: 46px;
@@ -517,6 +521,9 @@ p.redux-actions a.review-us {
 #support_div .breadcrumb li.active:before {
   background: #555;
 }
+#support_div .breadcrumb li {
+  /*adding the arrows for the breadcrumbs using rotated pseudo elements*/
+}
 #support_div .breadcrumb li:after {
   content: "";
   position: absolute;
@@ -540,6 +547,9 @@ p.redux-actions a.review-us {
       50px - to prevent hover glitches on the border created using shadows*/
   border-radius: 0 5px 0 50px;
   transition: all 0.5s;
+}
+#support_div .breadcrumb li {
+  /*we will use the :before element to show numbers*/
 }
 #support_div .breadcrumb li:before {
   transition: all 0.5s;

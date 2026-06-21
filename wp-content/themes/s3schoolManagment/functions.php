@@ -289,6 +289,10 @@ function maxAdminMenu(){
   add_submenu_page('managements', 'Student Unified Report', 'Student Unified Report', 'manage_options', 'student-unified-report', 'studentUnifiedReport');
   function studentUnifiedReport(){  require_once ('adminPages/studentFeeAuditReport.php'); }
 
+  /*Payment Reconciliation*/
+  add_submenu_page('managements', 'Payment Reconciliation', 'Payment Reconciliation', 'manage_options', 'mismatch-reconciliation', 'mismatchReconciliation');
+  function mismatchReconciliation(){  require_once ('adminPages/mismatch-reconciliation.php'); }
+
 }
 
 
@@ -310,6 +314,12 @@ function enqueue_media_uploader(){
 }
 
 add_action("wp_enqueue_scripts", "enqueue_media_uploader");
+
+// Enqueue Inter font from Google Fonts
+add_action('wp_enqueue_scripts', 'enqueue_inter_font');
+function enqueue_inter_font() {
+    wp_enqueue_style('google-fonts-inter', 'https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300..700&display=swap', array(), null);
+}
 /*
 ** Message (Notification for inseart, update, delete)
 */

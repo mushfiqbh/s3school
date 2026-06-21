@@ -5,11 +5,13 @@
 }
 .redux-container-border .select_wrapper {
   float: left;
-  width: inherit;
 }
 .redux-container-border .select_wrapper select {
   width: 80px;
   float: left;
+}
+.redux-container-border .select_wrapper {
+  width: inherit;
 }
 .redux-container-border .field-border-input {
   margin-right: 10px;

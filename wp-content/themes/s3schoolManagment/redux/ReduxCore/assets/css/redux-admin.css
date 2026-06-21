@@ -19,7 +19,7 @@
   background-color: #f5f5f5; /* Old browsers */
   background-repeat: repeat-x; /* Repeat the gradient */ /* FF3.6+ */ /* Chrome,Safari4+ */ /* Chrome 10+,Safari 5.1+ */ /* IE10+ */
   background-image: -o-linear-gradient(top, #f2f2f2 0%, #f5f5f5 100%); /* Opera 11.10+ */
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#f5f5f5", endColorstr="#eeeeee", GradientType=0); /* IE6-9 */
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f5f5f5', endColorstr='#eeeeee', GradientType=0); /* IE6-9 */
   background-image: -linear-gradient(top, #f2f2f2 0%, #f5f5f5 100%); /* W3C */
   border: 1px solid #dedede;
   box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
@@ -754,7 +754,7 @@ pre {
   background-color: #f5f5f5 !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(#f8f8f8), to(#f5f5f5)) !important;
   background-image: -linear-gradient(top, #f8f8f8, #f5f5f5) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#f8f8f8", endColorstr="#f5f5f5", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f8f8f8', endColorstr='#f5f5f5', GradientType=0) !important;
   border-color: #ccc !important;
 }
 .admin-color-fresh .ui-datepicker td .ui-state-active, .wp-customizer .ui-datepicker td .ui-state-active {
@@ -766,7 +766,7 @@ pre {
   background-color: #646464 !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(#929292), to(#646464)) !important;
   background-image: -linear-gradient(top, #929292, #646464) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#929292", endColorstr="#646464", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#929292', endColorstr='#646464', GradientType=0) !important;
   border-color: #767676 !important;
 }
 .admin-color-fresh .redux-container-switch .cb-enable.selected,
@@ -775,7 +775,7 @@ pre {
   background-color: #0073aa !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(rgb(0, 139.15, 205.7)), to(#0073aa)) !important;
   background-image: -linear-gradient(top, rgb(0, 139.15, 205.7), #0073aa) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="rgb(0, 139.15, 205.7)", endColorstr="#0073aa", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='rgb(0, 139.15, 205.7)', endColorstr='#0073aa', GradientType=0) !important;
   border-color: rgb(0, 63.25, 93.5) !important;
   border-color: rgb(0, 80.5, 119) !important;
   box-shadow: inset 0 1px 0 rgb(0, 166.75, 246.5), 0 1px 0 rgba(0, 0, 0, 0.15) !important;
@@ -963,7 +963,7 @@ pre {
   background-color: rgb(0, 125.35, 185.3) !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(rgb(0, 149.5, 221)), to(rgb(0, 125.35, 185.3))) !important;
   background-image: -linear-gradient(top, rgb(0, 149.5, 221), rgb(0, 125.35, 185.3)) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="rgb(0, 149.5, 221)", endColorstr="rgb(0, 125.35, 185.3)", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='rgb(0, 149.5, 221)', endColorstr='rgb(0, 125.35, 185.3)', GradientType=0) !important;
 }
 
 /* Light admin theme */
@@ -1003,7 +1003,7 @@ pre {
   background-color: #f5f5f5 !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(#f8f8f8), to(#f5f5f5)) !important;
   background-image: -linear-gradient(top, #f8f8f8, #f5f5f5) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#f8f8f8", endColorstr="#f5f5f5", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f8f8f8', endColorstr='#f5f5f5', GradientType=0) !important;
   border-color: #ccc !important;
 }
 .admin-color-light .ui-datepicker td .ui-state-active {
@@ -1015,7 +1015,7 @@ pre {
   background-color: #646464 !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(#929292), to(#646464)) !important;
   background-image: -linear-gradient(top, #929292, #646464) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#929292", endColorstr="#646464", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#929292', endColorstr='#646464', GradientType=0) !important;
   border-color: #767676 !important;
 }
 .admin-color-light .redux-container-switch .cb-enable.selected,
@@ -1023,7 +1023,7 @@ pre {
   background-color: #04a4cc !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(rgb(4.6865384615, 192.1480769231, 239.0134615385)), to(#04a4cc)) !important;
   background-image: -linear-gradient(top, rgb(4.6865384615, 192.1480769231, 239.0134615385), #04a4cc) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="rgb(4.6865384615, 192.1480769231, 239.0134615385)", endColorstr="#04a4cc", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='rgb(4.6865384615, 192.1480769231, 239.0134615385)', endColorstr='#04a4cc', GradientType=0) !important;
   border-color: rgb(2.5288461538, 103.6826923077, 128.9711538462) !important;
   border-color: rgb(3.0192307692, 123.7884615385, 153.9807692308) !important;
   box-shadow: inset 0 1px 0 rgb(33.8365384615, 207.2980769231, 250.6634615385), 0 1px 0 rgba(0, 0, 0, 0.15) !important;
@@ -1193,7 +1193,7 @@ pre {
   background-color: rgb(4.2942307692, 176.0634615385, 219.0057692308) !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(rgb(8.8269230769, 201.9038461538, 250.1730769231)), to(rgb(4.2942307692, 176.0634615385, 219.0057692308))) !important;
   background-image: -linear-gradient(top, rgb(8.8269230769, 201.9038461538, 250.1730769231), rgb(4.2942307692, 176.0634615385, 219.0057692308)) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="rgb(8.8269230769, 201.9038461538, 250.1730769231)", endColorstr="rgb(4.2942307692, 176.0634615385, 219.0057692308)", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='rgb(8.8269230769, 201.9038461538, 250.1730769231)', endColorstr='rgb(4.2942307692, 176.0634615385, 219.0057692308)', GradientType=0) !important;
 }
 
 /* Blue admin theme */
@@ -1233,7 +1233,7 @@ pre {
   background-color: #f5f5f5 !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(#f8f8f8), to(#f5f5f5)) !important;
   background-image: -linear-gradient(top, #f8f8f8, #f5f5f5) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#f8f8f8", endColorstr="#f5f5f5", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f8f8f8', endColorstr='#f5f5f5', GradientType=0) !important;
   border-color: #ccc !important;
 }
 .admin-color-blue .ui-datepicker td .ui-state-active {
@@ -1245,7 +1245,7 @@ pre {
   background-color: #646464 !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(#929292), to(#646464)) !important;
   background-image: -linear-gradient(top, #929292, #646464) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#929292", endColorstr="#646464", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#929292', endColorstr='#646464', GradientType=0) !important;
   border-color: #767676 !important;
 }
 .admin-color-blue .redux-container-switch .cb-enable.selected,
@@ -1253,7 +1253,7 @@ pre {
   background-color: #4796b3 !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(rgb(94.4012, 165.28, 191.2988)), to(#4796b3)) !important;
   background-image: -linear-gradient(top, rgb(94.4012, 165.28, 191.2988), #4796b3) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="rgb(94.4012, 165.28, 191.2988)", endColorstr="#4796b3", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='rgb(94.4012, 165.28, 191.2988)', endColorstr='#4796b3', GradientType=0) !important;
   border-color: rgb(49.274, 104.1, 124.226) !important;
   border-color: rgb(56.516, 119.4, 142.484) !important;
   box-shadow: inset 0 1px 0 rgb(123.614, 181.6, 202.886), 0 1px 0 rgba(0, 0, 0, 0.15) !important;
@@ -1423,7 +1423,7 @@ pre {
   background-color: rgb(79.7948, 157.12, 185.5052) !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(rgb(105.356, 171.4, 195.644)), to(rgb(79.7948, 157.12, 185.5052))) !important;
   background-image: -linear-gradient(top, rgb(105.356, 171.4, 195.644), rgb(79.7948, 157.12, 185.5052)) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="rgb(105.356, 171.4, 195.644)", endColorstr="rgb(79.7948, 157.12, 185.5052)", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='rgb(105.356, 171.4, 195.644)', endColorstr='rgb(79.7948, 157.12, 185.5052)', GradientType=0) !important;
 }
 
 /* Coffee admin theme */
@@ -1463,7 +1463,7 @@ pre {
   background-color: #f5f5f5 !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(#f8f8f8), to(#f5f5f5)) !important;
   background-image: -linear-gradient(top, #f8f8f8, #f5f5f5) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#f8f8f8", endColorstr="#f5f5f5", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f8f8f8', endColorstr='#f5f5f5', GradientType=0) !important;
   border-color: #ccc !important;
 }
 .admin-color-coffee .ui-datepicker td .ui-state-active {
@@ -1475,7 +1475,7 @@ pre {
   background-color: #646464 !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(#929292), to(#646464)) !important;
   background-image: -linear-gradient(top, #929292, #646464) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#929292", endColorstr="#646464", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#929292', endColorstr='#646464', GradientType=0) !important;
   border-color: #767676 !important;
 }
 .admin-color-coffee .redux-container-switch .cb-enable.selected,
@@ -1483,7 +1483,7 @@ pre {
   background-color: #c7a589 !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(rgb(210.4896551724, 183.4655172414, 161.2103448276)), to(#c7a589)) !important;
   background-image: -linear-gradient(top, rgb(210.4896551724, 183.4655172414, 161.2103448276), #c7a589) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="rgb(210.4896551724, 183.4655172414, 161.2103448276)", endColorstr="#c7a589", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='rgb(210.4896551724, 183.4655172414, 161.2103448276)', endColorstr='#c7a589', GradientType=0) !important;
   border-color: rgb(174.3793103448, 125.4310344828, 85.1206896552) !important;
   border-color: rgb(182.5862068966, 138.6206896552, 102.4137931034) !important;
   box-shadow: inset 0 1px 0 rgb(223.6206896552, 204.5689655172, 188.8793103448), 0 1px 0 rgba(0, 0, 0, 0.15) !important;
@@ -1653,7 +1653,7 @@ pre {
   background-color: rgb(203.924137931, 172.9137931034, 147.375862069) !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(rgb(215.4137931034, 191.3793103448, 171.5862068966)), to(rgb(203.924137931, 172.9137931034, 147.375862069))) !important;
   background-image: -linear-gradient(top, rgb(215.4137931034, 191.3793103448, 171.5862068966), rgb(203.924137931, 172.9137931034, 147.375862069)) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="rgb(215.4137931034, 191.3793103448, 171.5862068966)", endColorstr="rgb(203.924137931, 172.9137931034, 147.375862069)", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='rgb(215.4137931034, 191.3793103448, 171.5862068966)', endColorstr='rgb(203.924137931, 172.9137931034, 147.375862069)', GradientType=0) !important;
 }
 
 /* Ectoplasm admin theme */
@@ -1693,7 +1693,7 @@ pre {
   background-color: #f5f5f5 !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(#f8f8f8), to(#f5f5f5)) !important;
   background-image: -linear-gradient(top, #f8f8f8, #f5f5f5) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#f8f8f8", endColorstr="#f5f5f5", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f8f8f8', endColorstr='#f5f5f5', GradientType=0) !important;
   border-color: #ccc !important;
 }
 .admin-color-ectoplasm .ui-datepicker td .ui-state-active {
@@ -1705,7 +1705,7 @@ pre {
   background-color: #646464 !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(#929292), to(#646464)) !important;
   background-image: -linear-gradient(top, #929292, #646464) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#929292", endColorstr="#646464", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#929292', endColorstr='#646464', GradientType=0) !important;
   border-color: #767676 !important;
 }
 .admin-color-ectoplasm .redux-container-switch .cb-enable.selected,
@@ -1713,7 +1713,7 @@ pre {
   background-color: #a3b745 !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(rgb(176.4892857143, 194.1321428571, 93.5678571429)), to(#a3b745)) !important;
   background-image: -linear-gradient(top, rgb(176.4892857143, 194.1321428571, 93.5678571429), #a3b745) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="rgb(176.4892857143, 194.1321428571, 93.5678571429)", endColorstr="#a3b745", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='rgb(176.4892857143, 194.1321428571, 93.5678571429)', endColorstr='#a3b745', GradientType=0) !important;
   border-color: rgb(113.5178571429, 127.4464285714, 48.0535714286) !important;
   border-color: rgb(130.0119047619, 145.9642857143, 55.0357142857) !important;
   box-shadow: inset 0 1px 0 rgb(190.8988095238, 205.3035714286, 123.1964285714), 0 1px 0 rgba(0, 0, 0, 0.15) !important;
@@ -1883,7 +1883,7 @@ pre {
   background-color: rgb(169.2845238095, 188.5464285714, 78.7535714286) !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(rgb(181.8928571429, 198.3214285714, 104.6785714286)), to(rgb(169.2845238095, 188.5464285714, 78.7535714286))) !important;
   background-image: -linear-gradient(top, rgb(181.8928571429, 198.3214285714, 104.6785714286), rgb(169.2845238095, 188.5464285714, 78.7535714286)) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="rgb(181.8928571429, 198.3214285714, 104.6785714286)", endColorstr="rgb(169.2845238095, 188.5464285714, 78.7535714286)", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='rgb(181.8928571429, 198.3214285714, 104.6785714286)', endColorstr='rgb(169.2845238095, 188.5464285714, 78.7535714286)', GradientType=0) !important;
 }
 
 /* Midnight admin theme */
@@ -1923,7 +1923,7 @@ pre {
   background-color: #f5f5f5 !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(#f8f8f8), to(#f5f5f5)) !important;
   background-image: -linear-gradient(top, #f8f8f8, #f5f5f5) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#f8f8f8", endColorstr="#f5f5f5", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f8f8f8', endColorstr='#f5f5f5', GradientType=0) !important;
   border-color: #ccc !important;
 }
 .admin-color-midnight .ui-datepicker td .ui-state-active {
@@ -1935,7 +1935,7 @@ pre {
   background-color: #646464 !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(#929292), to(#646464)) !important;
   background-image: -linear-gradient(top, #929292, #646464) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#929292", endColorstr="#646464", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#929292', endColorstr='#646464', GradientType=0) !important;
   border-color: #767676 !important;
 }
 .admin-color-midnight .redux-container-switch .cb-enable.selected,
@@ -1943,7 +1943,7 @@ pre {
   background-color: #e14d43 !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(rgb(229.9128440367, 106.1495412844, 97.7871559633)), to(#e14d43)) !important;
   background-image: -linear-gradient(top, rgb(229.9128440367, 106.1495412844, 97.7871559633), #e14d43) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="rgb(229.9128440367, 106.1495412844, 97.7871559633)", endColorstr="#e14d43", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='rgb(229.9128440367, 106.1495412844, 97.7871559633)', endColorstr='#e14d43', GradientType=0) !important;
   border-color: rgb(185.8440366972, 39.5412844037, 29.6559633028) !important;
   border-color: rgb(207.8348623853, 44.2201834862, 33.1651376147) !important;
   box-shadow: inset 0 1px 0 rgb(235.5275229358, 139.4633027523, 132.9724770642), 0 1px 0 rgba(0, 0, 0, 0.15) !important;
@@ -2113,7 +2113,7 @@ pre {
   background-color: rgb(227.1055045872, 89.4926605505, 80.1944954128) !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(rgb(232.0183486239, 118.6422018349, 110.9816513761)), to(rgb(227.1055045872, 89.4926605505, 80.1944954128))) !important;
   background-image: -linear-gradient(top, rgb(232.0183486239, 118.6422018349, 110.9816513761), rgb(227.1055045872, 89.4926605505, 80.1944954128)) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="rgb(232.0183486239, 118.6422018349, 110.9816513761)", endColorstr="rgb(227.1055045872, 89.4926605505, 80.1944954128)", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='rgb(232.0183486239, 118.6422018349, 110.9816513761)', endColorstr='rgb(227.1055045872, 89.4926605505, 80.1944954128)', GradientType=0) !important;
 }
 
 /* Ocean admin theme */
@@ -2153,7 +2153,7 @@ pre {
   background-color: #f5f5f5 !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(#f8f8f8), to(#f5f5f5)) !important;
   background-image: -linear-gradient(top, #f8f8f8, #f5f5f5) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#f8f8f8", endColorstr="#f5f5f5", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f8f8f8', endColorstr='#f5f5f5', GradientType=0) !important;
   border-color: #ccc !important;
 }
 .admin-color-ocean .ui-datepicker td .ui-state-active {
@@ -2165,7 +2165,7 @@ pre {
   background-color: #646464 !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(#929292), to(#646464)) !important;
   background-image: -linear-gradient(top, #929292, #646464) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#929292", endColorstr="#646464", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#929292', endColorstr='#646464', GradientType=0) !important;
   border-color: #767676 !important;
 }
 .admin-color-ocean .redux-container-switch .cb-enable.selected,
@@ -2173,7 +2173,7 @@ pre {
   background-color: #9ebaa0 !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(rgb(178.8608433735, 200.8391566265, 180.4307228916)), to(#9ebaa0)) !important;
   background-image: -linear-gradient(top, rgb(178.8608433735, 200.8391566265, 180.4307228916), #9ebaa0) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="rgb(178.8608433735, 200.8391566265, 180.4307228916)", endColorstr="#9ebaa0", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='rgb(178.8608433735, 200.8391566265, 180.4307228916)', endColorstr='#9ebaa0', GradientType=0) !important;
   border-color: rgb(113.2981927711, 154.2018072289, 116.2198795181) !important;
   border-color: rgb(128.1987951807, 164.8012048193, 130.813253012) !important;
   box-shadow: inset 0 1px 0 rgb(202.7018072289, 217.7981927711, 203.7801204819), 0 1px 0 rgba(0, 0, 0, 0.15) !important;
@@ -2343,7 +2343,7 @@ pre {
   background-color: rgb(166.9403614458, 192.3596385542, 168.7560240964) !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(rgb(187.8012048193, 207.1987951807, 189.186746988)), to(rgb(166.9403614458, 192.3596385542, 168.7560240964))) !important;
   background-image: -linear-gradient(top, rgb(187.8012048193, 207.1987951807, 189.186746988), rgb(166.9403614458, 192.3596385542, 168.7560240964)) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="rgb(187.8012048193, 207.1987951807, 189.186746988)", endColorstr="rgb(166.9403614458, 192.3596385542, 168.7560240964)", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='rgb(187.8012048193, 207.1987951807, 189.186746988)', endColorstr='rgb(166.9403614458, 192.3596385542, 168.7560240964)', GradientType=0) !important;
 }
 
 /* Sunrise admin theme */
@@ -2383,7 +2383,7 @@ pre {
   background-color: #f5f5f5 !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(#f8f8f8), to(#f5f5f5)) !important;
   background-image: -linear-gradient(top, #f8f8f8, #f5f5f5) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#f8f8f8", endColorstr="#f5f5f5", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#f8f8f8', endColorstr='#f5f5f5', GradientType=0) !important;
   border-color: #ccc !important;
 }
 .admin-color-sunrise .ui-datepicker td .ui-state-active {
@@ -2395,7 +2395,7 @@ pre {
   background-color: #646464 !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(#929292), to(#646464)) !important;
   background-image: -linear-gradient(top, #929292, #646464) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="#929292", endColorstr="#646464", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='#929292', endColorstr='#646464', GradientType=0) !important;
   border-color: #767676 !important;
 }
 .admin-color-sunrise .redux-container-switch .cb-enable.selected,
@@ -2403,7 +2403,7 @@ pre {
   background-color: #dd823b !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(rgb(226.2773913043, 149.402173913, 89.4226086957)), to(#dd823b)) !important;
   background-image: -linear-gradient(top, rgb(226.2773913043, 149.402173913, 89.4226086957), #dd823b) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="rgb(226.2773913043, 149.402173913, 89.4226086957)", endColorstr="#dd823b", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='rgb(226.2773913043, 149.402173913, 89.4226086957)', endColorstr='#dd823b', GradientType=0) !important;
   border-color: rgb(173.4173913043, 92.902173913, 30.0826086957) !important;
   border-color: rgb(195.147826087, 104.5434782609, 33.852173913) !important;
   box-shadow: inset 0 1px 0 rgb(232.3086956522, 171.5760869565, 124.1913043478), 0 1px 0 rgba(0, 0, 0, 0.15) !important;
@@ -2573,7 +2573,7 @@ pre {
   background-color: rgb(223.2617391304, 138.3152173913, 72.0382608696) !important;
   background-image: -khtml-gradient(linear, left top, left bottom, from(rgb(228.5391304348, 157.7173913043, 102.4608695652)), to(rgb(223.2617391304, 138.3152173913, 72.0382608696))) !important;
   background-image: -linear-gradient(top, rgb(228.5391304348, 157.7173913043, 102.4608695652), rgb(223.2617391304, 138.3152173913, 72.0382608696)) !important;
-  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr="rgb(228.5391304348, 157.7173913043, 102.4608695652)", endColorstr="rgb(223.2617391304, 138.3152173913, 72.0382608696)", GradientType=0) !important;
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorstr='rgb(228.5391304348, 157.7173913043, 102.4608695652)', endColorstr='rgb(223.2617391304, 138.3152173913, 72.0382608696)', GradientType=0) !important;
 }
 
 @media screen and (max-width: 600px) {
@@ -2584,10 +2584,12 @@ pre {
     padding: 11px 12px;
     color: #555;
     transition: all 0.3s;
-    text-shadow: none !important;
   }
   .redux-group-tab-link-a span:hover {
     background: #e5e5e5;
+  }
+  .redux-group-tab-link-a span {
+    text-shadow: none !important;
   }
 }
 @media screen and (max-width: 782px) {
