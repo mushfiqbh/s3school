@@ -594,7 +594,27 @@ function paystation_confirm_payment($payment_id, $invoice_number, $transaction_d
              ' | Invoice: ' . substr($invoice_number, -12) . 
              ' | Payment Date: ' . date('d M Y', strtotime($payment_date));
     
-    // Insert into fee collection info with payment_method and transaction_id
+    // Ensure the ct_student_fee_collection_info table has the required columns
+    $collection_table = 'ct_student_fee_collection_info';
+    $required_columns = array(
+        'payment_method'  => "VARCHAR(50) DEFAULT NULL",
+        'transaction_id'  => "VARCHAR(255) DEFAULT NULL",
+        'payment_id'      => "VARCHAR(255) DEFAULT NULL",
+    );
+    foreach ($required_columns as $col_name => $col_def) {
+        $col_exists = $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM information_schema.COLUMNS 
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s",
+            $collection_table,
+            $col_name
+        ));
+        if (!$col_exists) {
+            $wpdb->query("ALTER TABLE $collection_table ADD COLUMN $col_name $col_def");
+            error_log("PayStation: Added column $col_name to $collection_table");
+        }
+    }
+    
+    // Insert into fee collection info with payment_method, transaction_id and payment_id
     // Match backend format: date format 'Y-m-d H-i-s' (with hyphens)
     $info_id = $wpdb->insert(
         'ct_student_fee_collection_info',
@@ -614,6 +634,7 @@ function paystation_confirm_payment($payment_id, $invoice_number, $transaction_d
             'notes' => $notes,
             'payment_method' => 'PayStation API',
             'transaction_id' => $paystation_txn_id,
+            'payment_id' => $payment_id,
             'date' => $formatted_payment_date,
             'created_by' => 0, // System/API
             'created_at' => get_bdt_time_formatted(), // BDT time - Match backend format with hyphens

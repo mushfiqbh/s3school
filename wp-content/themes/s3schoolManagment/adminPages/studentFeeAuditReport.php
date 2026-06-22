@@ -178,7 +178,7 @@ if ($selected_student && $filter_class && $filter_year) {
     if ($ps_exists) {
         $paystationTxns = $wpdb->get_results($wpdb->prepare(
             "SELECT * FROM $ps_table WHERE student_id = %d ORDER BY created_at DESC LIMIT 50",
-            $selected_student
+            $selected_student, $filter_year
         ), ARRAY_A);
     }
 
@@ -199,19 +199,21 @@ if ($selected_student && $filter_class && $filter_year) {
 
 // ===== Compute Fund Statistics for selected student =====
 $fundStats = array(
-    'yearly_expected' => 0, 'yearly_paid' => 0,
+    'yearly_expected' => 0,
     'monthly_expected' => 0, 'monthly_paid' => 0,
-    'exam_paid' => 0, 'other_paid' => 0,
+    'other_paid' => 0,
     'collection_total' => 0,
     'paystation_total' => 0,
     'paystation_paid_total' => 0,
+    'over_payment' => 0,
 );
 
 if ($selected_student && $filter_class && $filter_year) {
     // Yearly fees from already-collected data
+    $yearly_paid = 0;
     foreach ($studentYearlyFees as $sid => $yf) {
         $fundStats['yearly_expected'] += $yf['fee'];
-        if ($yf['paid']) $fundStats['yearly_paid'] += $yf['fee'];
+        if ($yf['paid']) $yearly_paid += $yf['fee'];
     }
 
     // Monthly fees from already-collected data
@@ -236,8 +238,9 @@ if ($selected_student && $filter_class && $filter_year) {
     }
 
     // Exam fees
+    $exam_paid = 0;
     foreach ($studentExamFees as $ef) {
-        $fundStats['exam_paid'] += $ef['fee'];
+        $exam_paid += $ef['fee'];
     }
 
     // Other fees from already-collected data
@@ -260,10 +263,13 @@ if ($selected_student && $filter_class && $filter_year) {
     }
 
     // Compute overall totals (needed before mismatch detection)
-    $total_paid = $fundStats['yearly_paid'] + $fundStats['monthly_paid'] + $fundStats['exam_paid'] + $fundStats['other_paid'];
+    $total_paid = $yearly_paid + $fundStats['monthly_paid'] + $exam_paid + $fundStats['other_paid'];
     $total_expected = $fundStats['yearly_expected'] + $fundStats['monthly_expected'];
     $total_due = max(0, $total_expected - $total_paid);
     $payment_pct = $total_expected > 0 ? round(($total_paid / $total_expected) * 100) : 0;
+
+    // Over payment = PayStation paid exceeds what's expected
+    $fundStats['over_payment'] = max(0, $fundStats['paystation_paid_total'] - $total_expected);
 
     // ===== Mismatch Detection =====
     $potentialMismatches = array();
@@ -291,19 +297,35 @@ if ($selected_student && $filter_class && $filter_year) {
         }
     }
 
-    // 2. Overpayment detection (paystation paid > 120% of expected)
+    // 2. Overpayment detection
+    // Check if total collected (from summary tables) exceeds total expected
+    $overpayment_amount = 0;
+    $overpayment_source = '';
     if ($total_expected > 0) {
-        $paystation_paid = $fundStats['paystation_paid_total'];
-        if ($paystation_paid > $total_expected * 1.2) {
-            $potentialMismatches[] = array(
-                'type' => 'OVERPAYMENT',
-                'severity' => 'medium',
-                'title' => 'Possible Overpayment',
-                'description' => sprintf('PayStation paid (%.2f) exceeds 120%% of expected (%.2f)', $paystation_paid, $total_expected),
-                'count' => 1,
-                'amount' => $paystation_paid - $total_expected,
-            );
+        // Check summary-based overpayment (collected more than expected)
+        if ($total_paid > $total_expected) {
+            $overpayment_amount = $total_paid - $total_expected;
+            $overpayment_source = sprintf('Collection/Summary paid (%.2f) exceeds expected total (%.2f) by %.2f', $total_paid, $total_expected, $overpayment_amount);
         }
+        // Also check PayStation paid vs total collected
+        $paystation_paid = $fundStats['paystation_paid_total'];
+        if ($paystation_paid > $total_paid && $paystation_paid > $total_expected) {
+            $ps_over = $paystation_paid - max($total_paid, $total_expected);
+            if ($ps_over > $overpayment_amount) {
+                $overpayment_amount = $ps_over;
+                $overpayment_source = sprintf('PayStation paid (%.2f) exceeds collected (%.2f) by %.2f — payments may not be fully reconciled', $paystation_paid, $total_paid, $ps_over);
+            }
+        }
+    }
+    if ($overpayment_amount > 0) {
+        $potentialMismatches[] = array(
+            'type' => 'OVERPAYMENT',
+            'severity' => 'medium',
+            'title' => 'Possible Overpayment',
+            'description' => $overpayment_source,
+            'count' => 1,
+            'amount' => $overpayment_amount,
+        );
     }
 
     // 3. Pending / failed PayStation transactions that have no collection record
@@ -367,41 +389,160 @@ if (!empty($potentialMismatches)) {
         }
     }
 }
+
+// ===== Active tab =====
+$active_tab = isset($_GET['tab']) && in_array($_GET['tab'], array('due', 'audit', 'mismatches')) ? $_GET['tab'] : 'audit';
+
+// ===== Claim mismatch handler =====
+$claim_message = '';
+if (isset($_GET['claim_done']) && $_GET['claim_done'] === '1') {
+    $claim_message = 'Claim submitted successfully.';
+}
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'claim_mismatch') {
+    if (!empty($_POST['mismatch_id']) && !empty($_POST['claim_reason'])) {
+        $mismatch_id = intval($_POST['mismatch_id']);
+        $claim_reason = sanitize_text_field($_POST['claim_reason']);
+        $mismatch = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM ct_payment_mismatch WHERE mismatch_id = %d", $mismatch_id
+        ));
+        if ($mismatch) {
+            $wpdb->insert('ct_mismatch_claim', array(
+                'mismatch_id' => $mismatch_id,
+                'claim_student_id' => $mismatch->student_id,
+                'claim_reason' => $claim_reason,
+                'status' => 'PENDING',
+                'submitted_at' => current_time('mysql'),
+            ));
+            $wpdb->update('ct_payment_mismatch', array('status' => 'CLAIMED'), array('mismatch_id' => $mismatch_id));
+            $claim_message = 'Claim submitted successfully.';
+        }
+        wp_redirect(add_query_arg(array('tab' => 'mismatches', 'claim_done' => '1')));
+        exit;
+    }
+}
+
+// ===== Compute due students for a class =====
+function computeDueStudents($class_id, $section, $group, $year) {
+    global $wpdb;
+    $query = "SELECT si.infoStdid, si.infoRoll, s.stdName, s.facilities FROM ct_studentinfo si LEFT JOIN ct_student s ON s.studentid = si.infoStdid WHERE si.infoClass = " . intval($class_id) . " AND si.infoYear = '" . esc_sql($year) . "'";
+    if ($section) $query .= " AND si.infoSection = " . intval($section);
+    if ($group) $query .= " AND si.infoGroup = " . intval($group);
+    $query .= " ORDER BY si.infoRoll ASC";
+    $students = $wpdb->get_results($query);
+    if (empty($students)) return array();
+
+    // Get latest fee per sub_head from fee list (avoid summing historical entries when fees changed)
+    $yearly_expected = 0;
+    $yearly_rows = $wpdb->get_results($wpdb->prepare(
+        "SELECT fl.fee FROM ct_student_fee_list fl
+        INNER JOIN (
+            SELECT sub_head_id, MAX(id) AS max_id FROM ct_student_fee_list
+            WHERE class_id = %d AND year = %s AND sub_head_id IN (SELECT id FROM ct_sub_head WHERE type = 2 AND active_for_collection = 1)
+            GROUP BY sub_head_id
+        ) latest ON latest.max_id = fl.id",
+        $class_id, $year
+    ));
+    foreach ($yearly_rows as $yr) { $yearly_expected += floatval($yr->fee); }
+
+    $monthly_expected = 0;
+    $monthly_rows = $wpdb->get_results($wpdb->prepare(
+        "SELECT fl.fee FROM ct_student_fee_list fl
+        INNER JOIN (
+            SELECT sub_head_id, MAX(id) AS max_id FROM ct_student_fee_list
+            WHERE class_id = %d AND year = %s AND sub_head_id IN (SELECT id FROM ct_sub_head WHERE type = 1 AND active_for_collection = 1)
+            GROUP BY sub_head_id
+        ) latest ON latest.max_id = fl.id",
+        $class_id, $year
+    ));
+    foreach ($monthly_rows as $mr) { $monthly_expected += floatval($mr->fee) * 12; }
+
+    $total_expected = $yearly_expected + $monthly_expected;
+
+    $yearly_paid_map = array();
+    foreach ($wpdb->get_results($wpdb->prepare("SELECT student_id, SUM(fee) as paid FROM ct_student_yearly_fee_summary WHERE class_id = %d AND year = %s AND fee > 0 GROUP BY student_id", $class_id, $year)) as $r) {
+        $yearly_paid_map[$r->student_id] = floatval($r->paid);
+    }
+    $monthly_paid_map = array();
+    foreach ($wpdb->get_results($wpdb->prepare("SELECT student_id, SUM(fee) as paid FROM ct_student_monthly_fee_summary WHERE class_id = %d AND year = %s AND fee > 0 GROUP BY student_id", $class_id, $year)) as $r) {
+        $monthly_paid_map[$r->student_id] = floatval($r->paid);
+    }
+    $exam_paid_map = array();
+    foreach ($wpdb->get_results($wpdb->prepare("SELECT student_id, SUM(fee) as paid FROM ct_student_exam_fee_summary WHERE class_id = %d AND year = %s AND fee > 0 GROUP BY student_id", $class_id, $year)) as $r) {
+        $exam_paid_map[$r->student_id] = floatval($r->paid);
+    }
+
+    $result = array();
+    foreach ($students as $s) {
+        $paid = ($yearly_paid_map[$s->infoStdid] ?? 0) + ($monthly_paid_map[$s->infoStdid] ?? 0) + ($exam_paid_map[$s->infoStdid] ?? 0);
+        $due = max(0, $total_expected - $paid);
+        $pct = $total_expected > 0 ? round(($paid / $total_expected) * 100) : 0;
+        if ($paid > $total_expected) $status_s = 'Overpaid';
+        elseif ($pct >= 100) $status_s = 'Paid';
+        elseif ($pct > 0) $status_s = 'Partial';
+        else $status_s = 'Due';
+        $result[] = array(
+            'student_id' => $s->infoStdid, 'roll' => $s->infoRoll, 'name' => $s->stdName,
+            'facilities' => $s->facilities, 'total_expected' => $total_expected,
+            'total_paid' => $paid, 'total_due' => $due, 'payment_pct' => $pct, 'status' => $status_s,
+        );
+    }
+    return $result;
+}
+
+// ===== Fetch all mismatches from DB =====
+$allMismatches = array();
+$claim_map = array();
+$mismatch_table_exists = $wpdb->get_var("SHOW TABLES LIKE 'ct_payment_mismatch'");
+if ($mismatch_table_exists) {
+    $mm_query = "SELECT m.*, s.stdName, s.studentid, si.infoRoll, si.infoClass FROM ct_payment_mismatch m LEFT JOIN ct_student s ON s.studentid = m.student_id LEFT JOIN ct_studentinfo si ON si.infoStdid = m.student_id AND si.infoYear = '" . esc_sql($filter_year) . "'";
+    if ($filter_class) {
+        $mm_query .= " WHERE si.infoClass = " . intval($filter_class);
+    }
+    $mm_query .= " ORDER BY m.detected_at DESC LIMIT 500";
+    $allMismatches = $wpdb->get_results($mm_query, ARRAY_A);
+
+    $claims = $wpdb->get_results("SELECT mismatch_id, status, review_notes FROM ct_mismatch_claim ORDER BY claim_id DESC");
+    foreach ($claims as $c) {
+        if (!isset($claim_map[$c->mismatch_id])) {
+            $claim_map[$c->mismatch_id] = array('status' => $c->status, 'review_notes' => $c->review_notes);
+        }
+    }
+}
 ?>
 <style>
 :root {
-    --primary: #4f6ef7;
-    --primary-light: #eef1ff;
-    --primary-dark: #3a56d4;
-    --success: #22c55e;
-    --success-bg: #dcfce7;
-    --danger: #ef4444;
-    --danger-bg: #fee2e2;
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --bg: #f0f2f5;
+    --surface: #ffffff;
+    --surface-hover: #f8f9fa;
+    --border: #e2e5ea;
+    --text: #1a1d23;
+    --text-secondary: #6b7280;
+    --primary: #6366f1;
+    --primary-dark: #4f46e5;
+    --primary-light: #eef2ff;
+    --success: #10b981;
+    --success-bg: #ecfdf5;
     --warning: #f59e0b;
-    --warning-bg: #fef3c7;
-    --gray-50: #f9fafb;
-    --gray-100: #f3f4f6;
-    --gray-200: #e5e7eb;
-    --gray-300: #d1d5db;
-    --gray-400: #9ca3af;
-    --gray-500: #6b7280;
-    --gray-600: #4b5563;
-    --gray-700: #374151;
-    --gray-800: #1f2937;
-    --gray-900: #111827;
-    --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    --radius: 8px;
-    --radius-lg: 12px;
-    --shadow: 0 1px 3px 0 rgba(0,0,0,0.06), 0 1px 2px -1px rgba(0,0,0,0.06);
-    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
+    --warning-bg: #fffbeb;
+    --danger: #ef4444;
+    --danger-bg: #fef2f2;
+    --info: #3b82f6;
+    --info-bg: #eff6ff;
+    --purple: #8b5cf6;
+    --purple-bg: #f5f3ff;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -1px rgba(0,0,0,0.04);
     --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.04);
-    --transition: all 0.2s ease;
+    --transition: 0.2s ease;
 }
 
 * { box-sizing: border-box; font-family: var(--font); }
 
 body {
-    background: #f0f2f5;
+    background: var(--bg);
     margin: 0;
     padding: 16px;
     min-height: 100vh;
@@ -410,12 +551,13 @@ body {
 /* ===== Page Header ===== */
 .page-header {
     position: relative;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%);
+    border-radius: 0;
+    padding: 28px 32px;
+    margin: -16px -16px 24px -16px;
     overflow: hidden;
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    isolation: isolate;
     color: #fff;
-    border-radius: var(--radius-lg);
-    padding: 24px 32px;
-    margin-bottom: 24px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -423,27 +565,49 @@ body {
     gap: 16px;
     box-shadow: var(--shadow-md);
 }
+.page-header .header-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255);
+    color: var(--text);
+    backdrop-filter: blur(4px);
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: var(--transition);
+    white-space: nowrap;
+}
+.page-header .header-btn:hover {
+    background: rgba(255,255,255,0.9);
+    transform: translateY(-1px);
+    color: var(--primary);
+}
 .page-header::before {
     content: '';
     position: absolute;
-    top: -80px;
-    right: -80px;
-    width: 300px;
-    height: 300px;
+    top: -50%;
+    right: -20%;
+    width: 400px;
+    height: 400px;
     background: radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 70%);
     border-radius: 50%;
     pointer-events: none;
+    z-index: 0;
 }
 .page-header::after {
     content: '';
     position: absolute;
-    bottom: -100px;
-    left: -60px;
-    width: 250px;
-    height: 250px;
+    bottom: -40%;
+    left: 10%;
+    width: 300px;
+    height: 300px;
     background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
     border-radius: 50%;
     pointer-events: none;
+    z-index: 0;
 }
 .page-header > * { position: relative; z-index: 1; }
 .page-header h2 {
@@ -451,6 +615,7 @@ body {
     font-size: 22px;
     font-weight: 700;
     letter-spacing: -0.3px;
+    color: #fff;
 }
 .page-header .header-stats {
     display: flex;
@@ -461,7 +626,7 @@ body {
     background: rgba(255,255,255,0.15);
     backdrop-filter: blur(4px);
     padding: 8px 16px;
-    border-radius: var(--radius);
+    border-radius: var(--radius-sm);
     text-align: center;
     min-width: 80px;
 }
@@ -482,29 +647,29 @@ body {
 
 /* ===== Filter Card ===== */
 .filter-card {
-    background: #fff;
-    border-radius: var(--radius-lg);
+    background: var(--surface);
+    border-radius: var(--radius);
     box-shadow: var(--shadow);
     padding: 20px 24px;
     margin-bottom: 24px;
-    border: 1px solid var(--gray-100);
+    border: 1px solid var(--border);
 }
 .filter-card .filter-title {
     font-size: 14px;
     font-weight: 600;
-    color: var(--gray-700);
+    color: var(--text);
     margin-bottom: 16px;
     display: flex;
     align-items: center;
     gap: 8px;
 }
 .filter-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
-.filter-form .form-group { margin: 0; min-width: 140px; flex: 1 0 auto; }
+.filter-form .form-group { margin: 0; flex: 0 0 auto; }
 .filter-form .form-group label {
     display: block;
     font-size: 11px;
     font-weight: 600;
-    color: var(--gray-500);
+    color: var(--text-secondary);
     margin-bottom: 4px;
     text-transform: uppercase;
     letter-spacing: 0.4px;
@@ -512,11 +677,11 @@ body {
 .filter-form .form-control {
     width: 100%;
     padding: 8px 12px;
-    border: 1.5px solid var(--gray-200);
-    border-radius: var(--radius);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
     font-size: 14px;
-    color: var(--gray-800);
-    background: #fff;
+    color: var(--text);
+    background: var(--surface);
     transition: var(--transition);
     appearance: none;
     -webkit-appearance: none;
@@ -527,7 +692,7 @@ body {
 }
 .filter-form .form-control:focus {
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(79,110,247,0.12);
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
     outline: none;
 }
 .filter-form .btn-search {
@@ -535,9 +700,10 @@ body {
     color: #fff;
     border: none;
     padding: 8px 24px;
-    border-radius: var(--radius);
+    border-radius: var(--radius-sm);
     font-size: 14px;
     font-weight: 500;
+    font-family: var(--font);
     cursor: pointer;
     transition: var(--transition);
     display: inline-flex;
@@ -555,19 +721,19 @@ body {
 .unified-sidebar {
     width: 300px;
     min-width: 260px;
-    background: #fff;
-    border-radius: var(--radius-lg);
+    background: var(--surface);
+    border-radius: var(--radius);
     box-shadow: var(--shadow);
-    border: 1px solid var(--gray-100);
+    border: 1px solid var(--border);
     overflow: hidden;
     max-height: 70vh;
     display: flex;
     flex-direction: column;
 }
 .unified-sidebar .sidebar-header {
-    background: var(--gray-50);
+    background: #f8fafc;
     padding: 12px 16px;
-    border-bottom: 1px solid var(--gray-200);
+    border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -577,7 +743,7 @@ body {
     margin: 0;
     font-size: 14px;
     font-weight: 600;
-    color: var(--gray-700);
+    color: var(--text);
 }
 .unified-sidebar .sidebar-header .badge-count {
     background: var(--primary-light);
@@ -589,22 +755,22 @@ body {
 }
 .unified-sidebar .sidebar-search {
     padding: 10px 12px;
-    border-bottom: 1px solid var(--gray-100);
+    border-bottom: 1px solid var(--border);
     flex-shrink: 0;
 }
 .unified-sidebar .sidebar-search input {
     width: 100%;
     padding: 7px 12px 7px 32px;
-    border: 1.5px solid var(--gray-200);
-    border-radius: var(--radius);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
     font-size: 13px;
     transition: var(--transition);
-    background: var(--gray-50) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E") no-repeat 10px center;
+    background: var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E") no-repeat 10px center;
 }
 .unified-sidebar .sidebar-search input:focus {
     border-color: var(--primary);
-    background-color: #fff;
-    box-shadow: 0 0 0 3px rgba(79,110,247,0.1);
+    background-color: var(--surface);
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
     outline: none;
 }
 .unified-sidebar .student-list {
@@ -616,14 +782,14 @@ body {
     display: flex;
     align-items: center;
     padding: 10px 14px;
-    border-bottom: 1px solid var(--gray-50);
+    border-bottom: 1px solid var(--border);
     cursor: pointer;
     transition: var(--transition);
-    color: var(--gray-700);
+    color: var(--text);
     text-decoration: none;
     gap: 10px;
 }
-.unified-sidebar .student-item:hover { background: var(--gray-50); }
+.unified-sidebar .student-item:hover { background: var(--surface-hover); }
 .unified-sidebar .student-item.active {
     background: var(--primary-light);
     border-left: 3px solid var(--primary);
@@ -636,11 +802,11 @@ body {
     justify-content: center;
     width: 32px;
     height: 32px;
-    background: var(--gray-100);
+    background: var(--border);
     border-radius: 6px;
     font-size: 12px;
     font-weight: 700;
-    color: var(--gray-500);
+    color: var(--text-secondary);
     flex-shrink: 0;
 }
 .unified-sidebar .student-item.active .roll {
@@ -660,119 +826,119 @@ body {
 
 /* ===== Cards ===== */
 .card {
-    background: #fff;
-    border-radius: var(--radius-lg);
+    background: var(--surface);
+    border-radius: var(--radius);
     box-shadow: var(--shadow);
-    border: 1px solid var(--gray-100);
     margin-bottom: 20px;
     overflow: hidden;
 }
 .card-header {
-    padding: 14px 20px;
-    border-bottom: 1px solid var(--gray-100);
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 12px;
 }
+.card-header h2,
 .card-header h3 {
     margin: 0;
-    font-size: 15px;
+    font-size: 17px;
     font-weight: 600;
-    color: var(--gray-800);
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    color: var(--text);
 }
-.card-body { padding: 0; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.card-body {
+    padding: 20px 24px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.card-body:only-child { border: none; }
 .card-body::-webkit-scrollbar { height: 6px; }
-.card-body::-webkit-scrollbar-track { background: var(--gray-100); border-radius: 3px; }
-.card-body::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 3px; }
+.card-body::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 3px; }
+.card-body::-webkit-scrollbar-thumb { background: #c1c7cd; border-radius: 3px; }
 
-/* ===== Fund Stats Row ===== */
-.fund-stats {
+/* ===== Stat Grid ===== */
+.stat-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-    gap: 14px;
+    gap: 16px;
     margin-bottom: 20px;
 }
-.fund-stat-card {
-    border-radius: var(--radius-lg);
-    padding: 18px 20px;
-    box-shadow: var(--shadow);
-    display: flex;
-    align-items: flex-start;
-    gap: 14px;
-    transition: var(--transition);
+.stat-card {
+    border-radius: var(--radius);
+    padding: 20px;
     color: #fff;
-    border: none;
+    position: relative;
+    overflow: hidden;
 }
-.fund-stat-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-3px); }
-
-/* Colored card variants */
-.fund-stat-card.card-blue    { background: linear-gradient(135deg, #4f6ef7 0%, #6366f1 100%); }
-.fund-stat-card.card-green   { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); }
-.fund-stat-card.card-red     { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); }
-.fund-stat-card.card-amber   { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
-.fund-stat-card.card-teal    { background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); }
-.fund-stat-card.card-purple  { background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%); }
-.fund-stat-card.card-orange  { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); }
-
-.fund-stat-card .stat-icon {
-    width: 42px;
-    height: 42px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-    flex-shrink: 0;
-    background: rgba(255,255,255,0.25);
-    backdrop-filter: blur(4px);
+.stat-card::after {
+    content: '';
+    position: absolute;
+    top: -30%;
+    right: -15%;
+    width: 120px;
+    height: 120px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 50%;
+    pointer-events: none;
 }
-.fund-stat-card .stat-body { flex: 1; min-width: 0; }
-.fund-stat-card .stat-body .stat-amount {
-    font-size: 22px;
-    font-weight: 800;
-    color: #fff;
-    line-height: 1.1;
-    letter-spacing: -0.5px;
-}
-.fund-stat-card .stat-body .stat-amount.small { font-size: 18px; }
-.fund-stat-card .stat-body .stat-label {
+.stat-card .stat-label {
     font-size: 12px;
-    color: rgba(255,255,255,0.8);
-    margin-top: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    opacity: 0.85;
     font-weight: 500;
+    position: relative;
+    z-index: 1;
 }
-.fund-stat-card .stat-body .stat-pct {
-    display: inline-block;
-    margin-top: 6px;
-    font-size: 11px;
+.stat-card .stat-value {
+    font-size: 24px;
     font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 20px;
-    background: rgba(255,255,255,0.2);
-    color: #fff;
+    margin-top: 6px;
+    letter-spacing: -0.5px;
+    position: relative;
+    z-index: 1;
 }
-.fund-stat-card .stat-body .stat-pct.high,
-.fund-stat-card .stat-body .stat-pct.medium,
-.fund-stat-card .stat-body .stat-pct.low { background: rgba(255,255,255,0.2); color: #fff; }
+.stat-card .stat-sub {
+    font-size: 12px;
+    opacity: 0.75;
+    margin-top: 2px;
+    position: relative;
+    z-index: 1;
+}
+.stat-card .stat-icon {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    font-size: 28px;
+    opacity: 0.25;
+    z-index: 0;
+}
+/* Stat card colors matching mismatch page */
+.stat-bg-blue    { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+.stat-bg-green   { background: linear-gradient(135deg, #10b981, #059669); }
+.stat-bg-red     { background: linear-gradient(135deg, #ef4444, #dc2626); }
+.stat-bg-amber   { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.stat-bg-teal    { background: linear-gradient(135deg, #14b8a6, #0d9488); }
+.stat-bg-purple  { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+.stat-bg-orange  { background: linear-gradient(135deg, #f97316, #ea580c); }
+.stat-bg-pink    { background: linear-gradient(135deg, #ec4899, #db2777); }
+.stat-bg-info    { background: linear-gradient(135deg, #3b82f6, #2563eb); }
 
 /* ===== Student Info Card ===== */
 .student-info-card {
-    background: #fff;
-    border-radius: var(--radius-lg);
+    background: var(--surface);
+    border-radius: var(--radius);
     box-shadow: var(--shadow);
-    border: 1px solid var(--gray-100);
+    border: 1px solid var(--border);
     margin-bottom: 20px;
     overflow: hidden;
 }
 .student-info-card .info-header {
-    background: linear-gradient(135deg, var(--gray-50) 0%, #fff 100%);
+    background: linear-gradient(135deg, #f8fafc 0%, #fff 100%);
     padding: 20px 24px;
-    border-bottom: 1px solid var(--gray-100);
+    border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -782,7 +948,7 @@ body {
 .student-info-card .info-header .student-name {
     font-size: 20px;
     font-weight: 700;
-    color: var(--gray-900);
+    color: var(--text);
     margin: 0;
 }
 .student-info-card .info-header .student-meta {
@@ -793,85 +959,107 @@ body {
 }
 .student-info-card .info-header .student-meta span {
     font-size: 13px;
-    color: var(--gray-500);
+    color: var(--text-secondary);
     display: inline-flex;
     align-items: center;
     gap: 4px;
 }
-.student-info-card .info-header .student-meta strong { color: var(--gray-700); }
+.student-info-card .info-header .student-meta strong { color: var(--text); }
 
-/* ===== Modern Tables ===== */
+/* ===== Tables ===== */
+.table-wrap {
+    overflow-x: auto;
+    border-radius: var(--radius-sm);
+}
+.table-wrap::-webkit-scrollbar {
+    width: 6px; height: 6px;
+}
+.table-wrap::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+.table-wrap::-webkit-scrollbar-thumb {
+    background: #c1c7cd;
+    border-radius: 3px;
+}
 .modern-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
-.modern-table thead { background: var(--gray-50); }
+.modern-table thead { position: sticky; top: 0; z-index: 2; }
 .modern-table thead th {
-    padding: 10px 14px;
+    background: #f8fafc;
+    padding: 12px 14px;
     text-align: center;
     font-weight: 600;
     font-size: 11px;
     text-transform: uppercase;
-    letter-spacing: 0.4px;
-    color: var(--gray-500);
-    border-bottom: 2px solid var(--gray-200);
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    border-bottom: 2px solid var(--border);
     white-space: nowrap;
 }
 .modern-table tbody td {
     padding: 10px 14px;
-    border-bottom: 1px solid var(--gray-100);
-    color: var(--gray-700);
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
     vertical-align: middle;
 }
-.modern-table tbody tr:hover { background: var(--gray-50); }
+.modern-table tbody tr:hover { background: var(--surface-hover); }
 .modern-table tbody tr:last-child td { border-bottom: none; }
 .modern-table .text-left { text-align: left; }
 .modern-table .text-right { text-align: right; }
 .modern-table .text-center { text-align: center; }
 .modern-table .font-bold { font-weight: 600; }
-.modern-table .total-row { background: var(--gray-50) !important; font-weight: 600; }
-.modern-table .total-row td { border-top: 2px solid var(--gray-200); border-bottom: none; padding: 12px 14px; color: var(--gray-800); }
-.modern-table .table-danger { background: #fef2f2 !important; }
+.modern-table .total-row { background: #f8fafc !important; font-weight: 600; }
+.modern-table .total-row td { border-top: 2px solid var(--border); border-bottom: none; padding: 12px 14px; color: var(--text); }
+.modern-table .table-danger { background: var(--danger-bg) !important; }
 .modern-table .table-danger td { color: #991b1b; }
 
 /* ===== Status Badges ===== */
 .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 3px 10px;
+    display: inline-block;
+    padding: 4px 10px;
     border-radius: 20px;
     font-size: 11px;
     font-weight: 600;
-    letter-spacing: 0.2px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
 }
-.badge-paid, .badge-success { color: var(--success-bg); }
-.badge-pending, .badge-warning { color: var(--warning-bg); }
-.badge-unpaid, .badge-danger { color: var(--danger-bg); }
-.badge-failed { color: var(--danger-bg); }
-.badge-cancelled, .badge-secondary { color: var(--gray-100); }
-.badge-partial { color: var(--primary-light); }
+.badge-paid, .badge-success { background: var(--success-bg); color: var(--success); }
+.badge-pending, .badge-warning { background: var(--warning-bg); color: var(--warning); }
+.badge-unpaid, .badge-danger { background: var(--danger-bg); color: var(--danger); }
+.badge-failed { background: var(--danger-bg); color: var(--danger); }
+.badge-cancelled, .badge-secondary { background: #f3f4f6; color: #6b7280; }
+.badge-partial { background: var(--primary-light); color: var(--primary); }
+.badge-overpaid { background: #fef3c7; color: #d97706; }
+.badge-info { background: var(--info-bg); color: var(--info); }
+
+/* ===== Row Highlights ===== */
+.row-due { background: #fef2f2 !important; }
+.row-due:hover { background: #fee2e2 !important; }
+.row-overpaid { background: #fffbeb !important; }
+.row-overpaid:hover { background: #fef3c7 !important; }
 
 /* ===== Cell Status ===== */
-.cell-paid { color: #15803d; font-weight: 600; }
-.cell-unpaid { color: #b91c1c; font-weight: 600; }
+.cell-paid { color: var(--success); font-weight: 600; }
+.cell-unpaid { color: var(--danger); font-weight: 600; }
 
 /* ===== Empty State ===== */
 .empty-state {
     text-align: center;
     padding: 48px 24px;
-    color: var(--gray-400);
+    color: var(--text-secondary);
 }
 .empty-state .empty-icon {
-    width: 48px;
-    height: 48px;
-    margin: 0 auto 16px;
-    background: var(--gray-100);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
+    font-size: 48px;
+    margin-bottom: 12px;
+    opacity: 0.3;
 }
-.empty-state h4 { margin: 0 0 6px; font-size: 16px; color: var(--gray-500); font-weight: 500; }
-.empty-state p { margin: 0; font-size: 13px; color: var(--gray-400); }
+.empty-state h4 {
+    margin: 0 0 6px;
+    font-size: 18px;
+    color: var(--text);
+    font-weight: 600;
+}
+.empty-state p { margin: 0; font-size: 14px; color: var(--text-secondary); }
 
 /* ===== Print ===== */
 @media print {
@@ -888,17 +1076,492 @@ body {
     .unified-sidebar { width: 100%; max-height: 300px; }
 }
 @media (max-width: 768px) {
-    .page-header { padding: 16px 20px; flex-direction: column; text-align: center; }
+    body { padding: 12px; }
+    .page-header { padding: 20px; flex-direction: column; text-align: center; margin: -12px -12px 20px -12px; }
+    .page-header h2 { font-size: 20px; }
     .page-header .header-stats { justify-content: center; }
-    .filter-form .form-group { min-width: 100%; }
+    .filter-form .form-group { flex: 1 1 100%; }
     .card-header { flex-direction: column; align-items: flex-start; }
+    .card-body { padding: 16px; }
     .modern-table { font-size: 12px; }
     .modern-table thead th, .modern-table tbody td { padding: 6px 8px; }
     .student-info-card .info-header { flex-direction: column; text-align: center; }
     .student-info-card .info-header .student-meta { justify-content: center; }
 }
 
+/* ===== Tab Navigation ===== */
+.tab-nav {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 24px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+    padding: 6px;
+    overflow-x: auto;
+}
+.tab-nav::-webkit-scrollbar { height: 4px; }
+.tab-nav::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 2px; }
+.tab-nav::-webkit-scrollbar-thumb { background: #c1c7cd; border-radius: 2px; }
+.tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    font-family: var(--font);
+    color: var(--text-secondary);
+    background: transparent;
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+}
+.tab-btn:hover {
+    background: var(--surface-hover);
+    color: var(--text);
+}
+.tab-btn.active {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(99,102,241,0.25);
+}
+.tab-btn svg { flex-shrink: 0; }
 
+.tab-content { min-height: 300px; }
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+
+/* ===== Mismatch Claim Form ===== */
+.claim-form-row { display: none; }
+.claim-form-row.open { display: table-row; }
+.claim-form-row td { padding: 0 !important; }
+.claim-inner {
+    padding: 16px 24px;
+    background: #f8fafc;
+    border-bottom: 2px solid var(--primary);
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+.claim-inner textarea {
+    flex: 1;
+    min-width: 200px;
+    padding: 8px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-family: var(--font);
+    resize: vertical;
+    min-height: 36px;
+}
+.claim-inner textarea:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+    outline: none;
+}
+.claim-inner .btn-submit-claim {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    padding: 8px 20px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    font-family: var(--font);
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+}
+.claim-inner .btn-submit-claim:hover { background: var(--primary-dark); }
+.claim-inner .btn-cancel-claim {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1.5px solid var(--border);
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    font-family: var(--font);
+    cursor: pointer;
+    transition: var(--transition);
+}
+.claim-inner .btn-cancel-claim:hover { background: var(--surface-hover); color: var(--text); }
+.claim-success {
+    background: var(--success-bg);
+    color: var(--success);
+    padding: 12px 20px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 16px;
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ===== Due Tab Mini Stat Grid ===== */
+.due-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+@media (max-width: 768px) {
+    .tab-nav { padding: 4px; gap: 2px; }
+    .tab-btn { padding: 8px 12px; font-size: 12px; }
+    .tab-btn svg { width: 14px; height: 14px; }
+    .claim-inner { flex-direction: column; }
+    .claim-inner textarea { min-width: 100%; }
+}
+
+/* ===== Transfer Button ===== */
+.btn-xs {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border: none;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: var(--font);
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+}
+.btn-transfer {
+    background: var(--primary-light);
+    color: var(--primary);
+}
+.btn-transfer:hover {
+    background: var(--primary);
+    color: #fff;
+}
+.btn-claim {
+    background: #fff3e0;
+    color: #e65100;
+    border: 1.5px solid #ffb74d;
+    padding: 6px 14px;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+.btn-claim:hover {
+    background: #e65100;
+    color: #fff;
+    border-color: #e65100;
+}
+
+/* ===== Claim Modal ===== */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+.modal-overlay.open { display: flex; }
+.modal-box {
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    width: 100%;
+    max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: modalIn 0.2s ease;
+}
+@keyframes modalIn {
+    from { opacity: 0; transform: scale(0.95) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.modal-box .modal-header {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+    z-index: 1;
+}
+.modal-box .modal-header h3 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text);
+}
+.modal-box .modal-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: var(--surface-hover);
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: var(--transition);
+    font-size: 18px;
+}
+.modal-box .modal-close:hover { background: var(--border); color: var(--text); }
+.modal-box .modal-body { padding: 20px 24px; }
+.modal-box .modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    position: sticky;
+    bottom: 0;
+    background: var(--surface);
+}
+
+/* Transfer info summary */
+.transfer-info {
+    background: var(--primary-light);
+    border-radius: var(--radius-sm);
+    padding: 14px 16px;
+    margin-bottom: 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    font-size: 13px;
+}
+.transfer-info .ti-label { color: var(--text-secondary); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+.transfer-info .ti-value { color: var(--text); font-weight: 600; }
+
+/* Form inside modal */
+.modal-form .form-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+}
+.modal-form .form-group {
+    flex: 1;
+    min-width: 140px;
+}
+.modal-form .form-group label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+.modal-form .form-group select,
+.modal-form .form-group input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    color: var(--text);
+    background: var(--surface);
+    transition: var(--transition);
+    font-family: var(--font);
+}
+.modal-form .form-group select:focus,
+.modal-form .form-group input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+    outline: none;
+}
+.modal-form .form-group select:disabled,
+.modal-form .form-group input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Student results list */
+.student-results {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: 14px;
+}
+.student-results .sr-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: var(--transition);
+    gap: 12px;
+}
+.student-results .sr-item:last-child { border-bottom: none; }
+.student-results .sr-item:hover { background: var(--surface-hover); }
+.student-results .sr-item.selected {
+    background: var(--primary-light);
+    border-left: 3px solid var(--primary);
+}
+.student-results .sr-item .sr-roll {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    background: var(--border);
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+.student-results .sr-item.selected .sr-roll { background: var(--primary); color: #fff; }
+.student-results .sr-item .sr-name { font-size: 13px; font-weight: 500; color: var(--text); flex: 1; }
+.student-results .sr-item .sr-facilities { font-size: 11px; color: var(--text-secondary); }
+.student-results .sr-empty {
+    padding: 24px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+.student-results::-webkit-scrollbar { width: 5px; }
+.student-results::-webkit-scrollbar-track { background: #f1f1f1; }
+.student-results::-webkit-scrollbar-thumb { background: #c1c7cd; border-radius: 3px; }
+
+.btn-transfer-submit {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    padding: 9px 24px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 500;
+    font-family: var(--font);
+    cursor: pointer;
+    transition: var(--transition);
+}
+.btn-transfer-submit:hover { background: var(--primary-dark); }
+.btn-transfer-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-transfer-cancel {
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1.5px solid var(--border);
+    padding: 9px 20px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    font-family: var(--font);
+    cursor: pointer;
+    transition: var(--transition);
+}
+.btn-transfer-cancel:hover { background: var(--surface-hover); color: var(--text); }
+
+.transfer-loading {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+.transfer-loading.active { display: flex; }
+.transfer-loading .spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.transfer-success {
+    display: none;
+    background: var(--success-bg);
+    color: var(--success);
+    padding: 14px 18px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 14px;
+    align-items: center;
+    gap: 10px;
+}
+.transfer-success.active { display: flex; }
+.transfer-error {
+    display: none;
+    background: var(--danger-bg);
+    color: var(--danger);
+    padding: 14px 18px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    margin-bottom: 14px;
+}
+.transfer-error.active { display: block; }
+
+/* Transfer confirmation step */
+.transfer-confirm {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 0 4px;
+    text-align: center;
+}
+.transfer-confirm.active { display: flex; }
+.transfer-confirm .cf-header {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 4px;
+}
+.transfer-confirm .cf-icon { margin: 8px 0 4px; }
+.transfer-confirm .cf-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin: 0 0 18px;
+    max-width: 360px;
+}
+.transfer-confirm .cf-details {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px 18px;
+    width: 100%;
+    max-width: 420px;
+    text-align: left;
+    margin-bottom: 20px;
+}
+.transfer-confirm .cf-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    font-size: 13px;
+}
+.transfer-confirm .cf-label { color: var(--text-secondary); font-weight: 500; }
+.transfer-confirm .cf-value { color: var(--text); font-weight: 600; text-align: right; max-width: 60%; word-break: break-word; }
+.transfer-confirm .cf-mono { font-family: monospace; font-size: 12px; }
+.transfer-confirm .cf-amount { color: var(--primary); font-size: 15px; }
+.transfer-confirm .cf-divider {
+    border-top: 1px solid var(--border);
+    margin: 6px 0 4px;
+}
+.transfer-confirm .cf-actions {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+    max-width: 420px;
+    justify-content: center;
+}
+.transfer-confirm .cf-actions .btn-transfer-submit { flex: 1; max-width: 200px; }
 </style>
 
 <!-- ===== Page Header ===== -->
@@ -908,6 +1571,10 @@ body {
         <p style="margin:4px 0 0;font-size:13px;opacity:0.75;">Payment integrity &amp; reconciliation dashboard</p>
     </div>
     <div class="header-stats">
+        <a href="/frontend-admin" class="header-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            Back to Frontend Admin
+        </a>
         <div class="header-stat">
             <span class="stat-value"><?= count($students) ?></span>
             <span class="stat-label">Students</span>
@@ -934,7 +1601,7 @@ body {
     <form action="" method="POST" class="filter-form">
         <div class="form-group">
             <label>Class</label>
-            <select name="stdclass" class="form-control" required onchange="this.form.submit()">
+            <select name="stdclass" id="filterClass" class="form-control" required onchange="loadFilterSections(this.value)">
                 <option value="">Select Class</option>
                 <?php
                 $classQuery = $wpdb->get_results("SELECT classid,className FROM ct_class WHERE classid IN (SELECT infoClass FROM ct_studentinfo GROUP BY infoClass ORDER BY className ASC)");
@@ -946,7 +1613,7 @@ body {
         </div>
         <div class="form-group">
             <label>Section</label>
-            <select name="sec" class="form-control">
+            <select name="sec" id="filterSec" class="form-control">
                 <option value="">All</option>
                 <?php
                 if ($filter_class) {
@@ -973,7 +1640,6 @@ body {
         <div class="form-group">
             <label>Year</label>
             <select name="stdyear" class="form-control">
-                <option value="<?= current_time('Y') ?>"><?= current_time('Y') ?></option>
                 <?php for ($y = current_time('Y')-1; $y <= current_time('Y')+1; $y++) {
                     echo '<option value="'.$y.'"'.($filter_year==$y?' selected':'').'>'.$y.'</option>';
                 } ?>
@@ -1006,6 +1672,104 @@ body {
 </div>
 
 <?php if ($filter_class && !empty($students)): ?>
+
+<!-- ===== Tab Navigation ===== -->
+<div class="tab-nav" id="tabNav">
+    <button class="tab-btn <?= $active_tab==='audit'?'active':'' ?>" data-tab="audit" onclick="switchTab('audit')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        Student Audit
+    </button>
+    <button class="tab-btn <?= $active_tab==='due'?'active':'' ?>" data-tab="due" onclick="switchTab('due')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        Due Students
+    </button>
+    <button class="tab-btn <?= $active_tab==='mismatches'?'active':'' ?>" data-tab="mismatches" onclick="switchTab('mismatches')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Mismatches
+    </button>
+</div>
+
+<!-- ===== Tab Content ===== -->
+<div class="tab-content">
+
+    <!-- ===== Tab: Due Students ===== -->
+    <div class="tab-pane <?= $active_tab==='due'?'active':'' ?>" id="tab-due">
+        <?php
+        $dueStudents = computeDueStudents($filter_class, $filter_sec, $filter_group, $filter_year);
+        $dueGrandExpected = 0; $dueGrandPaid = 0; $dueGrandDue = 0; $dueDueCount = 0;
+        foreach ($dueStudents as $ds) {
+            $dueGrandExpected += $ds['total_expected'];
+            $dueGrandPaid += $ds['total_paid'];
+            $dueGrandDue += $ds['total_due'];
+            if ($ds['total_due'] > 0) $dueDueCount++;
+        }
+        ?>
+        <div class="card">
+            <div class="card-header">
+                <h3>Due Students — <?= getClassNameById($filter_class) ?><?= $filter_sec ? ' ('.getSectionNameById($filter_sec).')' : '' ?></h3>
+                <span class="badge badge-danger"><?= $dueDueCount ?> with dues</span>
+            </div>
+            <div class="card-body">
+                <?php if (!empty($dueStudents)): ?>
+                <div class="due-stat-grid">
+                    <div class="stat-card stat-bg-blue"><div class="stat-label">Total Expected</div><div class="stat-value"><?= number_format($dueGrandExpected, 2) ?></div></div>
+                    <div class="stat-card stat-bg-green"><div class="stat-label">Total Paid</div><div class="stat-value"><?= number_format($dueGrandPaid, 2) ?></div></div>
+                    <div class="stat-card stat-bg-red"><div class="stat-label">Total Due</div><div class="stat-value"><?= number_format($dueGrandDue, 2) ?></div></div>
+                    <div class="stat-card stat-bg-amber"><div class="stat-label">Students</div><div class="stat-value"><?= count($dueStudents) ?></div></div>
+                </div>
+                <div class="table-wrap">
+                <table class="modern-table">
+                    <thead>
+                        <tr>
+                            <th>Roll</th>
+                            <th class="text-left">Name</th>
+                            <th>Facilities</th>
+                            <th>Expected</th>
+                            <th>Paid</th>
+                            <th>Due</th>
+                            <th>%</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <?php foreach ($dueStudents as $ds): ?>
+                    <tr class="<?= $ds['status'] === 'Due' ? 'row-due' : ($ds['status'] === 'Overpaid' ? 'row-overpaid' : '') ?>">
+                        <td><?= $ds['roll'] ?></td>
+                        <td class="text-left">
+                            <a href="?tab=audit&class_id=<?= $filter_class ?>&section=<?= $filter_sec ?>&group_id=<?= $filter_group ?>&year=<?= $filter_year ?>&month=<?= $filter_month ?>&payment_status=<?= $filter_status ?>&student_id=<?= $ds['student_id'] ?>" style="color:var(--primary);text-decoration:none;font-weight:600;">
+                                <?= esc_html($ds['name']) ?>
+                            </a>
+                        </td>
+                        <td><?= esc_html($ds['facilities'] ?: '-') ?></td>
+                        <td><?= number_format($ds['total_expected'], 2) ?></td>
+                        <td><?= number_format($ds['total_paid'], 2) ?></td>
+                        <td><strong class="<?= $ds['total_due'] > 0 ? 'cell-unpaid' : 'cell-paid' ?>"><?= number_format($ds['total_due'], 2) ?></strong></td>
+                        <td>
+                            <div style="display:flex;align-items:center;gap:6px;">
+                                <div style="flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden;min-width:40px;">
+                                    <div style="height:100%;width:<?= $ds['payment_pct'] ?>%;background:<?= $ds['payment_pct'] >= 100 ? 'var(--success)' : ($ds['payment_pct'] > 0 ? 'var(--warning)' : 'var(--danger)') ?>;border-radius:3px;"></div>
+                                </div>
+                                <span style="font-size:11px;font-weight:600;color:var(--text-secondary);"><?= $ds['payment_pct'] ?>%</span>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge <?= $ds['status'] === 'Overpaid' ? 'badge-overpaid' : ($ds['status'] === 'Paid' ? 'badge-paid' : ($ds['status'] === 'Partial' ? 'badge-partial' : 'badge-unpaid')) ?>"><?= $ds['status'] ?></span>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+                </div>
+                <?php else: ?>
+                <div class="empty-state"><p>No students found for the selected filters.</p></div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== Tab: Student Audit (existing per-student view) ===== -->
+    <div class="tab-pane <?= $active_tab==='audit'?'active':'' ?>" id="tab-audit">
+
 <div class="unified-layout">
     <!-- Left: Student List -->
     <div class="unified-sidebar">
@@ -1020,7 +1784,7 @@ body {
             <?php foreach ($students as $std):
                 $is_active = ($selected_student == $std->infoStdid);
             ?>
-            <a href="?class_id=<?= $filter_class ?>&section=<?= $filter_sec ?>&group_id=<?= $filter_group ?>&year=<?= $filter_year ?>&month=<?= $filter_month ?>&payment_status=<?= $filter_status ?>&student_id=<?= $std->infoStdid ?>"
+            <a href="?tab=audit&class_id=<?= $filter_class ?>&section=<?= $filter_sec ?>&group_id=<?= $filter_group ?>&year=<?= $filter_year ?>&month=<?= $filter_month ?>&payment_status=<?= $filter_status ?>&student_id=<?= $std->infoStdid ?>"
                 class="student-item <?= $is_active ? 'active' : '' ?>">
                 <span class="roll"><?= $std->infoRoll ?></span>
                 <span class="name"><?= esc_html($std->stdName) ?></span>
@@ -1038,9 +1802,23 @@ body {
     <script>
     function filterStudents() {
         var input = document.getElementById('studentSearch');
-        var filter = input.value.toUpperCase();
+        var value = input.value.trim();
         var list = document.getElementById('studentList');
         var items = list.getElementsByClassName('student-item');
+
+        // Check if input contains commas → treat as roll-number filter
+        if (value.indexOf(',') > -1) {
+            var targetRolls = value.split(',').map(function(r) { return r.trim().toUpperCase(); }).filter(function(r) { return r !== ''; });
+            for (var i = 0; i < items.length; i++) {
+                var rollEl = items[i].querySelector('.roll');
+                var roll = rollEl ? rollEl.textContent.trim().toUpperCase() : '';
+                items[i].style.display = targetRolls.indexOf(roll) > -1 ? '' : 'none';
+            }
+            return;
+        }
+
+        // Default: filter by name or roll
+        var filter = value.toUpperCase();
         for (var i = 0; i < items.length; i++) {
             var name = items[i].querySelector('.name');
             var roll = items[i].querySelector('.roll');
@@ -1066,6 +1844,10 @@ body {
                             <span>Facilities: <strong><?= $studentInfo->facilities ?: 'None' ?></strong></span>
                         </div>
                     </div>
+                    <button class="btn-xs btn-claim" onclick="openClaimModal()" title="Claim a payment that was recorded under wrong student info">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                        Claim Payment
+                    </button>
                 </div>
             </div>
 
@@ -1076,49 +1858,31 @@ body {
             if ($payment_pct >= 75) $pct_class = 'high';
             elseif ($payment_pct >= 40) $pct_class = 'medium';
             ?>
-            <div class="fund-stats">
-                <div class="fund-stat-card card-blue">
+            <div class="stat-grid">
+                <div class="stat-card stat-bg-blue">
                     <div class="stat-icon">💰</div>
-                    <div class="stat-body">
-                        <div class="stat-amount"><?= number_format($total_expected, 2) ?></div>
-                        <div class="stat-label">Total Expected Fees</div>
-                    </div>
+                    <div class="stat-label">Total Expected Fees</div>
+                    <div class="stat-value"><?= number_format($total_expected, 2) ?></div>
                 </div>
-                <div class="fund-stat-card card-green">
+                <div class="stat-card stat-bg-green">
                     <div class="stat-icon">✅</div>
-                    <div class="stat-body">
-                        <div class="stat-amount"><?= number_format($total_paid, 2) ?></div>
-                        <div class="stat-label">Total Paid</div>
-                    </div>
+                    <div class="stat-label">Total Paid</div>
+                    <div class="stat-value"><?= number_format($total_paid, 2) ?></div>
                 </div>
-                <div class="fund-stat-card card-red">
+                <div class="stat-card stat-bg-red">
                     <div class="stat-icon">⚠️</div>
-                    <div class="stat-body">
-                        <div class="stat-amount"><?= number_format($total_due, 2) ?></div>
-                        <div class="stat-label">Total Due</div>
-                    </div>
+                    <div class="stat-label">Total Due</div>
+                    <div class="stat-value"><?= number_format($total_due, 2) ?></div>
                 </div>
-                <div class="fund-stat-card card-teal">
-                    <div class="stat-icon">📅</div>
-                    <div class="stat-body">
-                        <div class="stat-amount small"><?= number_format($fundStats['yearly_paid'] + $fundStats['monthly_paid'], 2) ?></div>
-                        <div class="stat-label">Yearly + Monthly Paid</div>
-                    </div>
-                </div>
-                <div class="fund-stat-card card-purple">
-                    <div class="stat-icon">🧾</div>
-                    <div class="stat-body">
-                        <div class="stat-amount small"><?= number_format($fundStats['exam_paid'] + $fundStats['other_paid'], 2) ?></div>
-                        <div class="stat-label">Exam + Other Paid</div>
-                    </div>
-                </div>
-                <div class="fund-stat-card card-orange">
+                <div class="stat-card stat-bg-teal">
                     <div class="stat-icon">💳</div>
-                    <div class="stat-body">
-                        <div class="stat-amount small"><?= number_format($fundStats['paystation_paid_total'], 2) ?></div>
-                        <div class="stat-label">PayStation Paid</div>
-                        <span class="stat-pct" style="font-size:11px;">Total: <?= number_format($fundStats['paystation_total'], 2) ?></span>
-                    </div>
+                    <div class="stat-label">PayStation Paid</div>
+                    <div class="stat-value"><?= number_format($fundStats['paystation_paid_total'], 2) ?></div>
+                </div>
+                <div class="stat-card stat-bg-orange">
+                    <div class="stat-icon">🔄</div>
+                    <div class="stat-label">Over Payments</div>
+                    <div class="stat-value"><?= number_format($fundStats['over_payment'], 2) ?></div>
                 </div>
             </div>
 
@@ -1127,9 +1891,6 @@ body {
             <div class="card" style="border-left: 4px solid <?= $mismatch_high_count > 0 ? '#dc2626' : ($mismatch_medium_count > 0 ? '#d97706' : '#6b7280') ?>;">
                 <div class="card-header">
                     <h3>🔍 Payment Mismatch Alerts</h3>
-                    <?php if ($mismatch_high_count > 0): ?><span class="badge badge-pending" style="margin-left:10px;"><?= $mismatch_high_count ?> high</span><?php endif; ?>
-                    <?php if ($mismatch_medium_count > 0): ?><span class="badge badge-secondary" style="margin-left:6px;"><?= $mismatch_medium_count ?> medium</span><?php endif; ?>
-                    <?php if ($mismatch_low_count > 0): ?><span class="badge badge-paid" style="margin-left:6px;"><?= $mismatch_low_count ?> low</span><?php endif; ?>
                 </div>
                 <div class="card-body">
                     <table class="modern-table">
@@ -1139,11 +1900,11 @@ body {
                         <tr>
                             <td>
                                 <?php if ($mm['severity'] === 'high'): ?>
-                                <span class="badge badge-pending">🔴 High</span>
+                                <span class="badge badge-danger">🔴 High</span>
                                 <?php elseif ($mm['severity'] === 'medium'): ?>
-                                <span class="badge badge-secondary">🟠 Medium</span>
+                                <span class="badge badge-warning">🟠 Medium</span>
                                 <?php else: ?>
-                                <span class="badge badge-paid">⚪ Low</span>
+                                <span class="badge badge-info">⚪ Low</span>
                                 <?php endif; ?>
                             </td>
                             <td style="font-weight:600;"><?= str_replace('_', ' ', $mm['type']) ?></td>
@@ -1204,8 +1965,10 @@ body {
                                 <th>Amount</th>
                                 <th>Status</th>
                                 <th>Date</th>
-                                <th>Payment ID</th>
+                                <th>Transaction ID</th>
+                                <th>Phone</th>
                                 <th>Details</th>
+                                <th style="width:80px;">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1218,12 +1981,19 @@ body {
                             <td><?= number_format(floatval($txn['total_amount']), 2) ?></td>
                             <td><span class="badge badge-<?= $txn['status'] ?>"><?= ucfirst($txn['status']) ?></span></td>
                             <td><?= $txn['payment_date'] ? date('d-m-Y H:i', strtotime($txn['payment_date'])) : date('d-m-Y H:i', strtotime($txn['created_at'])) ?></td>
-                            <td style="font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="<?= esc_attr($txn['payment_id']) ?>"><?= esc_html(substr($txn['payment_id'], 0, 20)) ?>...</td>
+                            <td style="font-family:monospace;font-size:12px;"><?= !empty($txn['transaction_id']) ? esc_html($txn['transaction_id']) : '<span style="color:#999;">—</span>' ?></td>
+                            <td>
+                                <?php
+                                $sd = json_decode($txn['student_data'], true);
+                                $phone = ($sd && !empty($sd['cust_phone'])) ? esc_html($sd['cust_phone']) : '<span style="color:#999;">—</span>';
+                                echo $phone;
+                                ?>
+                            </td>
                             <td>
                                 <?php
                                 $ps_data = json_decode($txn['paystation_response'], true);
                                 if ($ps_data && isset($ps_data['transaction_status'])) {
-                                    echo '<span class="badge badge-secondary">' . esc_html($ps_data['transaction_status']) . '</span>';
+                                    echo '<span class="badge badge-info">' . esc_html($ps_data['transaction_status']) . '</span>';
                                 }
                                 if ($txn['status'] == 'paid' && !empty($txn['fee_data'])) {
                                     $fee_data = json_decode($txn['fee_data'], true);
@@ -1236,13 +2006,25 @@ body {
                                 }
                                 ?>
                             </td>
+                            <td>
+                                <button class="btn-xs btn-transfer" onclick="openTransferModal(
+                                    '<?= esc_js($txn['payment_id']) ?>',
+                                    '<?= esc_js($txn['invoice_number']) ?>',
+                                    '<?= floatval($txn['total_amount']) ?>',
+                                    '<?= esc_js($txn['status']) ?>',
+                                    '<?= $studentInfo ? esc_js($studentInfo->stdName) : '' ?>'
+                                )" title="Transfer this payment to another student">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+                                    Transfer
+                                </button>
+                            </td>
                         </tr>
                         <?php endforeach; ?>
                         <tr class="total-row">
                             <td></td>
                             <td><strong>Total</strong></td>
                             <td><strong><?= number_format($ps_total_amount, 2) ?></strong></td>
-                            <td colspan="4">
+                            <td colspan="6">
                                 Paid: <span class="cell-paid"><?= number_format($ps_paid_amount, 2) ?></span>
                                 &nbsp;|&nbsp; Pending: <span class="cell-unpaid"><?= number_format($ps_total_amount - $ps_paid_amount, 2) ?></span>
                                 &nbsp;|&nbsp; Txns: <strong><?= count($paystationTxns) ?></strong>
@@ -1253,6 +2035,716 @@ body {
                 </div>
             </div>
             <?php endif; ?>
+
+<!-- ===== Transfer Payment Modal ===== -->
+<div class="modal-overlay" id="transferModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>Transfer Payment</h3>
+            <button class="modal-close" onclick="closeTransferModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <!-- Transfer info summary -->
+            <div class="transfer-info" id="transferInfo">
+                <div><span class="ti-label">Payment ID</span><div class="ti-value" id="tiPaymentId">-</div></div>
+                <div><span class="ti-label">Invoice</span><div class="ti-value" id="tiInvoice">-</div></div>
+                <div><span class="ti-label">Amount</span><div class="ti-value" id="tiAmount">-</div></div>
+                <div><span class="ti-label">Current Status</span><div class="ti-value" id="tiStatus">-</div></div>
+            </div>
+
+            <!-- Success / Error messages -->
+            <div class="transfer-success" id="transferSuccess">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                <span id="transferSuccessMsg">Payment transferred successfully!</span>
+            </div>
+            <div class="transfer-error" id="transferError"></div>
+
+            <!-- Transfer form -->
+            <div class="modal-form" id="transferForm">
+                <p style="font-size:13px;color:var(--text-secondary);margin:0 0 16px;">Select the target class, section, and year, then choose the student to receive this payment.</p>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Target Class</label>
+                        <select id="targetClass" onchange="loadTargetSections(); loadTargetStudents();">
+                            <option value="">Select Class</option>
+                            <?php
+                            $all_classes = $wpdb->get_results("SELECT classid, className FROM ct_class ORDER BY className ASC");
+                            foreach ($all_classes as $c) {
+                                echo '<option value="'.$c->classid.'">'.$c->className.'</option>';
+                            }
+                            ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Section</label>
+                        <select id="targetSection" onchange="loadTargetStudents();">
+                            <option value="">All Sections</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Year</label>
+                        <select id="targetYear" onchange="loadTargetStudents();">
+                            <?php for ($y = current_time('Y') - 2; $y <= current_time('Y') + 1; $y++) {
+                                echo '<option value="'.$y.'"'.($y == $filter_year ? ' selected' : '').'>'.$y.'</option>';
+                            } ?>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Search (Name or Roll)</label>
+                        <input type="text" id="targetSearch" placeholder="Type to search..." oninput="loadTargetStudents();" autocomplete="off">
+                    </div>
+                </div>
+
+                <div class="student-results" id="studentResults">
+                    <div class="sr-empty">Select a class and year above to see students</div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Note (optional)</label>
+                        <input type="text" id="transferNote" placeholder="Reason for transfer..." style="width:100%;">
+                    </div>
+                </div>
+
+                <div class="transfer-loading" id="transferLoading">
+                    <div class="spinner"></div>
+                    <span>Processing transfer...</span>
+                </div>
+            </div>
+
+            <!-- Transfer confirmation step -->
+            <div class="transfer-confirm" id="transferConfirm">
+                <div class="cf-header">Confirm Payment Transfer</div>
+                <div class="cf-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </div>
+                <p class="cf-desc">Please review the transfer details below before proceeding.</p>
+                <div class="cf-details">
+                    <div class="cf-row">
+                        <span class="cf-label">From Student</span>
+                        <span class="cf-value" id="cfFromStudent">-</span>
+                    </div>
+                    <div class="cf-row">
+                        <span class="cf-label">To Student</span>
+                        <span class="cf-value" id="cfToStudent">-</span>
+                    </div>
+                    <div class="cf-divider"></div>
+                    <div class="cf-row">
+                        <span class="cf-label">Payment ID</span>
+                        <span class="cf-value cf-mono" id="cfPaymentId">-</span>
+                    </div>
+                    <div class="cf-row">
+                        <span class="cf-label">Invoice</span>
+                        <span class="cf-value" id="cfInvoice">-</span>
+                    </div>
+                    <div class="cf-row">
+                        <span class="cf-label">Amount</span>
+                        <span class="cf-value cf-amount" id="cfAmount">-</span>
+                    </div>
+                    <div class="cf-row" id="cfNoteRow">
+                        <span class="cf-label">Note</span>
+                        <span class="cf-value" id="cfNote">-</span>
+                    </div>
+                </div>
+                <div class="cf-actions">
+                    <button class="btn-transfer-cancel" onclick="backToForm()">Back</button>
+                    <button class="btn-transfer-submit" onclick="confirmTransfer()">Confirm Transfer</button>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer" id="transferFooter">
+            <button class="btn-transfer-cancel" onclick="closeTransferModal()">Cancel</button>
+            <button class="btn-transfer-submit" id="btnTransferSubmit" onclick="submitTransfer()" disabled>
+                Transfer Payment
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== Claim Payment Modal ===== -->
+<div class="modal-overlay" id="claimModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>Claim Payment</h3>
+            <button class="modal-close" onclick="closeClaimModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <!-- Success / Error messages -->
+            <div class="transfer-success" id="claimSuccess">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                <span id="claimSuccessMsg">Payment claimed and transferred successfully!</span>
+            </div>
+            <div class="transfer-error" id="claimError"></div>
+
+            <!-- Step 1: Claim Form -->
+            <div class="modal-form" id="claimForm">
+                <p style="font-size:13px;color:var(--text-secondary);margin:0 0 16px;">
+                    If you made a payment but it was recorded under wrong student information, enter the details below to claim it.
+                </p>
+
+                <div class="form-row">
+                    <div class="form-group" style="flex:2;">
+                        <label>Transaction ID <span style="color:#dc2626;">*</span></label>
+                        <input type="text" id="claimTransactionId" placeholder="Enter PayStation payment/transaction ID" style="width:100%;font-family:monospace;font-size:13px;" autocomplete="off">
+                    </div>
+                </div>
+
+                <div style="margin:14px 0 8px;font-size:13px;font-weight:600;color:var(--text);">Wrong Student Info (as it was entered during payment):</div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Class</label>
+                        <select id="claimWrongClass">
+                            <option value="">Select Class</option>
+                            <?php
+                            $all_classes = $wpdb->get_results("SELECT classid, className FROM ct_class ORDER BY className ASC");
+                            foreach ($all_classes as $c) {
+                                echo '<option value="'.$c->classid.'">'.$c->className.'</option>';
+                            }
+                            ?>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Section</label>
+                        <select id="claimWrongSection">
+                            <option value="">Select Section</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Roll</label>
+                        <input type="text" id="claimWrongRoll" placeholder="Roll number" autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label>Year</label>
+                        <select id="claimWrongYear">
+                            <?php for ($y = current_time('Y') - 2; $y <= current_time('Y') + 1; $y++) {
+                                echo '<option value="'.$y.'"'.($y == $filter_year ? ' selected' : '').'>'.$y.'</option>';
+                            } ?>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Note (optional)</label>
+                        <input type="text" id="claimNote" placeholder="Any additional info..." style="width:100%;">
+                    </div>
+                </div>
+
+                <button class="btn-transfer-submit" id="btnFindTransaction" onclick="findClaimTransaction()" style="width:100%;margin-top:8px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    Find &amp; Verify Transaction
+                </button>
+
+                <div class="transfer-loading" id="claimLookupLoading">
+                    <div class="spinner"></div>
+                    <span>Looking up transaction...</span>
+                </div>
+            </div>
+
+            <!-- Step 2: Transaction Found - Confirmation -->
+            <div class="transfer-confirm" id="claimConfirm" style="display:none;">
+                <div class="cf-header">Transaction Found</div>
+                <div class="cf-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                </div>
+                <p class="cf-desc">We found a matching transaction. Please review the details below before claiming.</p>
+                <div class="cf-details">
+                    <div class="cf-row">
+                        <span class="cf-label">Transaction ID</span>
+                        <span class="cf-value cf-mono" id="cfFoundTxnId">-</span>
+                    </div>
+                    <div class="cf-row">
+                        <span class="cf-label">Invoice</span>
+                        <span class="cf-value" id="cfFoundInvoice">-</span>
+                    </div>
+                    <div class="cf-row">
+                        <span class="cf-label">Amount</span>
+                        <span class="cf-value cf-amount" id="cfFoundAmount">-</span>
+                    </div>
+                    <div class="cf-row">
+                        <span class="cf-label">Status</span>
+                        <span class="cf-value" id="cfFoundStatus">-</span>
+                    </div>
+                    <div class="cf-row">
+                        <span class="cf-label">Date</span>
+                        <span class="cf-value" id="cfFoundDate">-</span>
+                    </div>
+                    <div class="cf-divider"></div>
+                    <div class="cf-row">
+                        <span class="cf-label">Currently Recorded To</span>
+                        <span class="cf-value" id="cfFoundStudent">-</span>
+                    </div>
+                    <div class="cf-row" id="cfClaimNoteRow">
+                        <span class="cf-label">Your Note</span>
+                        <span class="cf-value" id="cfFoundNote">-</span>
+                    </div>
+                </div>
+                <div class="cf-actions">
+                    <button class="btn-transfer-cancel" onclick="backToClaimForm()">Back</button>
+                    <button class="btn-transfer-submit" onclick="confirmClaimTransfer()">Confirm &amp; Transfer to My Account</button>
+                </div>
+            </div>
+
+            <div class="transfer-loading" id="claimTransferLoading">
+                <div class="spinner"></div>
+                <span>Processing claim transfer...</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ===== Transfer Modal State =====
+var transferState = {
+    paymentId: '',
+    invoiceNumber: '',
+    amount: 0,
+    status: '',
+    currentStudentName: '',
+    targetStudentId: null,
+    targetStudentName: '',
+    targetStudentRoll: '',
+};
+
+function openTransferModal(paymentId, invoiceNumber, amount, status, studentName) {
+    transferState.paymentId = paymentId;
+    transferState.invoiceNumber = invoiceNumber;
+    transferState.amount = amount;
+    transferState.status = status;
+    transferState.currentStudentName = studentName || '';
+    transferState.targetStudentId = null;
+    transferState.targetStudentName = '';
+
+    // Fill info summary
+    document.getElementById('tiPaymentId').textContent = paymentId;
+    document.getElementById('tiInvoice').textContent = invoiceNumber;
+    document.getElementById('tiAmount').textContent = parseFloat(amount).toFixed(2);
+    document.getElementById('tiStatus').innerHTML = '<span class="badge badge-' + status + '">' + status.charAt(0).toUpperCase() + status.slice(1) + '</span>';
+
+    // Reset form
+    document.getElementById('transferSuccess').classList.remove('active');
+    document.getElementById('transferError').classList.remove('active');
+    document.getElementById('transferError').style.display = 'none';
+    document.getElementById('transferForm').style.display = 'block';
+    document.getElementById('transferLoading').classList.remove('active');
+    document.getElementById('btnTransferSubmit').disabled = true;
+    document.getElementById('btnTransferSubmit').textContent = 'Transfer Payment';
+    // Reset confirmation
+    document.getElementById('transferConfirm').classList.remove('active');
+    document.getElementById('transferConfirm').style.display = '';
+    document.getElementById('transferFooter').style.display = '';
+
+    // Reset selection
+    var results = document.getElementById('studentResults');
+    results.innerHTML = '<div class="sr-empty">Select a class and year above to see students</div>';
+
+    // Show modal
+    document.getElementById('transferModal').classList.add('open');
+}
+
+function closeTransferModal() {
+    document.getElementById('transferModal').classList.remove('open');
+    // Reset to form view
+    document.getElementById('transferForm').style.display = '';
+    document.getElementById('transferConfirm').classList.remove('active');
+    document.getElementById('transferConfirm').style.display = '';
+    document.getElementById('transferFooter').style.display = '';
+    // Reset submit button
+    var btn = document.getElementById('btnTransferSubmit');
+    btn.textContent = 'Transfer Payment';
+    btn.disabled = true;
+    btn.onclick = function() { submitTransfer(); };
+    // Clear error/success
+    document.getElementById('transferError').style.display = 'none';
+    document.getElementById('transferError').classList.remove('active');
+    document.getElementById('transferSuccess').classList.remove('active');
+}
+
+// Close modal on overlay click
+document.getElementById('transferModal').addEventListener('click', function(e) {
+    if (e.target === this) closeTransferModal();
+});
+
+function loadTargetSections() {
+    var classId = document.getElementById('targetClass').value;
+    var secSelect = document.getElementById('targetSection');
+    secSelect.innerHTML = '<option value="">All Sections</option>';
+    if (!classId) return;
+
+    var url = '<?= esc_url_raw(rest_url('v1/sections/by-class')) ?>' +
+        '?class_id=' + encodeURIComponent(classId);
+
+    fetch(url)
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            if (data.success && data.sections) {
+                for (var i = 0; i < data.sections.length; i++) {
+                    var opt = document.createElement('option');
+                    opt.value = data.sections[i].sectionid;
+                    opt.textContent = data.sections[i].sectionName;
+                    secSelect.appendChild(opt);
+                }
+            }
+        })
+        .catch(function(err) {
+            console.error('Failed to load sections:', err);
+        });
+}
+
+var searchTimeout = null;
+function loadTargetStudents() {
+    var classId = document.getElementById('targetClass').value;
+    var section = document.getElementById('targetSection').value;
+    var year = document.getElementById('targetYear').value;
+    var search = document.getElementById('targetSearch').value;
+
+    if (!classId || !year) {
+        document.getElementById('studentResults').innerHTML = '<div class="sr-empty">Select a class and year above to see students</div>';
+        return;
+    }
+
+    // Debounce search
+    if (searchTimeout) clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(function() {
+        var url = '<?= esc_url_raw(rest_url('v1/students/by-class')) ?>' +
+            '?class_id=' + encodeURIComponent(classId) +
+            '&year=' + encodeURIComponent(year) +
+            '&section=' + encodeURIComponent(section) +
+            '&search=' + encodeURIComponent(search);
+
+        fetch(url)
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                var container = document.getElementById('studentResults');
+                if (data.success && data.students && data.students.length > 0) {
+                    var html = '';
+                    for (var i = 0; i < data.students.length; i++) {
+                        var s = data.students[i];
+                        html += '<div class="sr-item" data-id="' + s.student_id + '" data-name="' + escHtml(s.stdName) + '" data-roll="' + escHtml(s.infoRoll) + '" onclick="selectTargetStudent(this)">';
+                        html += '<span class="sr-roll">' + escHtml(s.infoRoll) + '</span>';
+                        html += '<span class="sr-name">' + escHtml(s.stdName) + '</span>';
+                        if (s.facilities) html += '<span class="sr-facilities">' + escHtml(s.facilities) + '</span>';
+                        html += '</div>';
+                    }
+                    container.innerHTML = html;
+                } else {
+                    container.innerHTML = '<div class="sr-empty">No students found matching your criteria</div>';
+                }
+            })
+            .catch(function(err) {
+                document.getElementById('studentResults').innerHTML = '<div class="sr-empty">Error loading students. Please try again.</div>';
+            });
+    }, search ? 300 : 0);
+}
+
+function selectTargetStudent(el) {
+    // Deselect all
+    var items = document.querySelectorAll('#studentResults .sr-item');
+    for (var i = 0; i < items.length; i++) {
+        items[i].classList.remove('selected');
+    }
+    el.classList.add('selected');
+    transferState.targetStudentId = parseInt(el.getAttribute('data-id'));
+    transferState.targetStudentName = el.getAttribute('data-name');
+    transferState.targetStudentRoll = el.getAttribute('data-roll') || '';
+    document.getElementById('btnTransferSubmit').disabled = false;
+}
+
+function submitTransfer() {
+    if (!transferState.targetStudentId) {
+        alert('Please select a target student.');
+        return;
+    }
+    if (!transferState.paymentId) {
+        alert('No payment selected for transfer.');
+        return;
+    }
+
+    // Hide form, show confirmation
+    document.getElementById('transferForm').style.display = 'none';
+    document.getElementById('transferFooter').style.display = 'none';
+    document.getElementById('transferConfirm').classList.add('active');
+
+    // Fill confirmation details
+    document.getElementById('cfFromStudent').textContent = transferState.currentStudentName || 'Current student';
+    document.getElementById('cfToStudent').textContent = transferState.targetStudentName + ' (Roll: ' + transferState.targetStudentRoll + ')';
+    document.getElementById('cfPaymentId').textContent = transferState.paymentId;
+    document.getElementById('cfInvoice').textContent = transferState.invoiceNumber;
+    document.getElementById('cfAmount').textContent = parseFloat(transferState.amount).toFixed(2);
+    var note = document.getElementById('transferNote').value.trim();
+    document.getElementById('cfNote').textContent = note || '(none)';
+    document.getElementById('cfNoteRow').style.display = note ? '' : 'none';
+}
+
+function confirmTransfer() {
+    var loading = document.getElementById('transferLoading');
+    var confirmBox = document.getElementById('transferConfirm');
+    var errorBox = document.getElementById('transferError');
+    var successBox = document.getElementById('transferSuccess');
+    var submitBtn = document.getElementById('btnTransferSubmit');
+
+    loading.classList.add('active');
+    confirmBox.style.display = 'none';
+    errorBox.classList.remove('active');
+    errorBox.style.display = 'none';
+    successBox.classList.remove('active');
+
+    fetch('<?= esc_url_raw(rest_url('v1/payment/transfer')) ?>', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            payment_id: transferState.paymentId,
+            target_student_id: transferState.targetStudentId,
+            note: document.getElementById('transferNote').value,
+        })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        loading.classList.remove('active');
+        if (data.success) {
+            document.getElementById('transferSuccessMsg').textContent = data.message;
+            successBox.classList.add('active');
+            submitBtn.textContent = 'Close';
+            submitBtn.disabled = false;
+            submitBtn.onclick = function() { location.reload(); };
+        } else {
+            var errMsg = data.message || 'Transfer failed. Please try again.';
+            if (data.data && data.data.message) errMsg = data.data.message;
+            errorBox.textContent = 'Transfer failed: ' + errMsg;
+            errorBox.style.display = 'block';
+            errorBox.classList.add('active');
+            // Show confirm box again so user can retry
+            confirmBox.style.display = 'block';
+            submitBtn.disabled = false;
+        }
+    })
+    .catch(function(err) {
+        loading.classList.remove('active');
+        errorBox.textContent = 'Network error: ' + err.message;
+        errorBox.style.display = 'block';
+        errorBox.classList.add('active');
+        confirmBox.style.display = 'block';
+        submitBtn.disabled = false;
+    });
+}
+
+function backToForm() {
+    document.getElementById('transferConfirm').classList.remove('active');
+    document.getElementById('transferConfirm').style.display = '';
+    document.getElementById('transferForm').style.display = '';
+    document.getElementById('transferFooter').style.display = '';
+}
+
+// ===== Claim Modal Functions =====
+var claimState = {
+    transactionId: '',
+    foundData: null,
+};
+
+function openClaimModal() {
+    claimState.transactionId = '';
+    claimState.foundData = null;
+
+    // Reset form
+    document.getElementById('claimForm').style.display = '';
+    document.getElementById('claimConfirm').style.display = 'none';
+    document.getElementById('claimSuccess').classList.remove('active');
+    document.getElementById('claimError').style.display = 'none';
+    document.getElementById('claimError').classList.remove('active');
+    document.getElementById('claimLookupLoading').classList.remove('active');
+    document.getElementById('claimTransferLoading').classList.remove('active');
+    document.getElementById('btnFindTransaction').disabled = false;
+    document.getElementById('btnFindTransaction').innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Find &amp; Verify Transaction';
+
+    document.getElementById('claimTransactionId').value = '';
+    document.getElementById('claimWrongClass').value = '';
+    document.getElementById('claimWrongRoll').value = '';
+    document.getElementById('claimNote').value = '';
+    // Reset section
+    document.getElementById('claimWrongSection').innerHTML = '<option value="">Select Section</option>';
+
+    document.getElementById('claimModal').classList.add('open');
+}
+
+function closeClaimModal() {
+    document.getElementById('claimModal').classList.remove('open');
+}
+
+// Load sections on class change for claim form
+document.getElementById('claimWrongClass')?.addEventListener('change', function() {
+    var classId = this.value;
+    var secSelect = document.getElementById('claimWrongSection');
+    secSelect.innerHTML = '<option value="">Select Section</option>';
+    if (!classId) return;
+
+    var url = '<?= esc_url_raw(rest_url('v1/sections/by-class')) ?>' +
+        '?class_id=' + encodeURIComponent(classId);
+
+    fetch(url)
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            if (data.success && data.sections) {
+                for (var i = 0; i < data.sections.length; i++) {
+                    var opt = document.createElement('option');
+                    opt.value = data.sections[i].sectionid;
+                    opt.textContent = data.sections[i].sectionName;
+                    secSelect.appendChild(opt);
+                }
+            }
+        })
+        .catch(function(err) {
+            console.error('Failed to load sections:', err);
+        });
+});
+
+function findClaimTransaction() {
+    var txnId = document.getElementById('claimTransactionId').value.trim();
+    if (!txnId) {
+        document.getElementById('claimError').textContent = 'Please enter a Transaction ID.';
+        document.getElementById('claimError').style.display = 'block';
+        document.getElementById('claimError').classList.add('active');
+        return;
+    }
+
+    document.getElementById('claimError').style.display = 'none';
+    document.getElementById('claimError').classList.remove('active');
+    document.getElementById('claimLookupLoading').classList.add('active');
+    document.getElementById('btnFindTransaction').disabled = true;
+
+    var url = '<?= esc_url_raw(rest_url('v1/payment/lookup')) ?>' +
+        '?transaction_id=' + encodeURIComponent(txnId);
+
+    fetch(url)
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            document.getElementById('claimLookupLoading').classList.remove('active');
+            document.getElementById('btnFindTransaction').disabled = false;
+
+            if (data.success && data.transaction) {
+                claimState.foundData = data.transaction;
+                claimState.transactionId = txnId;
+
+                // Fill confirmation details
+                document.getElementById('cfFoundTxnId').textContent = data.transaction.payment_id;
+                document.getElementById('cfFoundInvoice').textContent = data.transaction.invoice_number || 'N/A';
+                document.getElementById('cfFoundAmount').textContent = parseFloat(data.transaction.total_amount).toFixed(2);
+                document.getElementById('cfFoundStatus').innerHTML = '<span class="badge badge-' + data.transaction.status + '">' + data.transaction.status.charAt(0).toUpperCase() + data.transaction.status.slice(1) + '</span>';
+                document.getElementById('cfFoundDate').textContent = data.transaction.payment_date ? data.transaction.payment_date : 'N/A';
+                document.getElementById('cfFoundStudent').textContent = (data.transaction.current_student || 'Unknown') + (data.transaction.current_roll ? ' (Roll: ' + data.transaction.current_roll + ')' : '');
+
+                var note = document.getElementById('claimNote').value.trim();
+                document.getElementById('cfFoundNote').textContent = note || '(none)';
+                document.getElementById('cfClaimNoteRow').style.display = note ? '' : 'none';
+
+                // Hide form, show confirmation
+                document.getElementById('claimForm').style.display = 'none';
+                document.getElementById('claimConfirm').style.display = '';
+            } else {
+                var errMsg = data.message || 'Transaction not found.';
+                if (data.data && data.data.message) errMsg = data.data.message;
+                document.getElementById('claimError').textContent = 'Lookup failed: ' + errMsg;
+                document.getElementById('claimError').style.display = 'block';
+                document.getElementById('claimError').classList.add('active');
+            }
+        })
+        .catch(function(err) {
+            document.getElementById('claimLookupLoading').classList.remove('active');
+            document.getElementById('btnFindTransaction').disabled = false;
+            document.getElementById('claimError').textContent = 'Network error: ' + err.message;
+            document.getElementById('claimError').style.display = 'block';
+            document.getElementById('claimError').classList.add('active');
+        });
+}
+
+function backToClaimForm() {
+    document.getElementById('claimConfirm').style.display = 'none';
+    document.getElementById('claimForm').style.display = '';
+    document.getElementById('claimError').style.display = 'none';
+    document.getElementById('claimError').classList.remove('active');
+}
+
+function confirmClaimTransfer() {
+    if (!claimState.transactionId || !claimState.foundData) {
+        document.getElementById('claimError').textContent = 'No transaction data found. Please start over.';
+        document.getElementById('claimError').style.display = 'block';
+        document.getElementById('claimError').classList.add('active');
+        return;
+    }
+
+    var loading = document.getElementById('claimTransferLoading');
+    var confirmBox = document.getElementById('claimConfirm');
+    var errorBox = document.getElementById('claimError');
+    var successBox = document.getElementById('claimSuccess');
+
+    loading.classList.add('active');
+    confirmBox.style.display = 'none';
+    errorBox.style.display = 'none';
+    errorBox.classList.remove('active');
+    successBox.classList.remove('active');
+
+    var wrongClass = document.getElementById('claimWrongClass').value;
+    var wrongSection = document.getElementById('claimWrongSection').value;
+    var wrongRoll = document.getElementById('claimWrongRoll').value.trim();
+    var wrongYear = document.getElementById('claimWrongYear').value;
+    var note = document.getElementById('claimNote').value.trim();
+
+    fetch('<?= esc_url_raw(rest_url('v1/payment/claim-transfer')) ?>', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            transaction_id: claimState.transactionId,
+            current_student_id: <?= $selected_student ?>,
+            wrong_class: wrongClass,
+            wrong_section: wrongSection,
+            wrong_roll: wrongRoll,
+            wrong_year: wrongYear,
+            note: note,
+        })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+        loading.classList.remove('active');
+        if (data.success) {
+            document.getElementById('claimSuccessMsg').textContent = data.message;
+            successBox.classList.add('active');
+            // Show a close button
+            var closeBtn = document.createElement('button');
+            closeBtn.className = 'btn-transfer-submit';
+            closeBtn.textContent = 'Close & Reload';
+            closeBtn.style.marginTop = '14px';
+            closeBtn.onclick = function() { location.reload(); };
+            successBox.appendChild(closeBtn);
+        } else {
+            var errMsg = data.message || 'Claim transfer failed. Please try again.';
+            if (data.data && data.data.message) errMsg = data.data.message;
+            errorBox.textContent = 'Transfer failed: ' + errMsg;
+            errorBox.style.display = 'block';
+            errorBox.classList.add('active');
+            // Show confirm again for retry
+            confirmBox.style.display = '';
+        }
+    })
+    .catch(function(err) {
+        loading.classList.remove('active');
+        errorBox.textContent = 'Network error: ' + err.message;
+        errorBox.style.display = 'block';
+        errorBox.classList.add('active');
+        confirmBox.style.display = '';
+    });
+}
+
+function escHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+</script>
 
             <!-- ===== Yearly Fees ===== -->
             <?php if (!empty($yearlySubHeads)): ?>
@@ -1461,6 +2953,183 @@ body {
         <?php endif; ?>
     </div>
 </div>
+
+    </div>
+
+    <!-- ===== Tab: Mismatches ===== -->
+    <div class="tab-pane <?= $active_tab==='mismatches'?'active':'' ?>" id="tab-mismatches">
+        <div class="card">
+            <div class="card-header">
+                <h3>Payment Mismatch Management</h3>
+                <span class="badge badge-danger"><?= count($allMismatches) ?> total</span>
+            </div>
+            <div class="card-body">
+                <?php if (!empty($claim_message)): ?>
+                <div class="claim-success">✅ <?= esc_html($claim_message) ?></div>
+                <?php endif; ?>
+                <?php if (!empty($allMismatches)): ?>
+                <div class="table-wrap">
+                <table class="modern-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th class="text-left">Student</th>
+                            <th>Type</th>
+                            <th>Amount</th>
+                            <th class="text-left">Description</th>
+                            <th>Status</th>
+                            <th>Detected</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <?php foreach ($allMismatches as $mm): 
+                        $claim_status = isset($claim_map[$mm['mismatch_id']]) ? $claim_map[$mm['mismatch_id']]['status'] : null;
+                        $is_pending = $mm['status'] === 'PENDING' && !$claim_status;
+                    ?>
+                    <tr>
+                        <td><?= $mm['mismatch_id'] ?></td>
+                        <td class="text-left">
+                            <?php if ($mm['student_id']): ?>
+                            <a href="?tab=audit&class_id=<?= $mm['infoClass'] ?: $filter_class ?>&year=<?= $filter_year ?>&student_id=<?= $mm['student_id'] ?>" style="color:var(--primary);text-decoration:none;font-weight:600;">
+                                <?= esc_html($mm['stdName'] ?: 'ID: '.$mm['student_id']) ?>
+                            </a>
+                            <?php if (!empty($mm['infoRoll'])): ?> <small style="color:var(--text-secondary);">(Roll: <?= $mm['infoRoll'] ?>)</small><?php endif; ?>
+                            <?php else: ?>
+                            <span style="color:var(--text-secondary);">Unknown</span>
+                            <?php endif; ?>
+                        </td>
+                        <td><span class="badge badge-<?= $mm['mismatch_type'] === 'DUPLICATE_PAYMENT' || $mm['mismatch_type'] === 'PAID_WRONG_STUDENT' ? 'danger' : ($mm['mismatch_type'] === 'OVERPAYMENT' ? 'warning' : 'info') ?>"><?= str_replace('_', ' ', $mm['mismatch_type']) ?></span></td>
+                        <td><?= number_format(floatval($mm['amount']), 2) ?></td>
+                        <td class="text-left" style="max-width:250px;"><small><?= esc_html($mm['description']) ?></small></td>
+                        <td>
+                            <?php if ($claim_status): ?>
+                                <span class="badge badge-warning">Claimed</span>
+                                <small style="display:block;color:var(--text-secondary);font-size:10px;">Review: <?= $claim_status ?></small>
+                            <?php else: ?>
+                                <span class="badge badge-<?= $mm['status'] === 'PENDING' ? 'pending' : ($mm['status'] === 'CLOSED' ? 'secondary' : 'success') ?>"><?= $mm['status'] ?></span>
+                            <?php endif; ?>
+                        </td>
+                        <td style="font-size:11px;color:var(--text-secondary);"><?= $mm['detected_at'] ? date('d-m-Y', strtotime($mm['detected_at'])) : '-' ?></td>
+                        <td>
+                            <?php if ($is_pending): ?>
+                            <button class="btn-search" style="padding:4px 12px;font-size:12px;min-width:auto;" onclick="toggleClaimForm(<?= $mm['mismatch_id'] ?>)">Claim</button>
+                            <?php elseif ($claim_status): ?>
+                            <span class="badge badge-secondary">Claimed</span>
+                            <?php else: ?>
+                            <span class="badge badge-secondary">-</span>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <?php if ($is_pending): ?>
+                    <tr class="claim-form-row" id="claim-form-<?= $mm['mismatch_id'] ?>">
+                        <td colspan="8">
+                            <form method="POST" action="" class="claim-inner">
+                                <input type="hidden" name="action" value="claim_mismatch">
+                                <input type="hidden" name="mismatch_id" value="<?= $mm['mismatch_id'] ?>">
+                                <textarea name="claim_reason" placeholder="Enter reason for claiming this mismatch..." required></textarea>
+                                <button type="submit" class="btn-submit-claim">Submit Claim</button>
+                                <button type="button" class="btn-cancel-claim" onclick="toggleClaimForm(<?= $mm['mismatch_id'] ?>)">Cancel</button>
+                            </form>
+                        </td>
+                    </tr>
+                    <?php endif; ?>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+                </div>
+                <?php else: ?>
+                <div class="empty-state">
+                    <div class="empty-icon">✅</div>
+                    <h4>No Mismatches Found</h4>
+                    <p>All payments appear to be properly reconciled.</p>
+                </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
+</div><!-- /tab-content -->
+
+<script>
+function switchTab(tabName) {
+    // Hide all tab panes
+    var panes = document.querySelectorAll('.tab-pane');
+    for (var i = 0; i < panes.length; i++) {
+        panes[i].classList.remove('active');
+    }
+    // Deactivate all tab buttons
+    var btns = document.querySelectorAll('.tab-btn');
+    for (var i = 0; i < btns.length; i++) {
+        btns[i].classList.remove('active');
+    }
+    // Activate target
+    document.getElementById('tab-' + tabName).classList.add('active');
+    var activeBtn = document.querySelector('.tab-btn[data-tab="' + tabName + '"]');
+    if (activeBtn) activeBtn.classList.add('active');
+    // Update URL
+    var url = new URL(window.location.href);
+    url.searchParams.set('tab', tabName);
+    window.history.replaceState({}, '', url.toString());
+}
+function toggleClaimForm(id) {
+    var row = document.getElementById('claim-form-' + id);
+    if (row) row.classList.toggle('open');
+}
+
+function loadFilterSections(classId) {
+    var secSelect = document.getElementById('filterSec');
+    // Reset section dropdown
+    secSelect.innerHTML = '<option value="">All</option>';
+    if (!classId) return;
+
+    var url = '<?= get_template_directory_uri() ?>/inc/ajaxAction.php';
+
+    var formData = new FormData();
+    formData.append('type', 'getSection');
+    formData.append('class', classId);
+
+    fetch(url, {
+        method: 'POST',
+        body: formData
+    })
+    .then(function(res) { return res.text(); })
+    .then(function(html) {
+        // Remove the first "Section" placeholder option from the response
+        // and keep the rest
+        var temp = document.createElement('div');
+        temp.innerHTML = html;
+        var options = temp.querySelectorAll('option');
+        var fragment = document.createDocumentFragment();
+
+        // Add "All" option
+        var allOpt = document.createElement('option');
+        allOpt.value = '';
+        allOpt.textContent = 'All';
+        fragment.appendChild(allOpt);
+
+        // Add remaining options from response (skip first placeholder option)
+        for (var i = 0; i < options.length; i++) {
+            if (i === 0) continue; // skip "Section" placeholder
+            fragment.appendChild(options[i].cloneNode(true));
+        }
+        secSelect.innerHTML = '';
+        secSelect.appendChild(fragment);
+    })
+    .catch(function(err) {
+        console.error('Failed to load sections:', err);
+    });
+}
+// Restore active tab on page load if URL has tab param
+document.addEventListener('DOMContentLoaded', function() {
+    var params = new URLSearchParams(window.location.search);
+    var tab = params.get('tab');
+    if (tab && ['due','audit','mismatches'].indexOf(tab) > -1) {
+        switchTab(tab);
+    }
+});
+</script>
+
 <?php else: ?>
 <div class="empty-state" style="padding:60px;">
     <div class="empty-icon">📋</div>

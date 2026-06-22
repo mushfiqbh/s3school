@@ -16,9 +16,47 @@ add_action('rest_api_init', 's3s_register_cron_job_routes');
 function s3s_register_cron_job_routes()
 {
     s3s_register_paystation_sync_route();
-    s3s_register_paystation_fill_transaction_id_route();
     s3s_register_summary_sync_route();
     s3s_register_mismatch_routes();
+    s3s_register_payment_transfer_routes();
+}
+
+function s3s_register_payment_transfer_routes()
+{
+    // Payment Transfer - Transfer a PayStation transaction to another student
+    register_rest_route('v1', 'payment/transfer', array(
+        'methods'  => 'POST',
+        'callback' => 's3s_payment_transfer',
+        'permission_callback' => '__return_true',
+    ));
+
+    // Student Lookup - Get students by class for cascading dropdown
+    register_rest_route('v1', 'students/by-class', array(
+        'methods'  => 'GET',
+        'callback' => 's3s_students_by_class',
+        'permission_callback' => '__return_true',
+    ));
+
+    // Sections Lookup - Get sections for a class
+    register_rest_route('v1', 'sections/by-class', array(
+        'methods'  => 'GET',
+        'callback' => 's3s_sections_by_class',
+        'permission_callback' => '__return_true',
+    ));
+
+    // Claim Transfer - Student claims a payment that was recorded under wrong info
+    register_rest_route('v1', 'payment/claim-transfer', array(
+        'methods'  => 'POST',
+        'callback' => 's3s_payment_claim_transfer',
+        'permission_callback' => '__return_true',
+    ));
+
+    // Transaction Lookup - Lookup a PayStation transaction by payment_id
+    register_rest_route('v1', 'payment/lookup', array(
+        'methods'  => 'GET',
+        'callback' => 's3s_payment_lookup',
+        'permission_callback' => '__return_true',
+    ));
 }
 
 function s3s_register_mismatch_routes()
@@ -27,13 +65,6 @@ function s3s_register_mismatch_routes()
     register_rest_route('v1', 'mismatch/scan-student', array(
         'methods'  => 'POST',
         'callback' => 's3s_mismatch_scan_student',
-        'permission_callback' => '__return_true',
-    ));
-
-    // Mismatch - Scan all students by class (called by cron)
-    register_rest_route('v1', 'mismatch/scan-class', array(
-        'methods'  => 'POST',
-        'callback' => 's3s_mismatch_scan_class',
         'permission_callback' => '__return_true',
     ));
 
@@ -62,16 +93,6 @@ function s3s_register_paystation_sync_route()
     ));
 }
 
-function s3s_register_paystation_fill_transaction_id_route()
-{
-    // PayStation - Fill missing transaction_ids from PayStation API (called by cron)
-    register_rest_route('v1', 'paystation/fill-transaction-id', array(
-        'methods'  => 'GET',
-        'callback' => 's3s_paystation_fill_transaction_id',
-        'permission_callback' => '__return_true',
-    ));
-}
-
 function s3s_register_summary_sync_route()
 {
     // Summary Tables - Sync missing fee payments into summary tables (called by cron)
@@ -96,19 +117,25 @@ function s3s_paystation_sync_pending_status(WP_REST_Request $request)
 {
     global $wpdb;
 
+    // First, fill any missing transaction_ids from PayStation
+    $fill_result = s3s_paystation_fill_missing_transaction_ids();
+
     $table_name = $wpdb->prefix . 'paystation_transactions';
 
     // Verify the table exists
     $table_exists = $wpdb->get_var("SHOW TABLES LIKE '$table_name'");
     if (!$table_exists) {
         return array(
-            'success' => true,
-            'message' => 'No PayStation transactions table found',
+            'success'   => true,
+            'message'   => 'No PayStation transactions table found',
             'processed' => 0,
             'succeeded' => 0,
             'failed'    => 0,
             'errors'    => [],
-            'details'   => []
+            'details'   => [],
+            'fill_processed' => $fill_result['processed'],
+            'fill_updated'   => $fill_result['updated'],
+            'fill_errors'    => $fill_result['errors'],
         );
     }
 
@@ -129,7 +156,10 @@ function s3s_paystation_sync_pending_status(WP_REST_Request $request)
             'succeeded' => 0,
             'failed'    => 0,
             'errors'    => [],
-            'details'   => []
+            'details'   => [],
+            'fill_processed' => $fill_result['processed'],
+            'fill_updated'   => $fill_result['updated'],
+            'fill_errors'    => $fill_result['errors'],
         );
     }
 
@@ -255,12 +285,15 @@ function s3s_paystation_sync_pending_status(WP_REST_Request $request)
 
     return array(
         'success'   => true,
-        'message'   => "Processed {$processed} pending transaction(s): {$succeeded} succeeded, {$failed} failed",
+        'message'   => "Fill: {$fill_result['updated']} transaction_id(s) filled. Sync: Processed {$processed} pending transaction(s): {$succeeded} succeeded, {$failed} failed",
         'processed' => $processed,
         'succeeded' => $succeeded,
         'failed'    => $failed,
         'errors'    => $errors,
         'details'   => $details,
+        'fill_processed' => $fill_result['processed'],
+        'fill_updated'   => $fill_result['updated'],
+        'fill_errors'    => $fill_result['errors'],
     );
 }
 
@@ -873,7 +906,7 @@ function s3s_mismatch_scan_student(WP_REST_Request $request)
     // Get collection records for this student
     $collectionRecords = $wpdb->get_results($wpdb->prepare(
         "SELECT ci.id, ci.year, ci.month, ci.sub_total, ci.total, ci.date,
-                ci.payment_method, ci.transaction_id,
+                ci.payment_method, ci.transaction_id, ci.payment_id,
                 cd.sub_head_id, cd.fee
             FROM ct_student_fee_collection_info ci
             LEFT JOIN ct_student_fee_collection_details cd ON cd.info_id = ci.id
@@ -925,11 +958,15 @@ function s3s_mismatch_scan_student(WP_REST_Request $request)
 
     // 2. Unmatched paid transactions (paid but no collection record)
     $coll_invoices = array();
+    $coll_payment_ids = array();
     foreach ($collectionRecords as $cr) {
         if (!empty($cr['transaction_id'])) $coll_invoices[$cr['transaction_id']] = true;
+        if (!empty($cr['payment_id'])) $coll_payment_ids[$cr['payment_id']] = true;
     }
     foreach ($paystationTxns as $txn) {
-        if ($txn['status'] === 'paid' && !empty($txn['transaction_id']) && !isset($coll_invoices[$txn['transaction_id']])) {
+        $matched_by_transaction = !empty($txn['transaction_id']) && isset($coll_invoices[$txn['transaction_id']]);
+        $matched_by_payment = !empty($txn['payment_id']) && isset($coll_payment_ids[$txn['payment_id']]);
+        if ($txn['status'] === 'paid' && !$matched_by_transaction && !$matched_by_payment) {
             $exists = $wpdb->get_var($wpdb->prepare(
                 "SELECT mismatch_id FROM ct_payment_mismatch WHERE payment_id = %s AND mismatch_type = 'UNIDENTIFIED_PAYMENT' AND status != 'CLOSED' LIMIT 1",
                 $txn['payment_id']
@@ -1244,15 +1281,14 @@ function s3s_mismatch_scan_all_classes(WP_REST_Request $request)
 }
 
 /**
- * PayStation: Fill missing transaction_ids
+ * PayStation: Fill missing transaction_ids (internal helper)
  *
- * Selects all rows from sm_paystation_transactions where transaction_id IS NULL,
+ * Selects all rows from paystation_transactions where transaction_id IS NULL,
  * fetches their status from PayStation API by invoice_number,
  * and updates the transaction_id with the trx_id from the response.
- *
- * POST /v1/paystation/fill-transaction-id
+ * Called automatically at the start of s3s_paystation_sync_pending_status().
  */
-function s3s_paystation_fill_transaction_id(WP_REST_Request $request)
+function s3s_paystation_fill_missing_transaction_ids()
 {
     global $wpdb;
 
@@ -1273,7 +1309,8 @@ function s3s_paystation_fill_transaction_id(WP_REST_Request $request)
     // 1. Select all rows where transaction_id IS NULL and invoice_number is not empty
     $rows = $wpdb->get_results(
         $wpdb->prepare(
-            "SELECT * FROM {$table_name} WHERE transaction_id IS NULL AND invoice_number IS NOT NULL AND invoice_number != %s ORDER BY id ASC",
+            "SELECT * FROM {$table_name} WHERE (transaction_id IS NULL OR transaction_id LIKE %s) AND invoice_number IS NOT NULL AND invoice_number != %s ORDER BY id ASC",
+            'PAY%',
             ''
         ),
         ARRAY_A
@@ -1374,5 +1411,552 @@ function s3s_paystation_fill_transaction_id(WP_REST_Request $request)
         'processed' => $processed,
         'updated'   => $updated,
         'errors'    => $errors,
+    );
+}
+
+// ======================================================================
+// Payment Transfer API
+// ======================================================================
+
+/**
+ * Get students by class for cascading dropdown
+ *
+ * GET /v1/students/by-class?class_id=1&year=2026&search=
+ *
+ * @param WP_REST_Request $request
+ * @return array List of matching students
+ */
+function s3s_students_by_class(WP_REST_Request $request)
+{
+    global $wpdb;
+
+    $class_id = intval($request->get_param('class_id'));
+    $year     = $request->get_param('year') ?: current_time('Y');
+    $search   = $request->get_param('search');
+    $section  = intval($request->get_param('section'));
+
+    if (!$class_id) {
+        return new WP_Error('missing_params', 'class_id is required', array('status' => 400));
+    }
+
+    $query = "SELECT si.infoStdid AS student_id, si.infoRoll, si.infoSection,
+                     s.stdName, s.facilities
+              FROM ct_studentinfo si
+              LEFT JOIN ct_student s ON s.studentid = si.infoStdid
+              WHERE si.infoClass = %d AND si.infoYear = %s";
+    $params = array($class_id, $year);
+
+    if ($section) {
+        $query .= " AND si.infoSection = %d";
+        $params[] = $section;
+    }
+
+    if (!empty($search)) {
+        $query .= " AND (s.stdName LIKE %s OR si.infoRoll LIKE %s)";
+        $like = '%' . $wpdb->esc_like($search) . '%';
+        $params[] = $like;
+        $params[] = $like;
+    }
+
+    $query .= " ORDER BY si.infoRoll ASC LIMIT 100";
+
+    $students = $wpdb->get_results($wpdb->prepare($query, $params), ARRAY_A);
+
+    if (empty($students)) {
+        return array(
+            'success'  => true,
+            'students' => array(),
+            'message'  => 'No students found',
+        );
+    }
+
+    return array(
+        'success'  => true,
+        'students' => $students,
+        'count'    => count($students),
+    );
+}
+
+/**
+ * Get sections for a class
+ *
+ * GET /v1/sections/by-class?class_id=1
+ *
+ * @param WP_REST_Request $request
+ * @return array List of sections
+ */
+function s3s_sections_by_class(WP_REST_Request $request)
+{
+    global $wpdb;
+
+    $class_id = intval($request->get_param('class_id'));
+
+    if (!$class_id) {
+        return new WP_Error('missing_params', 'class_id is required', array('status' => 400));
+    }
+
+    $sections = $wpdb->get_results($wpdb->prepare(
+        "SELECT sectionid, sectionName
+         FROM ct_section
+         WHERE forClass = %d
+         ORDER BY sectionName ASC",
+        $class_id
+    ), ARRAY_A);
+
+    return array(
+        'success'  => true,
+        'sections' => $sections ?: array(),
+        'count'    => count($sections ?: array()),
+    );
+}
+
+/**
+ * Transfer a PayStation payment to another student
+ *
+ * POST /v1/payment/transfer
+ * Body: { payment_id: string, target_student_id: int, note: string }
+ *
+ * @param WP_REST_Request $request
+ * @return array Result of the transfer
+ */
+function s3s_payment_transfer(WP_REST_Request $request)
+{
+    global $wpdb;
+
+    $payment_id       = $request->get_param('payment_id');
+    $target_student_id = intval($request->get_param('target_student_id'));
+    $note             = sanitize_text_field($request->get_param('note', ''));
+
+    if (empty($payment_id) || !$target_student_id) {
+        return new WP_Error('missing_params', 'payment_id and target_student_id are required', array('status' => 400));
+    }
+
+    $ps_table = $wpdb->prefix . 'paystation_transactions';
+
+    // Verify table exists
+    if (!$wpdb->get_var("SHOW TABLES LIKE '$ps_table'")) {
+        return new WP_Error('no_table', 'PayStation transactions table not found', array('status' => 500));
+    }
+
+    // Get the source transaction
+    $transaction = $wpdb->get_row($wpdb->prepare(
+        "SELECT * FROM $ps_table WHERE payment_id = %s",
+        $payment_id
+    ), ARRAY_A);
+
+    if (!$transaction) {
+        return new WP_Error('not_found', 'Transaction not found with payment_id: ' . $payment_id, array('status' => 404));
+    }
+
+    // Verify target student exists
+    $target_student = $wpdb->get_row($wpdb->prepare(
+        "SELECT s.studentid, s.stdName, si.infoRoll, si.infoClass
+         FROM ct_student s
+         LEFT JOIN ct_studentinfo si ON si.infoStdid = s.studentid
+         WHERE s.studentid = %d",
+        $target_student_id
+    ));
+
+    if (!$target_student) {
+        return new WP_Error('invalid_student', 'Target student not found', array('status' => 404));
+    }
+
+    $old_student_id = $transaction['student_id'];
+
+    // Build transfer log data — preserve original student_data for audit, update to new student
+    $original_student_data = json_decode($transaction['student_data'], true);
+    $old_student_name = '';
+    if ($original_student_data && isset($original_student_data['student_name'])) {
+        $old_student_name = $original_student_data['student_name'];
+    } else {
+        $old = $wpdb->get_var($wpdb->prepare("SELECT stdName FROM ct_student WHERE studentid = %d", $old_student_id));
+        $old_student_name = $old ?: 'Unknown';
+    }
+
+    // Build new student_data preserving original reference
+    $new_student_data = array(
+        'student_id'   => $target_student_id,
+        'student_name' => $target_student->stdName,
+        'original_student_id'   => $old_student_id,
+        'original_student_name' => $old_student_name,
+        'transferred_at'        => current_time('mysql'),
+        'transfer_note'         => $note,
+    );
+
+    // Also update fee_data if present — tag it as transferred
+    $fee_data = json_decode($transaction['fee_data'], true);
+    if ($fee_data) {
+        $fee_data['transferred_from'] = $old_student_id;
+        $fee_data['transferred_to']   = $target_student_id;
+        $fee_data['transferred_at']   = current_time('mysql');
+    }
+
+    // Update the transaction record
+    $update_data = array(
+        'student_id'   => $target_student_id,
+        'student_data' => json_encode($new_student_data),
+        'fee_data'     => $fee_data ? json_encode($fee_data) : $transaction['fee_data'],
+        'updated_at'   => get_bdt_time(),
+    );
+
+    $updated = $wpdb->update(
+        $ps_table,
+        $update_data,
+        array('payment_id' => $payment_id),
+        array('%d', '%s', '%s', '%s'),
+        array('%s')
+    );
+
+    if ($updated === false) {
+        return new WP_Error('db_error', 'Failed to update transaction: ' . $wpdb->last_error, array('status' => 500));
+    }
+
+    // Log the transfer event
+    error_log(sprintf(
+        'Payment Transfer: Payment %s moved from student #%d (%s) to student #%d (%s). Note: %s',
+        $payment_id,
+        $old_student_id,
+        $old_student_name,
+        $target_student_id,
+        $target_student->stdName,
+        $note
+    ));
+
+    return array(
+        'success'            => true,
+        'message'            => sprintf('Payment %s transferred from %s (ID: %d) to %s (ID: %d)', $payment_id, $old_student_name, $old_student_id, $target_student->stdName, $target_student_id),
+        'payment_id'         => $payment_id,
+        'old_student_id'     => $old_student_id,
+        'old_student_name'   => $old_student_name,
+        'target_student_id'  => $target_student_id,
+        'target_student_name' => $target_student->stdName,
+    );
+}
+
+/**
+ * Claim-based Payment Transfer — Student claims a transaction recorded under wrong info
+ *
+ * POST /v1/payment/claim-transfer
+ * Body: {
+ *   transaction_id: string,        (PayStation payment_id)
+ *   current_student_id: int,       (the correct student id to transfer to)
+ *   wrong_class: int,              (class that was incorrectly used)
+ *   wrong_section: int,            (section that was incorrectly used)
+ *   wrong_roll: string,            (roll that was incorrectly used)
+ *   wrong_year: string,            (year that was incorrectly used)
+ *   note: string                   (optional claim note)
+ * }
+ *
+ * @param WP_REST_Request $request
+ * @return array Result of the claim transfer
+ */
+function s3s_payment_claim_transfer(WP_REST_Request $request)
+{
+    global $wpdb;
+
+    $transaction_id    = $request->get_param('transaction_id');
+    $current_student_id = intval($request->get_param('current_student_id'));
+    $wrong_class       = intval($request->get_param('wrong_class'));
+    $wrong_section     = intval($request->get_param('wrong_section'));
+    $wrong_roll        = sanitize_text_field($request->get_param('wrong_roll', ''));
+    $wrong_year        = sanitize_text_field($request->get_param('wrong_year', ''));
+    $note              = sanitize_text_field($request->get_param('note', ''));
+
+    // Validate required
+    if (empty($transaction_id) || !$current_student_id) {
+        return new WP_Error('missing_params', 'transaction_id and current_student_id are required', array('status' => 400));
+    }
+
+    $ps_table = $wpdb->prefix . 'paystation_transactions';
+
+    // Verify table exists
+    if (!$wpdb->get_var("SHOW TABLES LIKE '$ps_table'")) {
+        return new WP_Error('no_table', 'PayStation transactions table not found', array('status' => 500));
+    }
+
+    // Get the transaction by payment_id
+    $transaction = $wpdb->get_row($wpdb->prepare(
+        "SELECT * FROM $ps_table WHERE payment_id = %s",
+        $transaction_id
+    ), ARRAY_A);
+
+    if (!$transaction) {
+        return new WP_Error('not_found', 'No PayStation transaction found with ID: ' . $transaction_id, array('status' => 404));
+    }
+
+    // Verify the target (current) student exists
+    $target_student = $wpdb->get_row($wpdb->prepare(
+        "SELECT s.studentid, s.stdName, s.facilities,
+                si.infoRoll, si.infoClass, si.infoSection, si.infoYear
+         FROM ct_student s
+         LEFT JOIN ct_studentinfo si ON si.infoStdid = s.studentid
+         WHERE s.studentid = %d",
+        $current_student_id
+    ));
+
+    if (!$target_student) {
+        return new WP_Error('invalid_student', 'Current student not found with ID: ' . $current_student_id, array('status' => 404));
+    }
+
+    $old_student_id = $transaction['student_id'];
+
+    // Get source (old/wrong) student details for audit log
+    $source_student = null;
+    $source_student_name = '';
+    $source_student_roll = '';
+    $source_student_class = '';
+    $source_student_section = '';
+    $source_student_year = '';
+    $source_student_facilities = '';
+
+    if ($old_student_id) {
+        $source_student = $wpdb->get_row($wpdb->prepare(
+            "SELECT s.studentid, s.stdName, s.facilities,
+                    si.infoRoll, si.infoClass, si.infoSection, si.infoYear
+             FROM ct_student s
+             LEFT JOIN ct_studentinfo si ON si.infoStdid = s.studentid
+             WHERE s.studentid = %d",
+            $old_student_id
+        ));
+
+        if ($source_student) {
+            $source_student_name = $source_student->stdName;
+            $source_student_roll = $source_student->infoRoll;
+            $source_student_facilities = $source_student->facilities;
+            // Resolve names
+            $src_class_name = $wpdb->get_var($wpdb->prepare("SELECT className FROM ct_class WHERE classid = %d", $source_student->infoClass));
+            $source_student_class = $src_class_name ?: 'Class #' . $source_student->infoClass;
+            $src_sec_name = $wpdb->get_var($wpdb->prepare("SELECT sectionName FROM ct_section WHERE sectionid = %d", $source_student->infoSection));
+            $source_student_section = $src_sec_name ?: '';
+            $source_student_year = $source_student->infoYear ?: '';
+        }
+    }
+
+    // If we couldn't get the source from DB, try the transaction's student_data JSON
+    if (!$source_student || empty($source_student_name)) {
+        $sd = json_decode($transaction['student_data'], true);
+        if ($sd && isset($sd['student_name'])) {
+            $source_student_name = $sd['student_name'];
+        } else {
+            $source_student_name = 'Unknown (ID: ' . ($old_student_id ?: 'N/A') . ')';
+        }
+    }
+
+    // Resolve target student names
+    $target_class_name = $wpdb->get_var($wpdb->prepare("SELECT className FROM ct_class WHERE classid = %d", $target_student->infoClass));
+    $target_section_name = $wpdb->get_var($wpdb->prepare("SELECT sectionName FROM ct_section WHERE sectionid = %d", $target_student->infoSection));
+
+    // Build new student_data preserving audit trail
+    $original_student_data = json_decode($transaction['student_data'], true) ?: array();
+    $new_student_data = array_merge($original_student_data, array(
+        'student_id'            => $current_student_id,
+        'student_name'          => $target_student->stdName,
+        'original_student_id'   => $old_student_id,
+        'original_student_name' => $source_student_name,
+        'transferred_at'        => current_time('mysql'),
+        'transfer_type'         => 'claim',
+        'transfer_note'         => $note,
+        'claimed_wrong_class'   => $wrong_class,
+        'claimed_wrong_section' => $wrong_section,
+        'claimed_wrong_roll'    => $wrong_roll,
+        'claimed_wrong_year'    => $wrong_year,
+    ));
+
+    // Tag fee_data
+    $fee_data = json_decode($transaction['fee_data'], true) ?: array();
+    if (!empty($fee_data)) {
+        $fee_data['transferred_from'] = $old_student_id;
+        $fee_data['transferred_to']   = $current_student_id;
+        $fee_data['transferred_at']   = current_time('mysql');
+        $fee_data['transfer_type']    = 'claim';
+    }
+
+    // Update the transaction
+    $update_data = array(
+        'student_id'   => $current_student_id,
+        'student_data' => json_encode($new_student_data),
+        'fee_data'     => !empty($fee_data) ? json_encode($fee_data) : $transaction['fee_data'],
+        'updated_at'   => get_bdt_time(),
+    );
+
+    $updated = $wpdb->update(
+        $ps_table,
+        $update_data,
+        array('payment_id' => $transaction_id),
+        array('%d', '%s', '%s', '%s'),
+        array('%s')
+    );
+
+    if ($updated === false) {
+        return new WP_Error('db_error', 'Failed to update transaction: ' . $wpdb->last_error, array('status' => 500));
+    }
+
+    // ---- Log to payment_transfer_log table ----
+    $log_table = $wpdb->prefix . 'payment_transfer_log';
+    $current_user = wp_get_current_user();
+
+    // Ensure the log table exists (create if not)
+    $log_table_exists = $wpdb->get_var("SHOW TABLES LIKE '$log_table'");
+    if (!$log_table_exists) {
+        $charset_collate = $wpdb->get_charset_collate();
+        $sql = "CREATE TABLE IF NOT EXISTS `$log_table` (
+            `id` bigint(20) NOT NULL AUTO_INCREMENT,
+            `transfer_type` varchar(50) NOT NULL DEFAULT 'claim',
+            `payment_id` varchar(255) NOT NULL,
+            `invoice_number` varchar(255) DEFAULT NULL,
+            `total_amount` decimal(10,2) DEFAULT NULL,
+            `source_student_id` bigint(20) DEFAULT NULL,
+            `source_student_name` varchar(255) DEFAULT NULL,
+            `source_student_roll` varchar(50) DEFAULT NULL,
+            `source_student_class` varchar(255) DEFAULT NULL,
+            `source_student_section` varchar(255) DEFAULT NULL,
+            `source_student_year` varchar(20) DEFAULT NULL,
+            `source_student_facilities` varchar(255) DEFAULT NULL,
+            `source_student_data_raw` longtext,
+            `target_student_id` bigint(20) DEFAULT NULL,
+            `target_student_name` varchar(255) DEFAULT NULL,
+            `target_student_roll` varchar(50) DEFAULT NULL,
+            `target_student_class` varchar(255) DEFAULT NULL,
+            `target_student_section` varchar(255) DEFAULT NULL,
+            `target_student_year` varchar(20) DEFAULT NULL,
+            `target_student_facilities` varchar(255) DEFAULT NULL,
+            `target_student_data_raw` longtext,
+            `fee_data_snapshot` longtext,
+            `note` text,
+            `claimed_transaction_id` varchar(255) DEFAULT NULL,
+            `claimed_wrong_class` varchar(255) DEFAULT NULL,
+            `claimed_wrong_section` varchar(255) DEFAULT NULL,
+            `claimed_wrong_roll` varchar(50) DEFAULT NULL,
+            `claimed_wrong_year` varchar(20) DEFAULT NULL,
+            `performed_by` bigint(20) DEFAULT NULL,
+            `performed_by_name` varchar(255) DEFAULT NULL,
+            `created_at` datetime DEFAULT NULL,
+            PRIMARY KEY (`id`),
+            KEY `payment_id` (`payment_id`),
+            KEY `source_student_id` (`source_student_id`),
+            KEY `target_student_id` (`target_student_id`),
+            KEY `transfer_type` (`transfer_type`),
+            KEY `created_at` (`created_at`)
+        ) $charset_collate;";
+        $wpdb->query($sql);
+    }
+
+    $wpdb->insert($log_table, array(
+        'transfer_type'           => 'claim',
+        'payment_id'              => $transaction_id,
+        'invoice_number'          => $transaction['invoice_number'],
+        'total_amount'            => $transaction['total_amount'],
+        'source_student_id'       => $old_student_id,
+        'source_student_name'     => $source_student_name,
+        'source_student_roll'     => $source_student_roll,
+        'source_student_class'    => $source_student_class,
+        'source_student_section'  => $source_student_section,
+        'source_student_year'     => $source_student_year,
+        'source_student_facilities' => $source_student_facilities,
+        'source_student_data_raw' => $transaction['student_data'],
+        'target_student_id'       => $current_student_id,
+        'target_student_name'     => $target_student->stdName,
+        'target_student_roll'     => $target_student->infoRoll,
+        'target_student_class'    => $target_class_name ?: '',
+        'target_student_section'  => $target_section_name ?: '',
+        'target_student_year'     => $target_student->infoYear ?: $wrong_year,
+        'target_student_facilities' => $target_student->facilities,
+        'target_student_data_raw' => json_encode($new_student_data),
+        'fee_data_snapshot'       => $transaction['fee_data'],
+        'note'                    => $note,
+        'claimed_transaction_id'  => $transaction_id,
+        'claimed_wrong_class'     => $wrong_class ?: '',
+        'claimed_wrong_section'   => $wrong_section ?: '',
+        'claimed_wrong_roll'      => $wrong_roll,
+        'claimed_wrong_year'      => $wrong_year,
+        'performed_by'            => get_current_user_id(),
+        'performed_by_name'       => $current_user ? $current_user->display_name : '',
+        'created_at'              => current_time('mysql'),
+    ));
+
+    return array(
+        'success'            => true,
+        'message'            => sprintf(
+            'Payment %s claimed and transferred from %s to %s successfully!',
+            $transaction_id,
+            $source_student_name,
+            $target_student->stdName
+        ),
+        'payment_id'         => $transaction_id,
+        'source_student_id'   => $old_student_id,
+        'source_student_name' => $source_student_name,
+        'target_student_id'   => $current_student_id,
+        'target_student_name' => $target_student->stdName,
+    );
+}
+
+/**
+ * Look up a PayStation transaction by payment_id
+ *
+ * GET /v1/payment/lookup?transaction_id=xxx
+ *
+ * @param WP_REST_Request $request
+ * @return array|WP_Error Transaction details
+ */
+function s3s_payment_lookup(WP_REST_Request $request)
+{
+    global $wpdb;
+
+    $transaction_id = $request->get_param('transaction_id');
+
+    if (empty($transaction_id)) {
+        return new WP_Error('missing_param', 'transaction_id is required', array('status' => 400));
+    }
+
+    $ps_table = $wpdb->prefix . 'paystation_transactions';
+
+    if (!$wpdb->get_var("SHOW TABLES LIKE '$ps_table'")) {
+        return new WP_Error('no_table', 'PayStation transactions table not found', array('status' => 500));
+    }
+
+    $transaction = $wpdb->get_row($wpdb->prepare(
+        "SELECT payment_id, invoice_number, student_id, total_amount, status, fee_data, student_data, payment_date, created_at
+         FROM $ps_table WHERE payment_id = %s",
+        $transaction_id
+    ), ARRAY_A);
+
+    if (!$transaction) {
+        return new WP_Error('not_found', 'No PayStation transaction found with ID: ' . $transaction_id, array('status' => 404));
+    }
+
+    // Get current student name for this transaction
+    $current_student_name = '';
+    $current_student_roll = '';
+    if ($transaction['student_id']) {
+        $student = $wpdb->get_row($wpdb->prepare(
+            "SELECT s.stdName, si.infoRoll FROM ct_student s LEFT JOIN ct_studentinfo si ON si.infoStdid = s.studentid WHERE s.studentid = %d",
+            $transaction['student_id']
+        ));
+        if ($student) {
+            $current_student_name = $student->stdName;
+            $current_student_roll = $student->infoRoll;
+        }
+    }
+
+    // Try to get name from student_data if not found
+    if (empty($current_student_name)) {
+        $sd = json_decode($transaction['student_data'], true);
+        if ($sd && isset($sd['student_name'])) {
+            $current_student_name = $sd['student_name'];
+        }
+    }
+
+    return array(
+        'success'              => true,
+        'transaction'          => array(
+            'payment_id'         => $transaction['payment_id'],
+            'invoice_number'     => $transaction['invoice_number'],
+            'total_amount'       => floatval($transaction['total_amount']),
+            'status'             => $transaction['status'],
+            'payment_date'       => $transaction['payment_date'] ?: $transaction['created_at'],
+            'current_student_id' => $transaction['student_id'],
+            'current_student'    => $current_student_name,
+            'current_roll'       => $current_student_roll,
+        ),
     );
 }

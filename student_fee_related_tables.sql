@@ -243,6 +243,7 @@ CREATE TABLE `ct_student_fee_collection_info` (
   `updated_by` int(11) DEFAULT NULL,
   `updated_at` datetime DEFAULT NULL,
   `payment_method` varchar(50) DEFAULT NULL,
+  `payment_id` varchar(100) DEFAULT NULL,
   `transaction_id` varchar(100) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
