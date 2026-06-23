@@ -1,4 +1,4 @@
-<?php
+`<?php
 
 /*
  * * Template Name: Admin AdmitCard
@@ -449,7 +449,7 @@ $designVariation = isset($_GET['design']) ? sanitize_title((string) $_GET['desig
 																						}
 																						if ($studentGroupId > 0) {
 																							$frontSubjectClauses[] = sprintf(
-																								"(subOptinal = 0 OR (subOptinal = 1 AND (forGroup = 'all' OR JSON_CONTAINS(forGroup, '\"%d\"'))))",
+																								"(subOptinal = 0 OR (subOptinal = 1 AND (forGroup = 'all' OR JSON_CONTAINS(forGroup, '\"%d\"'))) OR sub4th = 1)",
 																								$studentGroupId
 																							);
 																						}
@@ -475,7 +475,9 @@ $designVariation = isset($_GET['design']) ? sanitize_title((string) $_GET['desig
 																									return false;
 																								}
 																								if (isset($subject->sub4th) && $subject->sub4th == 1) {
-																									if (!in_array((string)$subject->subjectid, $student4thSub)) {
+																									if (in_array((string)$subject->subjectid, $student4thSub)) {
+																										return true;
+																									}else{
 																										return false;
 																									}
 																								}
@@ -489,6 +491,7 @@ $designVariation = isset($_GET['design']) ? sanitize_title((string) $_GET['desig
 																								}
 																								return strcasecmp($studentReligion, $matchedReligion) === 0;
 																							}));
+
 																							if (!empty($frontSubjectsForStudent)) {
 																								usort($frontSubjectsForStudent, $frontSubjectSorter);
 																							}
@@ -1057,7 +1060,7 @@ $designVariation = isset($_GET['design']) ? sanitize_title((string) $_GET['desig
 															$studentSubjectFilter = "WHERE subjectClass = $class" . $backSubjectFilterClause;
 															if ($studentGroup > 0) {
 																// Include core subjects (subOptinal = 0) and optional subjects that match this group or 'all'.
-																$studentSubjectFilter .= " AND (subOptinal = 0 OR (subOptinal = 1 AND (forGroup = 'all' OR JSON_CONTAINS(forGroup, '\"" . $studentGroup . "\"'))))";
+																$studentSubjectFilter .= " AND (subOptinal = 0 OR (subOptinal = 1 AND (forGroup = 'all' OR JSON_CONTAINS(forGroup, '\"" . $studentGroup . "\"'))) OR sub4th = 1)";
 															}
 															$backSubjectsForStudent = $wpdb->get_results('SELECT subjectid, subjectName, subCode, sub4th, assessment FROM ct_subject ' . $studentSubjectFilter . ' ORDER BY subid');
 															// Sort per-student subject list by date as earlier
@@ -1067,7 +1070,9 @@ $designVariation = isset($_GET['design']) ? sanitize_title((string) $_GET['desig
 																		return false;
 																	}
 																	if (isset($subject->sub4th) && $subject->sub4th == 1) {
-																		if (!in_array((string)$subject->subjectid, $student4thSub)) {
+																		if (in_array((string)$subject->subjectid, $student4thSub)) {
+																			return true;
+																		}else{
 																			return false;
 																		}
 																	}
@@ -1331,4 +1336,4 @@ $designVariation = isset($_GET['design']) ? sanitize_title((string) $_GET['desig
 			w.focus(); // necessary for IE >= 10
 			return true;
 		}
-	</script>
+	</script>`
