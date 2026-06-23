@@ -637,9 +637,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['type'])) {
           }
         });
       }
-
-      // Reorder Roll based on new selection
-      $('#reorderRoll').click();
     });
 
   })(jQuery);
