@@ -894,12 +894,16 @@ function s3s_mismatch_scan_student(WP_REST_Request $request)
     $ps_table = $wpdb->prefix . 'paystation_transactions';
     $ps_exists = $wpdb->get_var("SHOW TABLES LIKE '$ps_table'");
 
-    // Get PayStation transactions for this student
+    // Get PayStation transactions for this student — linked via transaction_id in collection info
     $paystationTxns = array();
     if ($ps_exists) {
         $paystationTxns = $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM $ps_table WHERE student_id = %d ORDER BY created_at DESC",
-            $student_id
+            "SELECT ps.*
+            FROM {$ps_table} ps
+            INNER JOIN ct_student_fee_collection_info ci ON ci.transaction_id = ps.transaction_id
+            WHERE ci.student_id = %d AND ci.year = %s
+            ORDER BY ps.created_at DESC",
+            $student_id, $year
         ), ARRAY_A);
     }
 

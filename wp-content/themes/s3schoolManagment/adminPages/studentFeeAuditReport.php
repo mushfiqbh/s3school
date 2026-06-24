@@ -30,7 +30,6 @@ $filter_class   = isset($_POST['stdclass']) ? intval($_POST['stdclass']) : (isse
 $filter_sec     = isset($_POST['sec']) ? intval($_POST['sec']) : (isset($_GET['section']) ? intval($_GET['section']) : 0);
 $filter_group   = isset($_POST['group']) ? intval($_POST['group']) : (isset($_GET['group_id']) ? intval($_GET['group_id']) : 0);
 $filter_year    = isset($_POST['stdyear']) ? $_POST['stdyear'] : (isset($_GET['year']) ? $_GET['year'] : current_time('Y'));
-$filter_month   = isset($_POST['month']) ? intval($_POST['month']) : (isset($_GET['month']) ? intval($_GET['month']) : 0);
 $filter_status  = isset($_POST['payment_status']) ? $_POST['payment_status'] : (isset($_GET['payment_status']) ? $_GET['payment_status'] : '');
 $selected_student = isset($_GET['student_id']) ? intval($_GET['student_id']) : (isset($_POST['student_id']) ? intval($_POST['student_id']) : 0);
 
@@ -45,6 +44,7 @@ foreach ($allSubHeads as $sh) {
     elseif ($sh->type == 3) $examSubHeads[] = $sh;
 }
 $otherSubHeads = $wpdb->get_results("SELECT * FROM ct_sub_head WHERE active_for_collection = 1 AND relation_to = 1 AND type = 4 AND isHidden IS NULL ORDER BY sort_order ASC, sub_head_name ASC");
+$monthNames = array(1=>"January","February","March","April","May","June","July","August","September","October","November","December");
 
 // Build student query
 $student_query = "SELECT si.infoStdid, si.infoRoll, s.stdName, s.facilities
@@ -63,6 +63,7 @@ $studentMonthlyFees = array();
 $studentExamFees = array();
 $studentOtherFees = array();
 $paystationTxns = array();
+$allPaystationTxns = array();
 $collectionRecords = array();
 $total_paid = 0;
 $total_expected = 0;
@@ -112,7 +113,6 @@ if ($selected_student && $filter_class && $filter_year) {
 
     // Monthly fee summary (per month)
     for ($m = 1; $m <= 12; $m++) {
-        $monthNames = array("","January","February","March","April","May","June","July","August","September","October","November","December");
         $monthData = array('month' => $m, 'name' => $monthNames[$m], 'items' => array(), 'total_paid' => 0);
         foreach ($monthlySubHeads as $sh) {
             $fee_row = $wpdb->get_row($wpdb->prepare(
@@ -132,27 +132,81 @@ if ($selected_student && $filter_class && $filter_year) {
         $studentMonthlyFees[$m] = $monthData;
     }
 
-    // Exam fee summary
-    $exams = $wpdb->get_results($wpdb->prepare(
-        "SELECT examid, examName FROM ct_exam WHERE examClass = %d AND examsirial != 0 ORDER BY examsirial",
+    // Exam fee summary — show ALL exam × sub_head entries (paid or unpaid)
+    // First get expected fee per exam sub_head from fee list
+    $exam_fee_expected = array();
+    $exam_fee_list_rows = $wpdb->get_results($wpdb->prepare(
+        "SELECT fl.sub_head_id, fl.fee FROM ct_student_fee_list fl
+        INNER JOIN (
+            SELECT sub_head_id, MAX(id) AS max_id FROM ct_student_fee_list
+            WHERE class_id = %d AND year = %s AND sub_head_id IN (SELECT id FROM ct_sub_head WHERE type = 3 AND active_for_collection = 1)
+            GROUP BY sub_head_id
+        ) latest ON latest.max_id = fl.id",
+        $filter_class, $filter_year
+    ));
+    foreach ($exam_fee_list_rows as $r) {
+        $exam_fee_expected[$r->sub_head_id] = floatval($r->fee);
+    }
+    // Build paid lookup from exam_fee_summary: sub_head_id + exam_id => row
+    $exam_paid_map = array();
+    $paid_exam_rows = $wpdb->get_results($wpdb->prepare(
+        "SELECT sub_head_id, exam_id, fee, date, notes FROM ct_student_exam_fee_summary
+            WHERE student_id = %d AND class_id = %d AND year = %s AND fee > 0",
+        $selected_student, $filter_class, $filter_year
+    ));
+    foreach ($paid_exam_rows as $pr) {
+        $key = $pr->sub_head_id . '|' . $pr->exam_id;
+        $exam_paid_map[$key] = $pr;
+    }
+    // Also check collection records for exam-type sub_head payments (fallback for
+    // payments that didn't sync to exam_fee_summary, e.g. if active_for_collection wasn't set)
+    $collection_exam_sub_head_ids = array();
+    $coll_exam_rows = $wpdb->get_results($wpdb->prepare(
+        "SELECT cd.sub_head_id, SUM(cd.fee) as total_fee
+        FROM ct_student_fee_collection_info ci
+        INNER JOIN ct_student_fee_collection_details cd ON cd.info_id = ci.id
+        INNER JOIN ct_sub_head sh ON sh.id = cd.sub_head_id
+        WHERE ci.student_id = %d AND ci.year = %s AND sh.type = 3 AND cd.fee > 0
+        GROUP BY cd.sub_head_id",
+        $selected_student, $filter_year
+    ));
+    foreach ($coll_exam_rows as $cr) {
+        $collection_exam_sub_head_ids[$cr->sub_head_id] = floatval($cr->total_fee);
+    }
+    // Get the active_for_collection exam_id to map collection payments to an exam
+    $active_exam_for_collection = $wpdb->get_var($wpdb->prepare(
+        "SELECT examid FROM ct_exam WHERE active_for_collection = 1 AND examClass = %d LIMIT 1",
         $filter_class
+    ));
+    // Get exams: include those that are visible, have payments, or are active for collection
+    $exams = $wpdb->get_results($wpdb->prepare(
+        "SELECT e.examid, e.examName FROM ct_exam e
+        WHERE e.examClass = %d AND (e.examsirial != 0 OR e.examid IN (
+            SELECT DISTINCT exam_id FROM ct_student_exam_fee_summary
+            WHERE class_id = %d AND year = %s AND fee > 0
+        ) OR e.active_for_collection = 1)
+        ORDER BY e.examsirial",
+        $filter_class, $filter_class, $filter_year
     ));
     foreach ($exams as $exam) {
         foreach ($examSubHeads as $sh) {
-            $fee_row = $wpdb->get_row($wpdb->prepare(
-                "SELECT fee, date, notes FROM ct_student_exam_fee_summary
-                    WHERE student_id = %d AND sub_head_id = %d AND exam_id = %d AND class_id = %d AND year = %s LIMIT 1",
-                $selected_student, $sh->id, $exam->examid, $filter_class, $filter_year
-            ));
-            if ($fee_row) {
-                $studentExamFees[] = array(
-                    'exam_name' => $exam->examName,
-                    'item_name' => $sh->sub_head_name,
-                    'fee'       => floatval($fee_row->fee),
-                    'date'      => $fee_row->date,
-                    'notes'     => $fee_row->notes,
-                );
-            }
+            $key = $sh->id . '|' . $exam->examid;
+            $paid_record = isset($exam_paid_map[$key]) ? $exam_paid_map[$key] : null;
+            $expected = isset($exam_fee_expected[$sh->id]) ? $exam_fee_expected[$sh->id] : 0;
+            // Fallback: if no exam_fee_summary record but collection has payment for
+            // this sub_head, mark the active_for_collection exam row as paid
+            $is_paid_from_collection = !$paid_record
+                && isset($collection_exam_sub_head_ids[$sh->id])
+                && $active_exam_for_collection
+                && intval($exam->examid) === intval($active_exam_for_collection);
+            $studentExamFees[] = array(
+                'exam_name' => $exam->examName,
+                'item_name' => $sh->sub_head_name,
+                'fee'       => $paid_record ? floatval($paid_record->fee) : ($is_paid_from_collection ? $collection_exam_sub_head_ids[$sh->id] : $expected),
+                'paid'      => $paid_record ? true : $is_paid_from_collection,
+                'date'      => $paid_record ? $paid_record->date : null,
+                'notes'     => $paid_record ? $paid_record->notes : ($is_paid_from_collection ? 'Paid via collection' : ''),
+            );
         }
     }
 
@@ -172,24 +226,39 @@ if ($selected_student && $filter_class && $filter_year) {
         );
     }
 
-    // PayStation transactions for this student
+    // PayStation transactions for this student — linked via transaction_id in collection info
     $ps_table = $wpdb->prefix . 'paystation_transactions';
     $ps_exists = $wpdb->get_var("SHOW TABLES LIKE '$ps_table'");
     if ($ps_exists) {
         $paystationTxns = $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM $ps_table WHERE student_id = %d ORDER BY created_at DESC LIMIT 50",
+            "SELECT ps.*
+            FROM {$ps_table} ps
+            INNER JOIN ct_student_fee_collection_info ci ON ci.transaction_id = ps.transaction_id
+            WHERE ci.student_id = %d AND ci.year = %s
+            ORDER BY ps.created_at DESC
+            LIMIT 50",
             $selected_student, $filter_year
         ), ARRAY_A);
     }
 
-    // Collection records (manual/online payments)
+    // Other PayStation transactions — linked to this student via transaction_id but NOT in the current selected year
+    // These are shown for reference only and are NOT included in calculations
+    $allPaystationTxns = array();
+    if ($ps_exists) {
+        $allPaystationTxns = $wpdb->get_results($wpdb->prepare(
+            "SELECT ps.*
+            FROM {$ps_table} ps
+            WHERE ps.student_id = %d
+            ORDER BY ps.created_at DESC
+            LIMIT 50",
+            $selected_student, $selected_student, $filter_year
+        ), ARRAY_A);
+    }
+
+    // Collection records (manual/online payments) — info only, no details breakdown
     $collectionRecords = $wpdb->get_results($wpdb->prepare(
-        "SELECT ci.id, ci.year, ci.month, ci.sub_total, ci.remission, ci.total, ci.date, ci.payment_method, ci.transaction_id, ci.created_by,
-                cd.sub_head_id, cd.fee, cd.reference,
-                sh.sub_head_name
+        "SELECT ci.id, ci.year, ci.month, ci.sub_total, ci.remission, ci.total, ci.date, ci.payment_method, ci.transaction_id, ci.created_by
             FROM ct_student_fee_collection_info ci
-            LEFT JOIN ct_student_fee_collection_details cd ON cd.info_id = ci.id
-            LEFT JOIN ct_sub_head sh ON sh.id = cd.sub_head_id
             WHERE ci.student_id = %d AND ci.year = %s
             ORDER BY ci.date DESC, ci.id DESC
             LIMIT 100",
@@ -237,10 +306,42 @@ if ($selected_student && $filter_class && $filter_year) {
         $fundStats['monthly_expected'] = $monthly_expected_from_list;
     }
 
+    // Expected yearly fees from fee list (fallback)
+    $yearly_expected_from_list = 0;
+    foreach ($yearlySubHeads as $sh) {
+        $base = $wpdb->get_var($wpdb->prepare(
+            "SELECT fee FROM ct_student_fee_list WHERE sub_head_id = %d AND class_id = %d AND year = %s ORDER BY id DESC LIMIT 1",
+            $sh->id, $filter_class, $filter_year
+        ));
+        if ($base) $yearly_expected_from_list += floatval($base);
+    }
+    if ($yearly_expected_from_list > $fundStats['yearly_expected']) {
+        $fundStats['yearly_expected'] = $yearly_expected_from_list;
+    }
+
+    // Expected exam fees from fee list (per-exam fee * number of exams)
+    $exam_expected = 0;
+    $exam_fee_rows = $wpdb->get_results($wpdb->prepare(
+        "SELECT fl.fee FROM ct_student_fee_list fl
+        INNER JOIN (
+            SELECT sub_head_id, MAX(id) AS max_id FROM ct_student_fee_list
+            WHERE class_id = %d AND year = %s AND sub_head_id IN (SELECT id FROM ct_sub_head WHERE type = 3 AND active_for_collection = 1)
+            GROUP BY sub_head_id
+        ) latest ON latest.max_id = fl.id",
+        $filter_class, $filter_year
+    ));
+    foreach ($exam_fee_rows as $r) { $exam_expected += floatval($r->fee); }
+    // Multiply by number of exams
+    $exam_count = $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM ct_exam WHERE examClass = %d AND examsirial != 0",
+        $filter_class
+    ));
+    $exam_expected = $exam_expected * max(1, intval($exam_count));
+
     // Exam fees
     $exam_paid = 0;
     foreach ($studentExamFees as $ef) {
-        $exam_paid += $ef['fee'];
+        if ($ef['paid']) $exam_paid += $ef['fee'];
     }
 
     // Other fees from already-collected data
@@ -248,9 +349,9 @@ if ($selected_student && $filter_class && $filter_year) {
         if ($of['paid']) $fundStats['other_paid'] += $of['fee'];
     }
 
-    // Total from collection records
+    // Total from collection records (using info.total instead of sum of details)
     foreach ($collectionRecords as $cr) {
-        $fundStats['collection_total'] += floatval($cr['fee']);
+        $fundStats['collection_total'] += floatval($cr['total']);
     }
 
     // PayStation totals
@@ -264,7 +365,7 @@ if ($selected_student && $filter_class && $filter_year) {
 
     // Compute overall totals (needed before mismatch detection)
     $total_paid = $yearly_paid + $fundStats['monthly_paid'] + $exam_paid + $fundStats['other_paid'];
-    $total_expected = $fundStats['yearly_expected'] + $fundStats['monthly_expected'];
+    $total_expected = $fundStats['yearly_expected'] + $fundStats['monthly_expected'] + $exam_expected;
     $total_due = max(0, $total_expected - $total_paid);
     $payment_pct = $total_expected > 0 ? round(($total_paid / $total_expected) * 100) : 0;
 
@@ -347,16 +448,16 @@ if ($selected_student && $filter_class && $filter_year) {
     }
 
     // 4. Unmatched PayStation payments (paid but no collection linked)
-    //    Rough heuristic: no matching invoice in collection records
-    $collection_invoices = array();
+    //    Check by transaction_id instead of invoice_number
+    $collection_txn_ids = array();
     foreach ($collectionRecords as $cr) {
-        if (!empty($cr['invoice_number'])) {
-            $collection_invoices[$cr['invoice_number']] = true;
+        if (!empty($cr['transaction_id'])) {
+            $collection_txn_ids[$cr['transaction_id']] = true;
         }
     }
     $unmatched_count = 0;
     foreach ($paystationTxns as $txn) {
-        if ($txn['status'] === 'paid' && !empty($txn['invoice_number']) && !isset($collection_invoices[$txn['invoice_number']])) {
+        if ($txn['status'] === 'paid' && !empty($txn['transaction_id']) && !isset($collection_txn_ids[$txn['transaction_id']])) {
             $unmatched_count++;
         }
     }
@@ -391,7 +492,7 @@ if (!empty($potentialMismatches)) {
 }
 
 // ===== Active tab =====
-$active_tab = isset($_GET['tab']) && in_array($_GET['tab'], array('due', 'audit', 'mismatches')) ? $_GET['tab'] : 'audit';
+$active_tab = isset($_GET['tab']) && in_array($_GET['tab'], array('due', 'audit', 'mismatches')) ? $_GET['tab'] : 'due';
 
 // ===== Claim mismatch handler =====
 $claim_message = '';
@@ -456,7 +557,26 @@ function computeDueStudents($class_id, $section, $group, $year) {
     ));
     foreach ($monthly_rows as $mr) { $monthly_expected += floatval($mr->fee) * 12; }
 
-    $total_expected = $yearly_expected + $monthly_expected;
+    // Expected exam fees from fee list (per-exam fee * number of exams)
+    $exam_expected = 0;
+    $exam_rows = $wpdb->get_results($wpdb->prepare(
+        "SELECT fl.fee FROM ct_student_fee_list fl
+        INNER JOIN (
+            SELECT sub_head_id, MAX(id) AS max_id FROM ct_student_fee_list
+            WHERE class_id = %d AND year = %s AND sub_head_id IN (SELECT id FROM ct_sub_head WHERE type = 3 AND active_for_collection = 1)
+            GROUP BY sub_head_id
+        ) latest ON latest.max_id = fl.id",
+        $class_id, $year
+    ));
+    foreach ($exam_rows as $er) { $exam_expected += floatval($er->fee); }
+    // Only count exams active for collection (not all exams)
+    $exam_count = $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM ct_exam WHERE examClass = %d AND active_for_collection = 1",
+        $class_id
+    ));
+    $exam_expected = $exam_expected * max(1, intval($exam_count));
+
+    $total_expected = $yearly_expected + $monthly_expected + $exam_expected;
 
     $yearly_paid_map = array();
     foreach ($wpdb->get_results($wpdb->prepare("SELECT student_id, SUM(fee) as paid FROM ct_student_yearly_fee_summary WHERE class_id = %d AND year = %s AND fee > 0 GROUP BY student_id", $class_id, $year)) as $r) {
@@ -471,9 +591,28 @@ function computeDueStudents($class_id, $section, $group, $year) {
         $exam_paid_map[$r->student_id] = floatval($r->paid);
     }
 
+    // Also get paid amounts directly from collection records (catches PayStation payments
+    // linked via transaction_id that may not yet be synced to summary tables)
+    $collection_paid_map = array();
+    $collection_raw = $wpdb->get_results($wpdb->prepare(
+        "SELECT ci.student_id, SUM(cd.fee) as paid
+        FROM ct_student_fee_collection_info ci
+        INNER JOIN ct_student_fee_collection_details cd ON cd.info_id = ci.id
+        WHERE ci.class_id = %d AND ci.year = %s AND cd.fee > 0
+        GROUP BY ci.student_id",
+        $class_id, $year
+    ));
+    foreach ($collection_raw as $r) {
+        $collection_paid_map[$r->student_id] = floatval($r->paid);
+    }
+
     $result = array();
     foreach ($students as $s) {
-        $paid = ($yearly_paid_map[$s->infoStdid] ?? 0) + ($monthly_paid_map[$s->infoStdid] ?? 0) + ($exam_paid_map[$s->infoStdid] ?? 0);
+        $summary_paid = ($yearly_paid_map[$s->infoStdid] ?? 0) + ($monthly_paid_map[$s->infoStdid] ?? 0) + ($exam_paid_map[$s->infoStdid] ?? 0);
+        $collection_paid = $collection_paid_map[$s->infoStdid] ?? 0;
+        // Use whichever is higher — collection records are the source of truth and include
+        // PayStation-linked payments not yet reflected in summary tables
+        $paid = max($summary_paid, $collection_paid);
         $due = max(0, $total_expected - $paid);
         $pct = $total_expected > 0 ? round(($paid / $total_expected) * 100) : 0;
         if ($paid > $total_expected) $status_s = 'Overpaid';
@@ -507,6 +646,26 @@ if ($mismatch_table_exists) {
             $claim_map[$c->mismatch_id] = array('status' => $c->status, 'review_notes' => $c->review_notes);
         }
     }
+}
+
+// Pre-load all class-section mappings for standalone section loading (no AJAX)
+$all_class_sections = array();
+$section_data = $wpdb->get_results(
+    "SELECT si.infoClass, si.infoSection, sec.sectionName 
+     FROM ct_studentinfo si 
+     LEFT JOIN ct_section sec ON sec.sectionid = si.infoSection 
+     WHERE si.infoSection IS NOT NULL 
+     GROUP BY si.infoClass, si.infoSection 
+     ORDER BY si.infoClass, si.infoSection"
+);
+foreach ($section_data as $sd) {
+    if (!isset($all_class_sections[$sd->infoClass])) {
+        $all_class_sections[$sd->infoClass] = array();
+    }
+    $all_class_sections[$sd->infoClass][] = array(
+        'id' => $sd->infoSection,
+        'name' => $sd->sectionName,
+    );
 }
 ?>
 <style>
@@ -695,6 +854,58 @@ body {
     box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
     outline: none;
 }
+/* Tabs inside filter card — side by side on desktop */
+.filter-with-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: flex-start;
+}
+.filter-with-tabs .filter-body {
+    flex: 1;
+    min-width: 280px;
+}
+.filter-with-tabs .filter-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 6px;
+    background: #f8fafc;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+    align-self: flex-end;
+    overflow-x: auto;
+}
+.filter-with-tabs .filter-tabs .tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    font-family: var(--font);
+    color: var(--text-secondary);
+    background: transparent;
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+}
+.filter-with-tabs .filter-tabs .tab-btn:hover {
+    background: var(--surface-hover);
+    color: var(--text);
+}
+.filter-with-tabs .filter-tabs .tab-btn.active {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(99,102,241,0.25);
+}
+.filter-with-tabs .filter-tabs .tab-btn svg { flex-shrink: 0; }
+@media (max-width: 1024px) {
+    .filter-with-tabs .filter-tabs { width: 100%; align-self: stretch; justify-content: center; }
+}
+
 .filter-form .btn-search {
     background: var(--primary);
     color: #fff;
@@ -1037,6 +1248,7 @@ body {
 .row-due:hover { background: #fee2e2 !important; }
 .row-overpaid { background: #fffbeb !important; }
 .row-overpaid:hover { background: #fef3c7 !important; }
+.clickable-row { cursor: pointer; }
 
 /* ===== Cell Status ===== */
 .cell-paid { color: var(--success); font-weight: 600; }
@@ -1567,7 +1779,7 @@ body {
 <!-- ===== Page Header ===== -->
 <div class="page-header">
     <div>
-        <h2>Student Fee Audit Report</h2>
+        <h2 id="pageHeaderTitle">Student Fee Audit Report</h2>
         <p style="margin:4px 0 0;font-size:13px;opacity:0.75;">Payment integrity &amp; reconciliation dashboard</p>
     </div>
     <div class="header-stats">
@@ -1592,13 +1804,10 @@ body {
     </div>
 </div>
 
-<!-- ===== Filter Card ===== -->
-<div class="filter-card">
-    <div class="filter-title">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
-        Filter Students
-    </div>
-    <form action="" method="POST" class="filter-form">
+<!-- ===== Filter Card with Tabs ===== -->
+<div class="filter-card filter-with-tabs">
+    <div class="filter-body">
+        <form action="" method="POST" class="filter-form">
         <div class="form-group">
             <label>Class</label>
             <select name="stdclass" id="filterClass" class="form-control" required onchange="loadFilterSections(this.value)">
@@ -1613,7 +1822,7 @@ body {
         </div>
         <div class="form-group">
             <label>Section</label>
-            <select name="sec" id="filterSec" class="form-control">
+            <select name="sec" id="filterSec" class="form-control" onchange="this.form.submit()">
                 <option value="">All</option>
                 <?php
                 if ($filter_class) {
@@ -1645,16 +1854,7 @@ body {
                 } ?>
             </select>
         </div>
-        <div class="form-group">
-            <label>Month</label>
-            <select name="month" class="form-control">
-                <option value="">All Months</option>
-                <?php $mn = array(1=>"January","February","March","April","May","June","July","August","September","October","November","December");
-                foreach ($mn as $k=>$v) {
-                    echo '<option value="'.$k.'"'.($filter_month==$k?' selected':'').'>'.$v.'</option>';
-                } ?>
-            </select>
-        </div>
+
         <div class="form-group">
             <label>Status</label>
             <select name="payment_status" class="form-control">
@@ -1669,25 +1869,80 @@ body {
             <button type="submit" class="btn-search">Search</button>
         </div>
     </form>
+    </div>
+    <div class="filter-tabs" id="tabNav">
+        <button class="tab-btn <?= $active_tab==='due'?'active':'' ?>" data-tab="due" onclick="switchTab('due')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            Due Students
+        </button>
+        <button class="tab-btn <?= $active_tab==='audit'?'active':'' ?>" data-tab="audit" onclick="switchTab('audit')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            Student Audit
+        </button>
+        <button class="tab-btn <?= $active_tab==='mismatches'?'active':'' ?>" data-tab="mismatches" onclick="switchTab('mismatches')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Mismatches
+        </button>
+    </div>
 </div>
+
+<script>
+// Pre-loaded section data for standalone filter (no AJAX)
+var sectionData = <?= json_encode($all_class_sections) ?>;
+
+function loadFilterSections(classId) {
+    var secSelect = document.getElementById('filterSec');
+    secSelect.innerHTML = '<option value="">All</option>';
+    if (!classId) return;
+
+    if (sectionData[classId]) {
+        for (var i = 0; i < sectionData[classId].length; i++) {
+            var opt = document.createElement('option');
+            opt.value = sectionData[classId][i].id;
+            opt.textContent = sectionData[classId][i].name;
+            secSelect.appendChild(opt);
+        }
+    }
+}
+
+function switchTab(tabName) {
+    var panes = document.querySelectorAll('.tab-pane');
+    for (var i = 0; i < panes.length; i++) {
+        panes[i].classList.remove('active');
+    }
+    var btns = document.querySelectorAll('.filter-tabs .tab-btn');
+    for (var i = 0; i < btns.length; i++) {
+        btns[i].classList.remove('active');
+    }
+    document.getElementById('tab-' + tabName).classList.add('active');
+    var activeBtn = document.querySelector('.filter-tabs .tab-btn[data-tab="' + tabName + '"]');
+    if (activeBtn) activeBtn.classList.add('active');
+    var url = new URL(window.location.href);
+    url.searchParams.set('tab', tabName);
+    window.history.replaceState({}, '', url.toString());
+
+    // Update page header title dynamically
+    var tabTitles = {
+        audit: 'Student Audit &#8212; Fee Details',
+        due: 'Due Students &#8212; Payment Status',
+        mismatches: 'Payment Mismatch Management'
+    };
+    var titleEl = document.getElementById('pageHeaderTitle');
+    if (titleEl && tabTitles[tabName]) {
+        titleEl.innerHTML = tabTitles[tabName];
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    var params = new URLSearchParams(window.location.search);
+    var tab = params.get('tab');
+    if (tab && ['due','audit','mismatches'].indexOf(tab) > -1) {
+        switchTab(tab);
+    }
+});
+</script>
 
 <?php if ($filter_class && !empty($students)): ?>
-
-<!-- ===== Tab Navigation ===== -->
-<div class="tab-nav" id="tabNav">
-    <button class="tab-btn <?= $active_tab==='audit'?'active':'' ?>" data-tab="audit" onclick="switchTab('audit')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-        Student Audit
-    </button>
-    <button class="tab-btn <?= $active_tab==='due'?'active':'' ?>" data-tab="due" onclick="switchTab('due')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-        Due Students
-    </button>
-    <button class="tab-btn <?= $active_tab==='mismatches'?'active':'' ?>" data-tab="mismatches" onclick="switchTab('mismatches')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        Mismatches
-    </button>
-</div>
 
 <!-- ===== Tab Content ===== -->
 <div class="tab-content">
@@ -1696,6 +1951,20 @@ body {
     <div class="tab-pane <?= $active_tab==='due'?'active':'' ?>" id="tab-due">
         <?php
         $dueStudents = computeDueStudents($filter_class, $filter_sec, $filter_group, $filter_year);
+        // Apply status filter
+        if ($filter_status === 'paid') {
+            $dueStudents = array_filter($dueStudents, function($ds) {
+                return $ds['status'] === 'Paid' || $ds['status'] === 'Overpaid';
+            });
+        } elseif ($filter_status === 'unpaid') {
+            $dueStudents = array_filter($dueStudents, function($ds) {
+                return $ds['status'] === 'Due';
+            });
+        } elseif ($filter_status === 'partial') {
+            $dueStudents = array_filter($dueStudents, function($ds) {
+                return $ds['status'] === 'Partial';
+            });
+        }
         $dueGrandExpected = 0; $dueGrandPaid = 0; $dueGrandDue = 0; $dueDueCount = 0;
         foreach ($dueStudents as $ds) {
             $dueGrandExpected += $ds['total_expected'];
@@ -1732,14 +2001,12 @@ body {
                         </tr>
                     </thead>
                     <tbody>
-                    <?php foreach ($dueStudents as $ds): ?>
-                    <tr class="<?= $ds['status'] === 'Due' ? 'row-due' : ($ds['status'] === 'Overpaid' ? 'row-overpaid' : '') ?>">
+                    <?php foreach ($dueStudents as $ds): 
+                        $row_url = '?tab=audit&class_id=' . $filter_class . '&section=' . $filter_sec . '&group_id=' . $filter_group . '&year=' . $filter_year . '&payment_status=' . $filter_status . '&student_id=' . $ds['student_id'];
+                    ?>
+                    <tr class="clickable-row <?= $ds['status'] === 'Due' ? 'row-due' : ($ds['status'] === 'Overpaid' ? 'row-overpaid' : '') ?>" data-href="<?= esc_attr($row_url) ?>" onclick="window.location.href=this.getAttribute('data-href')">
                         <td><?= $ds['roll'] ?></td>
-                        <td class="text-left">
-                            <a href="?tab=audit&class_id=<?= $filter_class ?>&section=<?= $filter_sec ?>&group_id=<?= $filter_group ?>&year=<?= $filter_year ?>&month=<?= $filter_month ?>&payment_status=<?= $filter_status ?>&student_id=<?= $ds['student_id'] ?>" style="color:var(--primary);text-decoration:none;font-weight:600;">
-                                <?= esc_html($ds['name']) ?>
-                            </a>
-                        </td>
+                        <td class="text-left" style="color:var(--primary);font-weight:600;"><?= esc_html($ds['name']) ?></td>
                         <td><?= esc_html($ds['facilities'] ?: '-') ?></td>
                         <td><?= number_format($ds['total_expected'], 2) ?></td>
                         <td><?= number_format($ds['total_paid'], 2) ?></td>
@@ -1784,7 +2051,7 @@ body {
             <?php foreach ($students as $std):
                 $is_active = ($selected_student == $std->infoStdid);
             ?>
-            <a href="?tab=audit&class_id=<?= $filter_class ?>&section=<?= $filter_sec ?>&group_id=<?= $filter_group ?>&year=<?= $filter_year ?>&month=<?= $filter_month ?>&payment_status=<?= $filter_status ?>&student_id=<?= $std->infoStdid ?>"
+            <a href="?tab=audit&class_id=<?= $filter_class ?>&section=<?= $filter_sec ?>&group_id=<?= $filter_group ?>&year=<?= $filter_year ?>&payment_status=<?= $filter_status ?>&student_id=<?= $std->infoStdid ?>"
                 class="student-item <?= $is_active ? 'active' : '' ?>">
                 <span class="roll"><?= $std->infoRoll ?></span>
                 <span class="name"><?= esc_html($std->stdName) ?></span>
@@ -1866,8 +2133,8 @@ body {
                 </div>
                 <div class="stat-card stat-bg-green">
                     <div class="stat-icon">✅</div>
-                    <div class="stat-label">Total Paid</div>
-                    <div class="stat-value"><?= number_format($total_paid, 2) ?></div>
+                    <div class="stat-label">Total Collections</div>
+                    <div class="stat-value"><?= number_format($fundStats['collection_total'], 2) ?></div>
                 </div>
                 <div class="stat-card stat-bg-red">
                     <div class="stat-icon">⚠️</div>
@@ -1879,12 +2146,39 @@ body {
                     <div class="stat-label">PayStation Paid</div>
                     <div class="stat-value"><?= number_format($fundStats['paystation_paid_total'], 2) ?></div>
                 </div>
+                <!-- <div class="stat-card stat-bg-purple">
+                    <div class="stat-icon">📋</div>
+                    <div class="stat-label">Total Paid</div>
+                    <div class="stat-value"><?= number_format($total_paid, 2) ?></div>
+                </div> -->
                 <div class="stat-card stat-bg-orange">
                     <div class="stat-icon">🔄</div>
                     <div class="stat-label">Over Payments</div>
                     <div class="stat-value"><?= number_format($fundStats['over_payment'], 2) ?></div>
                 </div>
             </div>
+
+            <?php
+            // Reconciliation: check if summary-based total_paid differs from collection total
+            $reconciliation_diff = abs($total_paid - $fundStats['collection_total']);
+            $reconciliation_note = '';
+            $reconciliation_type = 'match';
+            if ($reconciliation_diff > 0.01 && $fundStats['collection_total'] > 0) {
+                if ($fundStats['collection_total'] > $total_paid) {
+                    $reconciliation_note = sprintf(
+                        'Collection records (%.2f) exceed summary-based total paid (%.2f) by %.2f — payments may exist in collection logs but not yet synced to fee summary tables (ct_student_*_fee_summary).',
+                        $fundStats['collection_total'], $total_paid, $reconciliation_diff
+                    );
+                    $reconciliation_type = 'collection_higher';
+                } else {
+                    $reconciliation_note = sprintf(
+                        'Summary-based total paid (%.2f) exceeds collection records (%.2f) by %.2f — some summary entries may lack corresponding collection records.',
+                        $total_paid, $fundStats['collection_total'], $reconciliation_diff
+                    );
+                    $reconciliation_type = 'summary_higher';
+                }
+            }
+            ?>
 
             <!-- ===== Mismatch Alerts ===== -->
             <?php if (!empty($potentialMismatches)): ?>
@@ -1920,17 +2214,22 @@ body {
             <?php endif; ?>
 
             <!-- ===== PayStation Transactions ===== -->
-            <?php if (!empty($paystationTxns)):
-                // Build flagged invoice map for mismatch indicators
+            <?php if (!empty($allPaystationTxns)):
+                // Build lookup of current-year transaction IDs (from $paystationTxns)
+                $current_year_txn_ids = array();
+                foreach ($paystationTxns as $pt) {
+                    $current_year_txn_ids[$pt['payment_id']] = true;
+                }
+                // Build flagged invoice map for mismatch indicators (using $paystationTxns for calculations)
                 $flagged_invoices = array();
                 $inv_counts = array();
-                $coll_invs = array();
+                $coll_txn_ids = array();
                 foreach ($paystationTxns as $txn) {
                     $inv = $txn['invoice_number'];
                     if (!empty($inv)) $inv_counts[$inv][] = $txn;
                 }
                 foreach ($collectionRecords as $cr) {
-                    if (!empty($cr['invoice_number'])) $coll_invs[$cr['invoice_number']] = true;
+                    if (!empty($cr['transaction_id'])) $coll_txn_ids[$cr['transaction_id']] = true;
                 }
                 foreach ($inv_counts as $inv => $txns) {
                     if (count($txns) > 1) {
@@ -1940,7 +2239,7 @@ body {
                     }
                 }
                 foreach ($paystationTxns as $txn) {
-                    if ($txn['status'] === 'paid' && !empty($txn['invoice_number']) && !isset($coll_invs[$txn['invoice_number']])) {
+                    if ($txn['status'] === 'paid' && !empty($txn['transaction_id']) && !isset($coll_txn_ids[$txn['transaction_id']])) {
                         if (!isset($flagged_invoices[$txn['payment_id']])) {
                             $flagged_invoices[$txn['payment_id']] = 'Paid but no collection record';
                         }
@@ -1953,18 +2252,27 @@ body {
                     $ps_total_amount += $amt;
                     if ($txn['status'] === 'paid') $ps_paid_amount += $amt;
                 }
+                // Count transactions from other years
+                $other_year_count = 0;
+                foreach ($allPaystationTxns as $txn) {
+                    if (!isset($current_year_txn_ids[$txn['payment_id']])) {
+                        $other_year_count++;
+                    }
+                }
             ?>
             <div class="card">
-                <div class="card-header"><h3>PayStation Transactions</h3></div>
+                <div class="card-header">
+                    <h3>PayStation Transactions</h3>
+                </div>
                 <div class="card-body">
                     <table class="modern-table">
                         <thead>
                             <tr>
-                                <th style="width:32px;">⚠️</th>
                                 <th>Invoice</th>
                                 <th>Amount</th>
                                 <th>Status</th>
                                 <th>Date</th>
+                                <th>Period</th>
                                 <th>Transaction ID</th>
                                 <th>Phone</th>
                                 <th>Details</th>
@@ -1972,15 +2280,16 @@ body {
                             </tr>
                         </thead>
                         <tbody>
-                        <?php foreach ($paystationTxns as $txn):
+                        <?php foreach ($allPaystationTxns as $txn):
+                            $is_current_year = isset($current_year_txn_ids[$txn['payment_id']]);
                             $is_flagged = isset($flagged_invoices[$txn['payment_id']]);
                         ?>
                         <tr<?= $is_flagged ? ' class="table-danger"' : '' ?>>
-                            <td style="text-align:center;"><?= $is_flagged ? '⚠️' : '' ?></td>
                             <td><?= esc_html($txn['invoice_number']) ?></td>
                             <td><?= number_format(floatval($txn['total_amount']), 2) ?></td>
                             <td><span class="badge badge-<?= $txn['status'] ?>"><?= ucfirst($txn['status']) ?></span></td>
                             <td><?= $txn['payment_date'] ? date('d-m-Y H:i', strtotime($txn['payment_date'])) : date('d-m-Y H:i', strtotime($txn['created_at'])) ?></td>
+                            <td><span class="badge badge-<?= $is_current_year ? 'success' : 'secondary' ?>" style="font-size:10px;"><?= $is_current_year ? $filter_year : ($txn['payment_date'] ? date('Y', strtotime($txn['payment_date'])) : date('Y', strtotime($txn['created_at']))) ?></span></td>
                             <td style="font-family:monospace;font-size:12px;"><?= !empty($txn['transaction_id']) ? esc_html($txn['transaction_id']) : '<span style="color:#999;">—</span>' ?></td>
                             <td>
                                 <?php
@@ -1992,14 +2301,8 @@ body {
                             <td>
                                 <?php
                                 $ps_data = json_decode($txn['paystation_response'], true);
-                                if ($ps_data && isset($ps_data['transaction_status'])) {
-                                    echo '<span class="badge badge-info">' . esc_html($ps_data['transaction_status']) . '</span>';
-                                }
-                                if ($txn['status'] == 'paid' && !empty($txn['fee_data'])) {
-                                    $fee_data = json_decode($txn['fee_data'], true);
-                                    if ($fee_data && isset($fee_data['breakdown'])) {
-                                        echo ' <small>(' . count($fee_data['breakdown']) . ' items)</small>';
-                                    }
+                                if ($ps_data && isset($ps_data['message'])) {
+                                    echo '<span">' . esc_html($ps_data['message']) . '</span>';
                                 }
                                 if ($is_flagged) {
                                     echo '<br><small style="color:#dc2626;">⚠ ' . esc_html($flagged_invoices[$txn['payment_id']]) . '</small>';
@@ -2007,6 +2310,7 @@ body {
                                 ?>
                             </td>
                             <td>
+                                <?php if ($txn['status'] === 'paid'): ?>
                                 <button class="btn-xs btn-transfer" onclick="openTransferModal(
                                     '<?= esc_js($txn['payment_id']) ?>',
                                     '<?= esc_js($txn['invoice_number']) ?>',
@@ -2017,6 +2321,12 @@ body {
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
                                     Transfer
                                 </button>
+                                <?php else: ?>
+                                <button class="btn-xs btn-claim" onclick="openClaimModal()" title="Claim this payment">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                                    Claim
+                                </button>
+                                <?php endif; ?>
                             </td>
                         </tr>
                         <?php endforeach; ?>
@@ -2024,10 +2334,11 @@ body {
                             <td></td>
                             <td><strong>Total</strong></td>
                             <td><strong><?= number_format($ps_total_amount, 2) ?></strong></td>
-                            <td colspan="6">
-                                Paid: <span class="cell-paid"><?= number_format($ps_paid_amount, 2) ?></span>
-                                &nbsp;|&nbsp; Pending: <span class="cell-unpaid"><?= number_format($ps_total_amount - $ps_paid_amount, 2) ?></span>
-                                &nbsp;|&nbsp; Txns: <strong><?= count($paystationTxns) ?></strong>
+                            <td colspan="7">
+                                Paid (current year): <span class="cell-paid"><?= number_format($ps_paid_amount, 2) ?></span>
+                                &nbsp;|&nbsp; Pending (current year): <span class="cell-unpaid"><?= number_format($ps_total_amount - $ps_paid_amount, 2) ?></span>
+                                &nbsp;|&nbsp; Current year txns: <strong><?= count($paystationTxns) ?></strong>
+                                &nbsp;|&nbsp; All txns: <strong><?= count($allPaystationTxns) ?></strong>
                             </td>
                         </tr>
                         </tbody>
@@ -2035,6 +2346,8 @@ body {
                 </div>
             </div>
             <?php endif; ?>
+
+
 
 <!-- ===== Transfer Payment Modal ===== -->
 <div class="modal-overlay" id="transferModal">
@@ -2746,6 +3059,35 @@ function escHtml(str) {
 }
 </script>
 
+            <!-- ===== Exam Fees ===== -->
+            <?php if (!empty($examSubHeads)): ?>
+            <div class="card">
+                <div class="card-header"><h3>Exam Fees</h3></div>
+                <div class="card-body">
+                    <table class="modern-table">
+                        <thead><tr><th class="text-left">Exam</th><th class="text-left">Fee Item</th><th>Amount</th><th>Status</th><th>Date</th><th>Notes</th></tr></thead>
+                        <tbody>
+                        <?php $exam_total = 0; $exam_paid_total = 0;
+                        foreach ($studentExamFees as $ef):
+                            $exam_total += $ef['fee'];
+                            if ($ef['paid']) $exam_paid_total += $ef['fee'];
+                        ?>
+                        <tr>
+                            <td class="text-left"><?= esc_html($ef['exam_name']) ?></td>
+                            <td class="text-left"><?= esc_html($ef['item_name']) ?></td>
+                            <td><?= number_format($ef['fee'], 2) ?></td>
+                            <td><span class="badge <?= $ef['paid']?'badge-paid':'badge-pending' ?>"><?= $ef['paid']?'Paid':'Unpaid' ?></span></td>
+                            <td><?= $ef['date'] ? date('d-m-Y', strtotime($ef['date'])) : '-' ?></td>
+                            <td><?= esc_html($ef['notes']) ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                        <tr class="total-row"><td colspan="2">Total</td><td><?= number_format($exam_total, 2) ?></td><td colspan="3">Paid: <span class="cell-paid"><?= number_format($exam_paid_total, 2) ?></span> &nbsp;|&nbsp; Due: <span class="cell-unpaid"><?= number_format($exam_total - $exam_paid_total, 2) ?></span></td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <?php endif; ?>
+
             <!-- ===== Yearly Fees ===== -->
             <?php if (!empty($yearlySubHeads)): ?>
             <div class="card">
@@ -2834,33 +3176,6 @@ function escHtml(str) {
             </div>
             <?php endif; ?>
 
-            <!-- ===== Exam Fees ===== -->
-            <?php if (!empty($studentExamFees)): ?>
-            <div class="card">
-                <div class="card-header"><h3>Exam Fees</h3></div>
-                <div class="card-body">
-                    <table class="modern-table">
-                        <thead><tr><th class="text-left">Exam</th><th class="text-left">Fee Item</th><th>Amount</th><th>Date</th><th>Notes</th></tr></thead>
-                        <tbody>
-                        <?php $exam_total = 0;
-                        foreach ($studentExamFees as $ef):
-                            $exam_total += $ef['fee'];
-                        ?>
-                        <tr>
-                            <td class="text-left"><?= esc_html($ef['exam_name']) ?></td>
-                            <td class="text-left"><?= esc_html($ef['item_name']) ?></td>
-                            <td><?= number_format($ef['fee'], 2) ?></td>
-                            <td><?= $ef['date'] ? date('d-m-Y', strtotime($ef['date'])) : '-' ?></td>
-                            <td><?= esc_html($ef['notes']) ?></td>
-                        </tr>
-                        <?php endforeach; ?>
-                        <tr class="total-row"><td colspan="2">Total</td><td><?= number_format($exam_total, 2) ?></td><td colspan="2"></td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <?php endif; ?>
-
             <!-- ===== Other Fees ===== -->
             <?php if (!empty($studentOtherFees)): ?>
             <div class="card">
@@ -2884,7 +3199,7 @@ function escHtml(str) {
             <?php endif; ?>
 
             <!-- ===== Fee Collection Records ===== -->
-            <!-- <?php if (!empty($collectionRecords)): ?>
+            <?php if (!empty($collectionRecords)): ?>
             <div class="card">
                 <div class="card-header"><h3>Fee Collection Records</h3><span class="badge badge-secondary">Manual / Online</span></div>
                 <div class="card-body">
@@ -2894,8 +3209,6 @@ function escHtml(str) {
                                 <th>#</th>
                                 <th>Date</th>
                                 <th>Month</th>
-                                <th class="text-left">Fee Item</th>
-                                <th>Amount</th>
                                 <th>Sub Total</th>
                                 <th>Remission</th>
                                 <th>Total</th>
@@ -2904,22 +3217,14 @@ function escHtml(str) {
                             </tr>
                         </thead>
                         <tbody>
-                        <?php 
-                        $seen_infos = array();
-                        foreach ($collectionRecords as $cr):
-                            $info_key = $cr['id'];
-                            $is_first = !isset($seen_infos[$info_key]);
-                            $seen_infos[$info_key] = true;
-                        ?>
+                        <?php foreach ($collectionRecords as $cr): ?>
                         <tr>
                             <td><?= $cr['id'] ?></td>
                             <td><?= date('d-m-Y', strtotime($cr['date'])) ?></td>
-                            <td><?= isset($mn[$cr['month']]) ? $mn[$cr['month']] : '-' ?></td>
-                            <td class="text-left"><?= esc_html($cr['sub_head_name']) ?></td>
-                            <td><?= number_format(floatval($cr['fee']), 2) ?></td>
-                            <td><?= $is_first ? number_format(floatval($cr['sub_total']), 2) : '' ?></td>
-                            <td><?= $is_first ? number_format(floatval($cr['remission']), 2) : '' ?></td>
-                            <td><?= $is_first ? number_format(floatval($cr['total']), 2) : '' ?></td>
+                            <td><?= isset($monthNames[$cr['month']]) ? $monthNames[$cr['month']] : '-' ?></td>
+                            <td><?= number_format(floatval($cr['sub_total']), 2) ?></td>
+                            <td><?= number_format(floatval($cr['remission']), 2) ?></td>
+                            <td><strong><?= number_format(floatval($cr['total']), 2) ?></strong></td>
                             <td><?= esc_html($cr['payment_method'] ?: 'Manual') ?></td>
                             <td style="font-size:11px;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?= esc_html($cr['transaction_id'] ?: '-') ?></td>
                         </tr>
@@ -2928,7 +3233,7 @@ function escHtml(str) {
                     </table>
                 </div>
             </div>
-            <?php endif; ?> -->
+            <?php endif; ?>
 
             <?php if (!$selected_student): ?>
             <div class="empty-state">
@@ -3052,82 +3357,10 @@ function escHtml(str) {
 </div><!-- /tab-content -->
 
 <script>
-function switchTab(tabName) {
-    // Hide all tab panes
-    var panes = document.querySelectorAll('.tab-pane');
-    for (var i = 0; i < panes.length; i++) {
-        panes[i].classList.remove('active');
-    }
-    // Deactivate all tab buttons
-    var btns = document.querySelectorAll('.tab-btn');
-    for (var i = 0; i < btns.length; i++) {
-        btns[i].classList.remove('active');
-    }
-    // Activate target
-    document.getElementById('tab-' + tabName).classList.add('active');
-    var activeBtn = document.querySelector('.tab-btn[data-tab="' + tabName + '"]');
-    if (activeBtn) activeBtn.classList.add('active');
-    // Update URL
-    var url = new URL(window.location.href);
-    url.searchParams.set('tab', tabName);
-    window.history.replaceState({}, '', url.toString());
-}
 function toggleClaimForm(id) {
     var row = document.getElementById('claim-form-' + id);
     if (row) row.classList.toggle('open');
 }
-
-function loadFilterSections(classId) {
-    var secSelect = document.getElementById('filterSec');
-    // Reset section dropdown
-    secSelect.innerHTML = '<option value="">All</option>';
-    if (!classId) return;
-
-    var url = '<?= get_template_directory_uri() ?>/inc/ajaxAction.php';
-
-    var formData = new FormData();
-    formData.append('type', 'getSection');
-    formData.append('class', classId);
-
-    fetch(url, {
-        method: 'POST',
-        body: formData
-    })
-    .then(function(res) { return res.text(); })
-    .then(function(html) {
-        // Remove the first "Section" placeholder option from the response
-        // and keep the rest
-        var temp = document.createElement('div');
-        temp.innerHTML = html;
-        var options = temp.querySelectorAll('option');
-        var fragment = document.createDocumentFragment();
-
-        // Add "All" option
-        var allOpt = document.createElement('option');
-        allOpt.value = '';
-        allOpt.textContent = 'All';
-        fragment.appendChild(allOpt);
-
-        // Add remaining options from response (skip first placeholder option)
-        for (var i = 0; i < options.length; i++) {
-            if (i === 0) continue; // skip "Section" placeholder
-            fragment.appendChild(options[i].cloneNode(true));
-        }
-        secSelect.innerHTML = '';
-        secSelect.appendChild(fragment);
-    })
-    .catch(function(err) {
-        console.error('Failed to load sections:', err);
-    });
-}
-// Restore active tab on page load if URL has tab param
-document.addEventListener('DOMContentLoaded', function() {
-    var params = new URLSearchParams(window.location.search);
-    var tab = params.get('tab');
-    if (tab && ['due','audit','mismatches'].indexOf(tab) > -1) {
-        switchTab(tab);
-    }
-});
 </script>
 
 <?php else: ?>
