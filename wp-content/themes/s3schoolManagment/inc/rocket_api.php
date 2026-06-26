@@ -942,11 +942,15 @@ function barnomala_rocket_confirm_payment($request) {
     // Create ledger entry (if saveLeadger function exists)
     if (function_exists('saveLeadger')) {
         saveLeadger(
-            $collection_info_id,
-            $cashSubHeadId,
-            $fee_data['total_amount'],
-            'Rocket API: ' . substr($payment_id, -10) . '/' . substr($transaction_id, -12),
-            $payment_date
+            $cashSubHeadId, // sub_head_id - Cash (as ledger category for Rocket API payments)
+            $fee_data['total_amount'], // credit
+            0, // debit
+            'Rocket API: ' . substr($payment_id, -10) . '/' . substr($transaction_id, -12) . ' (Rocket Online Payment)', // reference
+            null, // monthly_fee_id
+            null, // yearly_fee_id
+            null, // exam_fee_id
+            $payment_date, // date
+            $collection_info_id // info_id
         );
     }
     

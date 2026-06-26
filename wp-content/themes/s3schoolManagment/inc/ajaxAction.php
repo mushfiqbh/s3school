@@ -1237,6 +1237,7 @@ if(isset($_POST['type']) && $_POST['type'] == 'getPaystationFeeInfo'){
     // Pre-fetch already-paid yearly and exam fees from collection_details as a safety net
     $yearlyPaidInCollection = array();
     $examPaidInCollection = array();
+    $monthlyPaidInCollection = array();
     
     $yearlyPaidQuery = "SELECT DISTINCT cd.sub_head_id FROM ct_student_fee_collection_details cd
         LEFT JOIN ct_student_fee_collection_info ci ON ci.id = cd.info_id
@@ -1257,6 +1258,21 @@ if(isset($_POST['type']) && $_POST['type'] == 'getPaystationFeeInfo'){
     if($group){ $examPaidQuery .= " AND ci.group_id = $group"; }
     $examPaidInCollection = $wpdb->get_col($examPaidQuery);
     if(!$examPaidInCollection) $examPaidInCollection = array();
+    
+    // Pre-fetch already-paid monthly fees from collection_details (sub_head_id + month lookup)
+    $monthlyPaidQuery = "SELECT cd.sub_head_id, ci.month FROM ct_student_fee_collection_details cd
+        LEFT JOIN ct_student_fee_collection_info ci ON ci.id = cd.info_id
+        LEFT JOIN ct_sub_head sh ON sh.id = cd.sub_head_id
+        WHERE ci.class_id = $class AND ci.year = '$year' 
+        AND ci.student_id = $studentId AND sh.type = 1 AND cd.fee > 0";
+    if($section){ $monthlyPaidQuery .= " AND ci.section = $section"; }
+    if($group){ $monthlyPaidQuery .= " AND ci.group_id = $group"; }
+    $monthlyPaidRows = $wpdb->get_results($monthlyPaidQuery);
+    if($monthlyPaidRows){
+        foreach($monthlyPaidRows as $row){
+            $monthlyPaidInCollection[$row->sub_head_id . '|' . $row->month] = true;
+        }
+    }
     
     foreach($subHeadId as $val){
         $feesQuery = "SELECT fee FROM ct_student_fee_list WHERE sub_head_id = $val->id AND class_id = $class AND year = '$year'";
@@ -1286,9 +1302,10 @@ if(isset($_POST['type']) && $_POST['type'] == 'getPaystationFeeInfo'){
                 }
             }
         } else if($val->type == 1){
-			// Monthly fee
+			// Monthly fee — skip if already paid (check summary + collection_details as safety net)
 			$sumOfFees = 0;
 			for($i = $fee_month; $i >= 1; $i--){
+				$monthlyKey = $val->id . '|' . $i;
 				$feeInfoQuery = "SELECT fee FROM ct_student_monthly_fee_summary 
 					WHERE sub_head_id = $val->id AND class_id = $class AND year = '$year' 
 					AND month = $i AND student_id = $studentId";
@@ -1300,7 +1317,7 @@ if(isset($_POST['type']) && $_POST['type'] == 'getPaystationFeeInfo'){
 				}
 				$feeInfo = $wpdb->get_results($feeInfoQuery);
 				
-				if(!$feeInfo){
+				if(!$feeInfo && !isset($monthlyPaidInCollection[$monthlyKey])){
 					$fee_amount = $base_fee;
 					
 					if($val->id == $monthlyFeeSubHeadId){
@@ -1407,7 +1424,7 @@ if(isset($_POST['type']) && $_POST['type'] == 'getPaystationFeeInfo'){
     }
 
 	/**
-	 * Calculate total paid MONTHLY amount for the month
+	 * Calculate total paid MONTHLY amount for the month (informational only)
 	 */
 	$onlinePaidTotalAmountQuery = "SELECT SUM(cd.fee) AS totalPaid 
 		FROM ct_student_fee_collection_details cd
@@ -1426,8 +1443,6 @@ if(isset($_POST['type']) && $_POST['type'] == 'getPaystationFeeInfo'){
 	global $wpdb;
 	$onlinePaidTotalAmount = $wpdb->get_results($onlinePaidTotalAmountQuery);
 	$paidAmount = floatval($onlinePaidTotalAmount[0]->totalPaid);
-
-	$sub_total = max(0, $sub_total - $paidAmount);
 
 	$result['paid_amount'] = round($paidAmount, 2);    
     $result['fee_breakdown'] = $fee_breakdown;

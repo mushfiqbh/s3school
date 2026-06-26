@@ -57,6 +57,13 @@ function s3s_register_payment_transfer_routes()
         'callback' => 's3s_payment_lookup',
         'permission_callback' => '__return_true',
     ));
+
+    // Check Transaction ID - Verify if a transaction_id already exists in the system
+    register_rest_route('v1', 'payment/check-transaction-id', array(
+        'methods'  => 'GET',
+        'callback' => 's3s_payment_check_transaction_id',
+        'permission_callback' => '__return_true',
+    ));
 }
 
 function s3s_register_mismatch_routes()
@@ -830,9 +837,30 @@ function s3s_sync_summary_tables(WP_REST_Request $request)
         $info_id      = $record['info_id'];
         $sub_head_id  = $record['sub_head_id'];
         $sub_head_type = (int) $record['sub_head_type'];
+        $student_id   = (int) $record['student_id'];
+
+        // DEBUG: Log student 1022 details
+        if ($student_id === 1022) {
+            error_log(sprintf(
+                '[DEBUG s3s_sync_summary_tables] Processing student_id=1022: info_id=%d, sub_head_id=%d, sub_head_type=%d, sub_head_name=%s, detail_fee=%s, class_id=%d, year=%s, fee_month=%s',
+                $info_id,
+                $sub_head_id,
+                $sub_head_type,
+                $record['sub_head_name'],
+                $record['detail_fee'],
+                $record['class_id'],
+                $record['year'],
+                $record['fee_month'] ?? 'N/A'
+            ));
+        }
 
         // Check if this record's summary already exists
         $already_synced = s3s_sync_check_exists($sub_head_type, $record);
+
+        // DEBUG: Log check_exists result for student 1022
+        if ($student_id === 1022) {
+            error_log('[DEBUG s3s_sync_summary_tables] student_id=1022: s3s_sync_check_exists(type=' . $sub_head_type . ') returned ' . ($already_synced ? 'true (SKIPPING)' : 'false (will insert)'));
+        }
 
         if ($already_synced) {
             $skipped++;
@@ -845,15 +873,35 @@ function s3s_sync_summary_tables(WP_REST_Request $request)
         } elseif ($sub_head_type == 2) {
             $result = s3s_sync_insert_yearly($record);
         } elseif ($sub_head_type == 3) {
+            // DEBUG: Log before exam insert for student 1022
+            if ($student_id === 1022) {
+                error_log('[DEBUG s3s_sync_summary_tables] student_id=1022: Calling s3s_sync_insert_exam()');
+            }
             $result = s3s_sync_insert_exam($record);
+            // DEBUG: Log exam insert result for student 1022
+            if ($student_id === 1022) {
+                error_log('[DEBUG s3s_sync_summary_tables] student_id=1022: s3s_sync_insert_exam() returned success=' . ($result['success'] ? 'true' : 'false') . ' rows=' . ($result['rows'] ?? 'N/A') . ' message=' . ($result['message'] ?? 'OK'));
+            }
         } else {
             $result = array('success' => false, 'message' => 'Unsupported sub-head type: ' . $sub_head_type);
         }
 
         if ($result['success']) {
             $inserted++;
+            // DEBUG: Log successful insert for student 1022
+            if ($student_id === 1022) {
+                error_log('[DEBUG s3s_sync_summary_tables] student_id=1022: Insert succeeded for info_id=' . $info_id . ', sub_head_type=' . $sub_head_type);
+            }
         } else if (count($errors) < 10) {
             $errors[] = "Info ID {$info_id}, Sub-head {$sub_head_id} (" . $record['sub_head_name'] . '): ' . $result['message'];
+            // DEBUG: Log error for student 1022
+            if ($student_id === 1022) {
+                error_log('[DEBUG s3s_sync_summary_tables] student_id=1022: ERROR - ' . end($errors));
+            }
+            // Also log all exam-related errors immediately
+            if ($sub_head_type == 3) {
+                error_log('[DEBUG s3s_sync_summary_tables] EXAM SYNC FAILED: info_id=' . $info_id . ', student_id=' . $student_id . ', sub_head_id=' . $sub_head_id . ', class_id=' . $record['class_id'] . ', year=' . $record['year'] . ' - ' . $result['message']);
+            }
         }
     }
 
@@ -1962,5 +2010,48 @@ function s3s_payment_lookup(WP_REST_Request $request)
             'current_student'    => $current_student_name,
             'current_roll'       => $current_student_roll,
         ),
+    );
+}
+
+/**
+ * Check Transaction ID - Verify if a transaction_id already exists in the system
+ *
+ * GET /v1/payment/check-transaction-id?transaction_id=XXX&exclude_payment_id=YYY
+ *
+ * @param WP_REST_Request $request
+ * @return array|WP_Error
+ */
+function s3s_payment_check_transaction_id(WP_REST_Request $request)
+{
+    global $wpdb;
+
+    $transaction_id = $request->get_param('transaction_id');
+    $exclude_payment_id = $request->get_param('exclude_payment_id');
+
+    if (empty($transaction_id)) {
+        return new WP_Error('missing_param', 'transaction_id is required', array('status' => 400));
+    }
+
+    $ps_table = $wpdb->prefix . 'paystation_transactions';
+
+    if (!$wpdb->get_var("SHOW TABLES LIKE '$ps_table'")) {
+        return new WP_Error('no_table', 'PayStation transactions table not found', array('status' => 500));
+    }
+
+    // Check if any existing row has this transaction_id (excluding the current payment if specified)
+    $sql = "SELECT COUNT(*) FROM $ps_table WHERE transaction_id = %s AND transaction_id != ''";
+    $params = array($transaction_id);
+
+    if (!empty($exclude_payment_id)) {
+        $sql .= " AND payment_id != %s";
+        $params[] = $exclude_payment_id;
+    }
+
+    $count = $wpdb->get_var($wpdb->prepare($sql, $params));
+
+    return array(
+        'success'        => true,
+        'exists'         => intval($count) > 0,
+        'transaction_id' => $transaction_id,
     );
 }

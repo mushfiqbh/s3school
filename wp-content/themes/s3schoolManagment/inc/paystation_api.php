@@ -647,33 +647,64 @@ function paystation_confirm_payment($payment_id, $invoice_number, $transaction_d
     
     $collection_info_id = $wpdb->insert_id;
     
-    // Insert fee breakdown details - include all fields like backend
+    // Insert fee breakdown details - per-month rows for monthly fees
     foreach ($fee_data['fee_breakdown'] as $fee_item) {
-        // Determine reference based on fee type
-        $reference = '';
         if ($fee_item['fee_type'] === 'monthly') {
-            $reference = 'Monthly Summary';
-        } elseif ($fee_item['fee_type'] === 'yearly') {
-            $reference = 'Yearly Collection';
-        } elseif ($fee_item['fee_type'] === 'exam') {
-            $reference = 'Exam Collection';
+            // Monthly fees: insert one row per month with month column
+            $base_fee_query = "SELECT fee FROM ct_student_fee_list 
+                             WHERE sub_head_id = %d AND class_id = %d AND year = %s";
+            $base_fee_params = array($fee_item['sub_head_id'], $class_id, $year);
+            if ($group_id) {
+                $base_fee_query .= " AND group_id = %d";
+                $base_fee_params[] = $group_id;
+            }
+            $base_fee_query .= " ORDER BY id DESC LIMIT 1";
+            $base_fee_result = $wpdb->get_row($wpdb->prepare($base_fee_query, $base_fee_params));
+            $base_monthly_fee = $base_fee_result ? floatval($base_fee_result->fee) : 0;
+            
+            $fee_per_month = $base_monthly_fee > 0 ? $base_monthly_fee : $fee_item['amount'] / $fee_month;
+            
+            for ($i = $fee_month; $i >= 1; $i--) {
+                $wpdb->insert(
+                    'ct_student_fee_collection_details',
+                    array(
+                        'info_id' => $collection_info_id,
+                        'sub_head_id' => $fee_item['sub_head_id'],
+                        'month' => $i,
+                        'fee' => round($fee_per_month, 2),
+                        'status' => 1,
+                        'reference' => 'Monthly Summary',
+                        'date' => $formatted_payment_date,
+                        'created_by' => 0, // System/API
+                        'created_at' => get_bdt_time_formatted(), // BDT time - Match backend format with hyphens
+                    )
+                );
+            }
         } else {
-            $reference = 'Fee Collection';
+            // Yearly/exam/other: single row
+            $reference = '';
+            if ($fee_item['fee_type'] === 'yearly') {
+                $reference = 'Yearly Collection';
+            } elseif ($fee_item['fee_type'] === 'exam') {
+                $reference = 'Exam Collection';
+            } else {
+                $reference = 'Fee Collection';
+            }
+            
+            $wpdb->insert(
+                'ct_student_fee_collection_details',
+                array(
+                    'info_id' => $collection_info_id,
+                    'sub_head_id' => $fee_item['sub_head_id'],
+                    'fee' => $fee_item['amount'],
+                    'status' => 1,
+                    'reference' => $reference,
+                    'date' => $formatted_payment_date,
+                    'created_by' => 0, // System/API
+                    'created_at' => get_bdt_time_formatted(), // BDT time - Match backend format with hyphens
+                )
+            );
         }
-        
-        $wpdb->insert(
-            'ct_student_fee_collection_details',
-            array(
-                'info_id' => $collection_info_id,
-                'sub_head_id' => $fee_item['sub_head_id'],
-                'fee' => $fee_item['amount'],
-                'status' => 1,
-                'reference' => $reference,
-                'date' => $formatted_payment_date,
-                'created_by' => 0, // System/API
-                'created_at' => get_bdt_time_formatted(), // BDT time - Match backend format with hyphens
-            )
-        );
     }
     
     // Process monthly/yearly/exam fee summaries based on fee breakdown
@@ -709,8 +740,20 @@ function paystation_confirm_payment($payment_id, $invoice_number, $transaction_d
                 $fee_per_month = $amount / $fee_month;
             }
             
-            // Insert one entry per month from fee_month down to 1
+            // Insert one entry per month from fee_month down to 1 (with duplicate check)
             for ($i = $fee_month; $i >= 1; $i--) {
+                // Check if monthly summary already exists for this student/sub_head/year/month
+                $existing_monthly = $wpdb->get_var($wpdb->prepare(
+                    "SELECT id FROM ct_student_monthly_fee_summary 
+                     WHERE student_id = %d AND sub_head_id = %d AND year = %s AND month = %d AND class_id = %d",
+                    $student_id, $sub_head_id, $year, $i, $class_id
+                ));
+                
+                if ($existing_monthly) {
+                    error_log('PayStation: Monthly fee summary already exists for month ' . $i . ' - ID: ' . $existing_monthly . ', skipping insert.');
+                    continue;
+                }
+                
                 $month_name_for_note = isset($month_names[$i]) ? $month_names[$i] : $i;
                 $insert_result = $wpdb->insert(
                     'ct_student_monthly_fee_summary',
@@ -812,25 +855,43 @@ function paystation_confirm_payment($payment_id, $invoice_number, $transaction_d
             ));
             
             if ($active_exam) {
-                $wpdb->insert(
-                    'ct_student_exam_fee_summary',
-                    array(
-                        'student_id' => $student_id,
-                        'sub_head_id' => $sub_head_id,
-                        'exam_id' => $active_exam->examid,
-                        'class_id' => $class_id,
-                        'section' => $section,
-                        'group_id' => $group_id,
-                        'year' => $year,
-                        'fee' => $amount,
-                        'info_id' => $collection_info_id,
-                        'status' => 1,
-                        'notes' => 'Exam Fee Collection', // Match backend format
-                        'date' => $formatted_payment_date,
-                        'created_by' => 0, // System/API
-                        'created_at' => get_bdt_time_formatted(), // BDT time - Match backend format with hyphens
-                    )
-                );
+                // Check if exam fee summary already exists (duplicate check)
+                $existing_exam = $wpdb->get_var($wpdb->prepare(
+                    "SELECT id FROM ct_student_exam_fee_summary 
+                     WHERE student_id = %d AND sub_head_id = %d AND exam_id = %d AND year = %s AND class_id = %d",
+                    $student_id, $sub_head_id, $active_exam->examid, $year, $class_id
+                ));
+                
+                if ($existing_exam) {
+                    error_log('PayStation: ⚠️ Exam fee summary already exists for student_id=' . $student_id . ', sub_head_id=' . $sub_head_id . ', exam_id=' . $active_exam->examid . ' - ID: ' . $existing_exam . ', skipping insert.');
+                } else {
+                    $exam_insert_result = $wpdb->insert(
+                        'ct_student_exam_fee_summary',
+                        array(
+                            'student_id' => $student_id,
+                            'sub_head_id' => $sub_head_id,
+                            'exam_id' => $active_exam->examid,
+                            'class_id' => $class_id,
+                            'section' => $section,
+                            'group_id' => $group_id,
+                            'year' => $year,
+                            'fee' => $amount,
+                            'status' => 1,
+                            'notes' => 'Exam Fee Collection', // Match backend format
+                            'date' => $formatted_payment_date,
+                            'created_by' => 0, // System/API
+                            'created_at' => get_bdt_time_formatted(), // BDT time - Match backend format with hyphens
+                        )
+                    );
+                    
+                    if ($exam_insert_result === false) {
+                        error_log('PayStation: ❌ FAILED to insert exam fee summary for student_id=' . $student_id . ', sub_head_id=' . $sub_head_id . ', class_id=' . $class_id . ' - Error: ' . $wpdb->last_error);
+                    } else {
+                        error_log('PayStation: ✅ Exam fee summary inserted successfully - ID: ' . $wpdb->insert_id . ' for student_id=' . $student_id . ', exam_id=' . $active_exam->examid);
+                    }
+                }
+            } else {
+                error_log('PayStation: ❌ Cannot process exam fee - No active exam found for class_id=' . $class_id . ', student_id=' . $student_id . ', sub_head_id=' . $sub_head_id);
             }
         }
     }
@@ -942,6 +1003,72 @@ function paystation_calculate_fee($class_id, $section, $group_id, $year, $month,
     $sub_total = 0;
     $fee_month = $month;
     
+    // Pre-fetch already-paid amounts from collection_details as safety net
+    // (for cases when summary table wasn't updated but collection_details has the record)
+    $monthlyPaidInCollection = array();
+    $yearlyPaidInCollection = array();
+    $examPaidInCollection = array();
+    
+    // Yearly: sub_head_ids paid in collection
+    $yearlyPaidQuery = "SELECT DISTINCT cd.sub_head_id FROM ct_student_fee_collection_details cd
+        INNER JOIN ct_student_fee_collection_info ci ON ci.id = cd.info_id
+        INNER JOIN ct_sub_head sh ON sh.id = cd.sub_head_id
+        WHERE ci.class_id = %d AND ci.year = %s
+        AND ci.student_id = %d AND sh.type = 2";
+    $yearlyPaidParams = array($class_id, $year, $student_id);
+    if ($section) {
+        $yearlyPaidQuery .= " AND ci.section = %d";
+        $yearlyPaidParams[] = $section;
+    }
+    if ($group_id) {
+        $yearlyPaidQuery .= " AND ci.group_id = %d";
+        $yearlyPaidParams[] = $group_id;
+    }
+    $yearlyPaidInCollection = $wpdb->get_col($wpdb->prepare($yearlyPaidQuery, $yearlyPaidParams));
+    if (!$yearlyPaidInCollection) $yearlyPaidInCollection = array();
+    
+    // Exam: sub_head_ids paid in collection
+    $examPaidQuery = "SELECT DISTINCT cd.sub_head_id FROM ct_student_fee_collection_details cd
+        INNER JOIN ct_student_fee_collection_info ci ON ci.id = cd.info_id
+        INNER JOIN ct_sub_head sh ON sh.id = cd.sub_head_id
+        WHERE ci.class_id = %d AND ci.year = %s
+        AND ci.student_id = %d AND sh.type = 3";
+    $examPaidParams = array($class_id, $year, $student_id);
+    if ($section) {
+        $examPaidQuery .= " AND ci.section = %d";
+        $examPaidParams[] = $section;
+    }
+    if ($group_id) {
+        $examPaidQuery .= " AND ci.group_id = %d";
+        $examPaidParams[] = $group_id;
+    }
+    $examPaidInCollection = $wpdb->get_col($wpdb->prepare($examPaidQuery, $examPaidParams));
+    if (!$examPaidInCollection) $examPaidInCollection = array();
+    
+    // Monthly: sub_head_id+month combinations paid in collection (using cd.month column)
+    $monthlyPaidQuery = "SELECT cd.sub_head_id, cd.month FROM ct_student_fee_collection_details cd
+        INNER JOIN ct_student_fee_collection_info ci ON ci.id = cd.info_id
+        INNER JOIN ct_sub_head sh ON sh.id = cd.sub_head_id
+        WHERE ci.class_id = %d AND ci.year = %s
+        AND ci.student_id = %d AND sh.type = 1 AND cd.fee > 0 AND cd.month IS NOT NULL";
+    $monthlyPaidParams = array($class_id, $year, $student_id);
+    if ($section) {
+        $monthlyPaidQuery .= " AND ci.section = %d";
+        $monthlyPaidParams[] = $section;
+    }
+    if ($group_id) {
+        $monthlyPaidQuery .= " AND ci.group_id = %d";
+        $monthlyPaidParams[] = $group_id;
+    }
+    $monthlyPaidRows = $wpdb->get_results($wpdb->prepare($monthlyPaidQuery, $monthlyPaidParams));
+    if ($monthlyPaidRows) {
+        foreach ($monthlyPaidRows as $row) {
+            if ($row->month) {
+                $monthlyPaidInCollection[$row->sub_head_id . '|' . $row->month] = true;
+            }
+        }
+    }
+    
     foreach ($sub_heads as $sub_head) {
         $sub_head_id = $sub_head->id;
         $sub_head_type = $sub_head->type;
@@ -982,8 +1109,9 @@ function paystation_calculate_fee($class_id, $section, $group_id, $year, $month,
                 }
                 
                 $paid_check = $wpdb->get_var($wpdb->prepare($paid_query, $paid_params));
+                $monthlyCollectionKey = $sub_head_id . '|' . $i;
                 
-                if (!$paid_check) {
+                if (!$paid_check && !isset($monthlyPaidInCollection[$monthlyCollectionKey])) {
                     $fee_amount = $base_fee;
                     
                     if ($sub_head_id == $monthlyFeeSubHeadId) {
@@ -1063,7 +1191,7 @@ function paystation_calculate_fee($class_id, $section, $group_id, $year, $month,
             
             $paid_check = $wpdb->get_var($wpdb->prepare($paid_query, $paid_params));
             
-            if (!$paid_check) {
+            if (!$paid_check && !in_array($sub_head_id, $yearlyPaidInCollection)) {
                 $amount = $base_fee;
                 
                 if ($sub_head_id == $admissionFeeSubHeadId) {
@@ -1135,7 +1263,7 @@ function paystation_calculate_fee($class_id, $section, $group_id, $year, $month,
                 
                 $paid_check = $wpdb->get_var($wpdb->prepare($paid_query, $paid_params));
                 
-                if (!$paid_check) {
+                if (!$paid_check && !in_array($sub_head_id, $examPaidInCollection)) {
                     $amount = $base_fee;
                 }
             }

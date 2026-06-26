@@ -1363,10 +1363,9 @@ if (isset($_POST['delRevinew'])) {
 				}else if($subHeadType == 3){
 					// exam
 					// get active exam id
-					// $activeExamId = $wpdb->get_results("SELECT examid FROM ct_exam WHERE active_for_collection = 1 LIMIT 1");
-					// if($activeExamId){
-						// $activeExamId = $activeExamId[0]->examid;
-						$feeInfoQuery = "SELECT fee FROM ct_student_exam_fee_summary WHERE sub_head_id = $sub_head_id AND class_id = $class AND year = '$year' AND student_id = $val->infoStdid";
+					$activeExamId = $wpdb->get_var("SELECT examid FROM ct_exam WHERE active_for_collection = 1 AND examClass = $class LIMIT 1");
+					if($activeExamId){
+						$feeInfoQuery = "SELECT fee FROM ct_student_exam_fee_summary WHERE sub_head_id = $sub_head_id AND class_id = $class AND exam_id = $activeExamId AND year = '$year' AND student_id = $val->infoStdid";
 						if(isset($sec) && !empty($sec)){
 							$feeInfoQuery .= " AND section = $sec";
 						}
@@ -1389,7 +1388,7 @@ if (isset($_POST['delRevinew'])) {
 						}else{
 							$allLists[$key]['due'] = 0;
 						}
-					// }
+					}
 					
 				}else if($subHeadType == 4){
 					$allLists[$key]['due'] = $fees;
@@ -2514,6 +2513,7 @@ if($val->type == 1){
 	// monthly
 	$sumOfFees = 0;
 	$fee_month_list = [];
+	$month_paid_amounts = [];
 	
 	// remove this after adjusting absent and late fee dynamically
 	if($val->id == $absentSubHeadId || $val->id == $lateSubHeadId || $val->id == $ictFeeSubHeadId){
@@ -2523,7 +2523,7 @@ if($val->type == 1){
 			array(
 				'student_id' 		=> $std_id,
 				'year' 	=> $year,
-				'month' => $i,
+				'month' => $fee_month,
 				'class_id' 	=> $class,
 				'section' 	=> $section,
 				'group_id' 	=> $group,
@@ -2542,6 +2542,7 @@ if($val->type == 1){
 		saveLeadger($val->id ,$fees,0, 'Collection Reference ID-'.$info_id,$last_id_month,null,null,$_POST['fee-date'],$info_id);
 
 		$sumOfFees += $fees;
+		$month_paid_amounts[$fee_month] = $fees;
 	}else{
 	for($i = $fee_month; $i>=1; $i--){
 		$feeInfoQuery = "SELECT fee FROM ct_student_monthly_fee_summary WHERE sub_head_id = $val->id AND class_id = $class AND year = '$year' AND month = $i AND student_id = $std_id";
@@ -2582,6 +2583,7 @@ if($val->type == 1){
 					saveLeadger($val->id ,0,0, 'Collection Reference ID ('.$facilities.')-'.$info_id,$last_id_month,null,null,$_POST['fee-date'],$info_id);
 		
 					$sumOfFees += 0;
+					$month_paid_amounts[$i] = 0;
 					$fee_month_list[] = $monthArray[$i-1];
 				} else if($facilities == 'Half free' ){
 					$insert = $wpdb->insert(
@@ -2608,6 +2610,7 @@ if($val->type == 1){
 					saveLeadger($val->id ,$fees/2,0, 'Collection Reference ID ('.$facilities.')-'.$info_id,$last_id_month,null,null,$_POST['fee-date'],$info_id);
 		
 					$sumOfFees += $fees/2;
+					$month_paid_amounts[$i] = $fees/2;
 					$fee_month_list[] = $monthArray[$i-1];
 				}else{
 					// check student wise monthly fee
@@ -2640,6 +2643,7 @@ if($val->type == 1){
 					saveLeadger($val->id ,$fees,0, 'Collection Reference ID-'.$info_id,$last_id_month,null,null,$_POST['fee-date'],$info_id);
 		
 					$sumOfFees += $fees;
+					$month_paid_amounts[$i] = $fees;
 					$fee_month_list[] = $monthArray[$i-1];
 				}
 				
@@ -2684,6 +2688,7 @@ if($val->type == 1){
 							saveLeadger($val->id ,$fees,0, 'Collection Reference ID (One way transport)-'.$info_id,$last_id_month,null,null,$_POST['fee-date'],$info_id);
 				
 							$sumOfFees += $fees;
+							$month_paid_amounts[$i] = $fees;
 							$fee_month_list[] = $monthArray[$i-1];
 						}else{
 							// two way
@@ -2711,6 +2716,7 @@ if($val->type == 1){
 							saveLeadger($val->id ,$fees,0, 'Collection Reference ID (Two way transport)-'.$info_id,$last_id_month,null,null,$_POST['fee-date'],$info_id);
 				
 							$sumOfFees += $fees;
+							$month_paid_amounts[$i] = $fees;
 							$fee_month_list[] = $monthArray[$i-1];
 						}
 					}
@@ -2756,6 +2762,7 @@ if($val->type == 1){
 				saveLeadger($val->id ,$fees,0, 'Collection Reference ID (Coaching fee)-'.$info_id,$last_id_month,null,null,$_POST['fee-date'],$info_id);
 	
 				$sumOfFees += $fees;
+				$month_paid_amounts[$i] = $fees;
 				$fee_month_list[] = $monthArray[$i-1];
 			}else{
 				$insert = $wpdb->insert(
@@ -2782,6 +2789,7 @@ if($val->type == 1){
 				saveLeadger($val->id ,$fees,0, 'Collection Reference ID-'.$info_id,$last_id_month,null,null,$_POST['fee-date'],$info_id);
 	
 				$sumOfFees += $fees;
+				$month_paid_amounts[$i] = $fees;
 				$fee_month_list[] = $monthArray[$i-1];
 			}
 			
@@ -2794,21 +2802,26 @@ if($val->type == 1){
 		$sumOfFees = $_POST['subheadid'][$key];;
 	}
 
-	// save monthly collection details here
-	if($sumOfFees > 0){
-			$insert = $wpdb->insert(
-			'ct_student_fee_collection_details',
-			array(
-				'info_id' 		=> $info_id,								
-				'sub_head_id' 	=> $val->id,
-				'fee' 	=> $sumOfFees,
-				'status' 	=> 1,
-				'reference' 	=> 'Monthly Summary',
-				'date' 	=> $_POST['fee-date'],
-				'created_by' 	=> get_current_user_id(),
-				'created_at' 	=> date('Y-m-d H-i-s')
-			)
-		);
+	// save monthly collection details here (per-month rows)
+	if(!empty($month_paid_amounts)){
+		foreach($month_paid_amounts as $month_num => $amount){
+			if($amount > 0){
+				$insert = $wpdb->insert(
+					'ct_student_fee_collection_details',
+					array(
+						'info_id' 		=> $info_id,								
+						'sub_head_id' 	=> $val->id,
+						'month'         => $month_num,
+						'fee' 	=> $amount,
+						'status' 	=> 1,
+						'reference' 	=> 'Monthly Summary',
+						'date' 	=> $_POST['fee-date'],
+						'created_by' 	=> get_current_user_id(),
+						'created_at' 	=> date('Y-m-d H-i-s')
+					)
+				);
+			}
+		}
 	}
 	
 

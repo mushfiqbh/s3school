@@ -2,6 +2,11 @@
 /**
 * Template Name: Student Fee Audit Report
 */
+// Restrict access to logged-in users only
+if (!is_user_logged_in()) {
+    auth_redirect();
+}
+
 global $wpdb;
 global $monthlyFeeSubHeadId, $transportFeeSubHeadId, $coachingFeeSubHeadId;
 global $admissionFeeSubHeadId, $admissionFormSubHeadId, $registrationFeeSubHeadId;
@@ -496,8 +501,24 @@ $active_tab = isset($_GET['tab']) && in_array($_GET['tab'], array('due', 'audit'
 
 // ===== Claim mismatch handler =====
 $claim_message = '';
+$claim_it_message = '';
+$claim_it_error = '';
+$refund_message = '';
+$refund_error = '';
 if (isset($_GET['claim_done']) && $_GET['claim_done'] === '1') {
     $claim_message = 'Claim submitted successfully.';
+}
+if (isset($_GET['claim_it_done']) && $_GET['claim_it_done'] === '1') {
+    $claim_it_message = 'PayStation payment claimed, marked as paid, and added to collection successfully!';
+}
+if (isset($_GET['claim_it_error']) && $_GET['claim_it_error'] === '1') {
+    $claim_it_error = 'Failed to claim the PayStation payment. Please check that the transaction exists and try again.';
+}
+if (isset($_GET['refund_done']) && $_GET['refund_done'] === '1') {
+    $refund_message = 'Payment refunded successfully. Transaction status set to refunded and collection records removed.';
+}
+if (isset($_GET['refund_error']) && $_GET['refund_error'] === '1') {
+    $refund_error = 'Failed to process refund. Please check that the transaction exists and try again.';
 }
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'claim_mismatch') {
     if (!empty($_POST['mismatch_id']) && !empty($_POST['claim_reason'])) {
@@ -520,6 +541,283 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         wp_redirect(add_query_arg(array('tab' => 'mismatches', 'claim_done' => '1')));
         exit;
     }
+}
+
+// ===== Claim It Payment handler (mark PayStation txn as paid + add to collection) =====
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'claim_it_payment') {
+    $ps_table = $wpdb->prefix . 'paystation_transactions';
+    $payment_id = sanitize_text_field($_POST['payment_id']);
+    $transaction_id = sanitize_text_field($_POST['transaction_id']);
+    $claim_month = intval($_POST['claim_month']);
+    $claim_year = sanitize_text_field($_POST['claim_year']);
+
+    if ($payment_id && !empty($transaction_id) && $claim_year) {
+        $txn = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM {$ps_table} WHERE payment_id = %s", $payment_id
+        ));
+
+        if ($txn && $txn->student_id) {
+            $student_id = $txn->student_id;
+            $fee_data = json_decode($txn->fee_data, true);
+            $total_amount = floatval($txn->total_amount);
+
+            // Update PayStation transaction status to paid
+            $wpdb->update(
+                $ps_table,
+                array(
+                    'transaction_id' => $transaction_id,
+                    'status' => 'paid',
+                    'payment_date' => current_time('mysql'),
+                ),
+                array('payment_id' => $payment_id)
+            );
+
+            // Get student info for class/section/group
+            $student_info = $wpdb->get_row($wpdb->prepare(
+                "SELECT si.infoStdid, si.infoClass, si.infoSection, si.infoGroup, si.infoRoll
+                 FROM ct_studentinfo si
+                 WHERE si.infoStdid = %d AND si.infoYear = %s",
+                $student_id, $claim_year
+            ));
+
+            // Insert collection info record
+            $info_data = array(
+                'student_id' => $student_id,
+                'student_roll' => $student_info ? $student_info->infoRoll : 0,
+                'year' => $claim_year,
+                'month' => ($claim_month > 0 && $claim_month <= 12) ? $claim_month : null,
+                'class_id' => $student_info ? $student_info->infoClass : 0,
+                'section' => $student_info ? $student_info->infoSection : null,
+                'group_id' => $student_info ? $student_info->infoGroup : null,
+                'sub_total' => $total_amount,
+                'remission' => 0,
+                'total' => $total_amount,
+                'status' => 1,
+                'notes' => 'Claimed from PayStation (payment_id: ' . $payment_id . ')',
+                'date' => current_time('mysql'),
+                'created_by' => get_current_user_id(),
+                'created_at' => current_time('mysql'),
+                'payment_method' => 'PayStation',
+                'payment_id' => $payment_id,
+                'transaction_id' => $transaction_id,
+            );
+            $wpdb->insert('ct_student_fee_collection_info', $info_data);
+            $info_id = $wpdb->insert_id;
+
+            // Insert collection details from fee_data (per-month rows for monthly fees)
+            // Also insert into summary tables
+            $has_details = false;
+            if ($fee_data && is_array($fee_data)) {
+                // Get the class_id for fee lookup
+                $class_id_for_fee = $student_info ? $student_info->infoClass : 0;
+
+                foreach ($fee_data as $fee_item) {
+                    $sub_head_id = intval($fee_item['sub_head_id'] ?? $fee_item['id'] ?? 0);
+                    $fee_amount = floatval($fee_item['amount'] ?? $fee_item['fee'] ?? $fee_item['total'] ?? 0);
+                    $fee_type = $fee_item['fee_type'] ?? '';
+                    $exam_id = intval($fee_item['exam_id'] ?? 0);
+
+                    // Infer fee_type from sub_head type if not provided
+                    if (!$fee_type && $sub_head_id) {
+                        $sh_type = $wpdb->get_var($wpdb->prepare(
+                            "SELECT type FROM ct_sub_head WHERE id = %d", $sub_head_id
+                        ));
+                        if ($sh_type == 1) $fee_type = 'monthly';
+                        elseif ($sh_type == 2) $fee_type = 'yearly';
+                        elseif ($sh_type == 3) $fee_type = 'exam';
+                    }
+
+                    if ($sub_head_id && $fee_amount > 0) {
+                        if ($fee_type === 'monthly' && $claim_month > 0) {
+                            // Monthly: insert per-month collection_details + monthly_summary rows
+                            $base_fee = $wpdb->get_var($wpdb->prepare(
+                                "SELECT fee FROM ct_student_fee_list 
+                                 WHERE sub_head_id = %d AND class_id = %d AND year = %s 
+                                 ORDER BY id DESC LIMIT 1",
+                                $sub_head_id, $class_id_for_fee, $claim_year
+                            ));
+                            $base_fee = $base_fee ? floatval($base_fee) : 0;
+                            $fee_per_month = $base_fee > 0 ? $base_fee : ($fee_amount / $claim_month);
+
+                            for ($m = $claim_month; $m >= 1; $m--) {
+                                $month_fee = round($fee_per_month, 2);
+                                $wpdb->insert('ct_student_fee_collection_details', array(
+                                    'info_id' => $info_id,
+                                    'sub_head_id' => $sub_head_id,
+                                    'month' => $m,
+                                    'fee' => $month_fee,
+                                    'status' => 1,
+                                    'date' => current_time('mysql'),
+                                    'created_by' => get_current_user_id(),
+                                    'created_at' => current_time('mysql'),
+                                ));
+                                $wpdb->insert('ct_student_monthly_fee_summary', array(
+                                    'student_id' => $student_id,
+                                    'year' => $claim_year,
+                                    'month' => $m,
+                                    'class_id' => $class_id_for_fee,
+                                    'section' => $student_info ? $student_info->infoSection : null,
+                                    'group_id' => $student_info ? $student_info->infoGroup : null,
+                                    'info_id' => $info_id,
+                                    'sub_head_id' => $sub_head_id,
+                                    'fee' => $month_fee,
+                                    'status' => 1,
+                                    'notes' => '',
+                                    'date' => current_time('mysql'),
+                                    'created_by' => get_current_user_id(),
+                                    'created_at' => current_time('mysql'),
+                                ));
+                            }
+                        } elseif ($fee_type === 'yearly') {
+                            // Yearly: single collection_details row + yearly_summary
+                            $wpdb->insert('ct_student_fee_collection_details', array(
+                                'info_id' => $info_id,
+                                'sub_head_id' => $sub_head_id,
+                                'fee' => $fee_amount,
+                                'status' => 1,
+                                'date' => current_time('mysql'),
+                                'created_by' => get_current_user_id(),
+                                'created_at' => current_time('mysql'),
+                            ));
+                            $wpdb->insert('ct_student_yearly_fee_summary', array(
+                                'student_id' => $student_id,
+                                'year' => $claim_year,
+                                'class_id' => $class_id_for_fee,
+                                'section' => $student_info ? $student_info->infoSection : null,
+                                'group_id' => $student_info ? $student_info->infoGroup : null,
+                                'info_id' => $info_id,
+                                'sub_head_id' => $sub_head_id,
+                                'fee' => $fee_amount,
+                                'status' => 1,
+                                'notes' => 'Yearly Summary (Claimed)',
+                                'date' => current_time('mysql'),
+                                'created_by' => get_current_user_id(),
+                                'created_at' => current_time('mysql'),
+                            ));
+                        } elseif ($fee_type === 'exam') {
+                            // Exam: single collection_details row + exam_summary
+                            $wpdb->insert('ct_student_fee_collection_details', array(
+                                'info_id' => $info_id,
+                                'sub_head_id' => $sub_head_id,
+                                'fee' => $fee_amount,
+                                'status' => 1,
+                                'date' => current_time('mysql'),
+                                'exam_id' => $exam_id ?: null,
+                                'created_by' => get_current_user_id(),
+                                'created_at' => current_time('mysql'),
+                            ));
+                            $active_exam_id = $exam_id ?: $wpdb->get_var($wpdb->prepare(
+                                "SELECT examid FROM ct_exam WHERE active_for_collection = 1 AND examClass = %d LIMIT 1",
+                                $class_id_for_fee
+                            ));
+                            if ($active_exam_id) {
+                                $wpdb->insert('ct_student_exam_fee_summary', array(
+                                    'student_id' => $student_id,
+                                    'year' => $claim_year,
+                                    'class_id' => $class_id_for_fee,
+                                    'section' => $student_info ? $student_info->infoSection : null,
+                                    'group_id' => $student_info ? $student_info->infoGroup : null,
+                                    'info_id' => $info_id,
+                                    'exam_id' => $active_exam_id,
+                                    'sub_head_id' => $sub_head_id,
+                                    'fee' => $fee_amount,
+                                    'status' => 1,
+                                    'notes' => 'Exam Fee Collection (Claimed)',
+                                    'date' => current_time('mysql'),
+                                    'created_by' => get_current_user_id(),
+                                    'created_at' => current_time('mysql'),
+                                ));
+                            }
+                        } else {
+                            // Unknown type: single detail row
+                            $wpdb->insert('ct_student_fee_collection_details', array(
+                                'info_id' => $info_id,
+                                'sub_head_id' => $sub_head_id,
+                                'fee' => $fee_amount,
+                                'status' => 1,
+                                'date' => current_time('mysql'),
+                                'exam_id' => $exam_id ?: null,
+                                'created_by' => get_current_user_id(),
+                                'created_at' => current_time('mysql'),
+                            ));
+                        }
+                        $has_details = true;
+                    }
+                }
+            }
+
+            if (!$has_details) {
+                // Fallback: insert total as a single detail row
+                $wpdb->insert('ct_student_fee_collection_details', array(
+                    'info_id' => $info_id,
+                    'sub_head_id' => 0,
+                    'fee' => $total_amount,
+                    'status' => 1,
+                    'date' => current_time('mysql'),
+                    'created_by' => get_current_user_id(),
+                    'created_at' => current_time('mysql'),
+                ));
+            }
+
+            wp_redirect(add_query_arg(array('tab' => 'audit', 'claim_it_done' => '1')));
+            exit;
+        }
+    }
+    wp_redirect(add_query_arg(array('tab' => 'audit', 'claim_it_error' => '1')));
+    exit;
+}
+
+// ===== Refund Payment handler =====
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'refund_payment') {
+    $ps_table = $wpdb->prefix . 'paystation_transactions';
+    $payment_id = sanitize_text_field($_POST['payment_id']);
+
+    if ($payment_id) {
+        $txn = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM {$ps_table} WHERE payment_id = %s", $payment_id
+        ));
+
+        if ($txn && $txn->transaction_id) {
+            $transaction_id = $txn->transaction_id;
+
+            // Update PayStation transaction status to refunded
+            $wpdb->update(
+                $ps_table,
+                array('status' => 'refunded'),
+                array('payment_id' => $payment_id)
+            );
+
+            // Find and remove collection info records matching this transaction_id
+            $info_records = $wpdb->get_results($wpdb->prepare(
+                "SELECT info_id FROM ct_student_fee_collection_info WHERE transaction_id = %s",
+                $transaction_id
+            ));
+
+            if ($info_records) {
+                $info_ids = array();
+                foreach ($info_records as $rec) {
+                    $info_ids[] = intval($rec->info_id);
+                }
+                $info_ids_str = implode(',', $info_ids);
+
+                // Delete collection details for these info_ids
+                $wpdb->query("DELETE FROM ct_student_fee_collection_details WHERE info_id IN ({$info_ids_str})");
+
+                // Also delete summary table records linked to these info_ids
+                $wpdb->query("DELETE FROM ct_student_monthly_fee_summary WHERE info_id IN ({$info_ids_str})");
+                $wpdb->query("DELETE FROM ct_student_yearly_fee_summary WHERE info_id IN ({$info_ids_str})");
+                $wpdb->query("DELETE FROM ct_student_exam_fee_summary WHERE info_id IN ({$info_ids_str})");
+
+                // Delete collection info records
+                $wpdb->delete('ct_student_fee_collection_info', array('transaction_id' => $transaction_id));
+            }
+
+            wp_redirect(add_query_arg(array('tab' => 'audit', 'refund_done' => '1')));
+            exit;
+        }
+    }
+    wp_redirect(add_query_arg(array('tab' => 'audit', 'refund_error' => '1')));
+    exit;
 }
 
 // ===== Compute due students for a class =====
@@ -591,28 +889,9 @@ function computeDueStudents($class_id, $section, $group, $year) {
         $exam_paid_map[$r->student_id] = floatval($r->paid);
     }
 
-    // Also get paid amounts directly from collection records (catches PayStation payments
-    // linked via transaction_id that may not yet be synced to summary tables)
-    $collection_paid_map = array();
-    $collection_raw = $wpdb->get_results($wpdb->prepare(
-        "SELECT ci.student_id, SUM(cd.fee) as paid
-        FROM ct_student_fee_collection_info ci
-        INNER JOIN ct_student_fee_collection_details cd ON cd.info_id = ci.id
-        WHERE ci.class_id = %d AND ci.year = %s AND cd.fee > 0
-        GROUP BY ci.student_id",
-        $class_id, $year
-    ));
-    foreach ($collection_raw as $r) {
-        $collection_paid_map[$r->student_id] = floatval($r->paid);
-    }
-
     $result = array();
     foreach ($students as $s) {
-        $summary_paid = ($yearly_paid_map[$s->infoStdid] ?? 0) + ($monthly_paid_map[$s->infoStdid] ?? 0) + ($exam_paid_map[$s->infoStdid] ?? 0);
-        $collection_paid = $collection_paid_map[$s->infoStdid] ?? 0;
-        // Use whichever is higher — collection records are the source of truth and include
-        // PayStation-linked payments not yet reflected in summary tables
-        $paid = max($summary_paid, $collection_paid);
+        $paid = ($yearly_paid_map[$s->infoStdid] ?? 0) + ($monthly_paid_map[$s->infoStdid] ?? 0) + ($exam_paid_map[$s->infoStdid] ?? 0);
         $due = max(0, $total_expected - $paid);
         $pct = $total_expected > 0 ? round(($paid / $total_expected) * 100) : 0;
         if ($paid > $total_expected) $status_s = 'Overpaid';
@@ -1468,6 +1747,19 @@ body {
     color: #fff;
     border-color: #e65100;
 }
+.btn-refund {
+    background: #fef2f2;
+    color: #dc2626;
+    border: 1.5px solid #fca5a5;
+    padding: 6px 14px;
+    font-size: 12px;
+    flex-shrink: 0;
+}
+.btn-refund:hover {
+    background: #dc2626;
+    color: #fff;
+    border-color: #dc2626;
+}
 
 /* ===== Claim Modal ===== */
 .modal-overlay {
@@ -1804,6 +2096,31 @@ body {
     </div>
 </div>
 
+<?php if (!empty($claim_it_message)): ?>
+<div style="background:var(--success-bg);color:var(--success);padding:12px 20px;border-radius:var(--radius-sm);margin-bottom:12px;font-size:14px;font-weight:500;display:flex;align-items:center;gap:10px;">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+    <?= esc_html($claim_it_message) ?>
+</div>
+<?php endif; ?>
+<?php if (!empty($claim_it_error)): ?>
+<div style="background:var(--danger-bg);color:var(--danger);padding:12px 20px;border-radius:var(--radius-sm);margin-bottom:12px;font-size:14px;display:flex;align-items:center;gap:10px;">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+    <?= esc_html($claim_it_error) ?>
+</div>
+<?php endif; ?>
+<?php if (!empty($refund_message)): ?>
+<div style="background:var(--success-bg);color:var(--success);padding:12px 20px;border-radius:var(--radius-sm);margin-bottom:12px;font-size:14px;font-weight:500;display:flex;align-items:center;gap:10px;">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+    <?= esc_html($refund_message) ?>
+</div>
+<?php endif; ?>
+<?php if (!empty($refund_error)): ?>
+<div style="background:var(--danger-bg);color:var(--danger);padding:12px 20px;border-radius:var(--radius-sm);margin-bottom:12px;font-size:14px;display:flex;align-items:center;gap:10px;">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+    <?= esc_html($refund_error) ?>
+</div>
+<?php endif; ?>
+
 <!-- ===== Filter Card with Tabs ===== -->
 <div class="filter-card filter-with-tabs">
     <div class="filter-body">
@@ -2113,7 +2430,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     <button class="btn-xs btn-claim" onclick="openClaimModal()" title="Claim a payment that was recorded under wrong student info">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-                        Claim Payment
+                        Paid to Wrong Student?
                     </button>
                 </div>
             </div>
@@ -2179,39 +2496,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
             ?>
-
-            <!-- ===== Mismatch Alerts ===== -->
-            <?php if (!empty($potentialMismatches)): ?>
-            <div class="card" style="border-left: 4px solid <?= $mismatch_high_count > 0 ? '#dc2626' : ($mismatch_medium_count > 0 ? '#d97706' : '#6b7280') ?>;">
-                <div class="card-header">
-                    <h3>🔍 Payment Mismatch Alerts</h3>
-                </div>
-                <div class="card-body">
-                    <table class="modern-table">
-                        <thead><tr><th>Severity</th><th>Type</th><th>Issue</th><th>Count</th><th class="text-right">Amount</th></tr></thead>
-                        <tbody>
-                        <?php foreach ($potentialMismatches as $mm): ?>
-                        <tr>
-                            <td>
-                                <?php if ($mm['severity'] === 'high'): ?>
-                                <span class="badge badge-danger">🔴 High</span>
-                                <?php elseif ($mm['severity'] === 'medium'): ?>
-                                <span class="badge badge-warning">🟠 Medium</span>
-                                <?php else: ?>
-                                <span class="badge badge-info">⚪ Low</span>
-                                <?php endif; ?>
-                            </td>
-                            <td style="font-weight:600;"><?= str_replace('_', ' ', $mm['type']) ?></td>
-                            <td><?= esc_html($mm['title']) ?><br><small style="color:var(--gray-500);"><?= esc_html($mm['description']) ?></small></td>
-                            <td><?= $mm['count'] ?></td>
-                            <td class="text-right"><?= $mm['amount'] > 0 ? number_format($mm['amount'], 2) : '-' ?></td>
-                        </tr>
-                        <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <?php endif; ?>
 
             <!-- ===== PayStation Transactions ===== -->
             <?php if (!empty($allPaystationTxns)):
@@ -2310,21 +2594,31 @@ document.addEventListener('DOMContentLoaded', function() {
                                 ?>
                             </td>
                             <td>
-                                <?php if ($txn['status'] === 'paid'): ?>
-                                <button class="btn-xs btn-transfer" onclick="openTransferModal(
+                                <?php if ($txn['status'] === 'paid'): 
+                                    $refund_sd = json_decode($txn['student_data'], true);
+                                    $refund_phone = ($refund_sd && !empty($refund_sd['cust_phone'])) ? esc_js($refund_sd['cust_phone']) : '';
+                                ?>
+                                <button class="btn-xs btn-refund" onclick="openRefundModal(
                                     '<?= esc_js($txn['payment_id']) ?>',
                                     '<?= esc_js($txn['invoice_number']) ?>',
                                     '<?= floatval($txn['total_amount']) ?>',
-                                    '<?= esc_js($txn['status']) ?>',
-                                    '<?= $studentInfo ? esc_js($studentInfo->stdName) : '' ?>'
-                                )" title="Transfer this payment to another student">
-                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-                                    Transfer
+                                    '<?= esc_js($txn['transaction_id'] ?? '') ?>',
+                                    '<?= intval($txn['student_id']) ?>',
+                                    '<?= $refund_phone ?>'
+                                )" title="Refund this payment">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9"/><polyline points="12 3 21 3 21 12"/><path d="M12 7v5l3 3"/></svg>
+                                    Refund
                                 </button>
-                                <?php else: ?>
-                                <button class="btn-xs btn-claim" onclick="openClaimModal()" title="Claim this payment">
+                                <?php elseif ($txn['status'] !== 'paid' && $txn['status'] !== 'cancelled'): ?>
+                                <button class="btn-xs btn-claim" onclick="openClaimItModal(
+                                    '<?= esc_js($txn['payment_id']) ?>',
+                                    '<?= esc_js($txn['invoice_number']) ?>',
+                                    '<?= floatval($txn['total_amount']) ?>',
+                                    '<?= esc_js($txn['transaction_id'] ?? '') ?>',
+                                    '<?= intval($txn['student_id']) ?>'
+                                )" title="Mark as paid and add to collection">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-                                    Claim
+                                    Claim It
                                 </button>
                                 <?php endif; ?>
                             </td>
@@ -2349,131 +2643,159 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 
-<!-- ===== Transfer Payment Modal ===== -->
-<div class="modal-overlay" id="transferModal">
+<!-- ===== Claim It Payment Modal (mark non-paid PayStation txn as paid) ===== -->
+<div class="modal-overlay" id="claimItModal">
     <div class="modal-box">
         <div class="modal-header">
-            <h3>Transfer Payment</h3>
-            <button class="modal-close" onclick="closeTransferModal()">&times;</button>
+            <h3>Claim PayStation Payment</h3>
+            <button class="modal-close" onclick="closeClaimItModal()">&times;</button>
         </div>
         <div class="modal-body">
-            <!-- Transfer info summary -->
-            <div class="transfer-info" id="transferInfo">
-                <div><span class="ti-label">Payment ID</span><div class="ti-value" id="tiPaymentId">-</div></div>
-                <div><span class="ti-label">Invoice</span><div class="ti-value" id="tiInvoice">-</div></div>
-                <div><span class="ti-label">Amount</span><div class="ti-value" id="tiAmount">-</div></div>
-                <div><span class="ti-label">Current Status</span><div class="ti-value" id="tiStatus">-</div></div>
+            <!-- Transaction info summary -->
+            <div class="transfer-info" id="claimItInfo">
+                <div><span class="ti-label">Payment ID</span><div class="ti-value" id="ciPaymentId">-</div></div>
+                <div><span class="ti-label">Invoice</span><div class="ti-value" id="ciInvoice">-</div></div>
+                <div><span class="ti-label">Amount</span><div class="ti-value" id="ciAmount">-</div></div>
+                <div><span class="ti-label">Student ID</span><div class="ti-value" id="ciStudentId">-</div></div>
             </div>
 
             <!-- Success / Error messages -->
-            <div class="transfer-success" id="transferSuccess">
+            <div class="transfer-success" id="claimItSuccess">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                <span id="transferSuccessMsg">Payment transferred successfully!</span>
+                <span>Payment claimed and added to collection successfully!</span>
             </div>
-            <div class="transfer-error" id="transferError"></div>
+            <div class="transfer-error" id="claimItError"></div>
 
-            <!-- Transfer form -->
-            <div class="modal-form" id="transferForm">
-                <p style="font-size:13px;color:var(--text-secondary);margin:0 0 16px;">Select the target class, section, and year, then choose the student to receive this payment.</p>
+            <!-- Claim form -->
+            <div class="modal-form" id="claimItForm">
+                <p style="font-size:13px;color:var(--text-secondary);margin:0 0 16px;">
+                    This PayStation transaction is not yet marked as paid. Confirm the details below to mark it as paid and add it to the student's collection records.
+                </p>
 
                 <div class="form-row">
-                    <div class="form-group">
-                        <label>Target Class</label>
-                        <select id="targetClass" onchange="loadTargetSections(); loadTargetStudents();">
-                            <option value="">Select Class</option>
-                            <?php
-                            $all_classes = $wpdb->get_results("SELECT classid, className FROM ct_class ORDER BY className ASC");
-                            foreach ($all_classes as $c) {
-                                echo '<option value="'.$c->classid.'">'.$c->className.'</option>';
-                            }
-                            ?>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Section</label>
-                        <select id="targetSection" onchange="loadTargetStudents();">
-                            <option value="">All Sections</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Year</label>
-                        <select id="targetYear" onchange="loadTargetStudents();">
-                            <?php for ($y = current_time('Y') - 2; $y <= current_time('Y') + 1; $y++) {
-                                echo '<option value="'.$y.'"'.($y == $filter_year ? ' selected' : '').'>'.$y.'</option>';
-                            } ?>
-                        </select>
+                    <div class="form-group" style="flex:2;">
+                        <label>Transaction ID <span style="color:#dc2626;">*</span></label>
+                        <input type="text" id="claimItTransactionId" placeholder="Enter transaction reference number" style="width:100%;font-family:monospace;font-size:13px;" required autocomplete="off">
+                        <div id="claimItTxnIdStatus" style="font-size:12px;margin-top:4px;min-height:18px;"></div>
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Search (Name or Roll)</label>
-                        <input type="text" id="targetSearch" placeholder="Type to search..." oninput="loadTargetStudents();" autocomplete="off">
+                        <label>Month <span style="color:#dc2626;">*</span></label>
+                        <select id="claimItMonth" required>
+                            <option value="">Select Month</option>
+                            <?php for ($m = 1; $m <= 12; $m++): ?>
+                            <option value="<?= $m ?>" <?= $m == date('n') ? 'selected' : '' ?>><?= $monthNames[$m] ?></option>
+                            <?php endfor; ?>
+                        </select>
                     </div>
-                </div>
-
-                <div class="student-results" id="studentResults">
-                    <div class="sr-empty">Select a class and year above to see students</div>
-                </div>
-
-                <div class="form-row">
                     <div class="form-group">
-                        <label>Note (optional)</label>
-                        <input type="text" id="transferNote" placeholder="Reason for transfer..." style="width:100%;">
+                        <label>Year <span style="color:#dc2626;">*</span></label>
+                        <select id="claimItYear" required>
+                            <?php for ($y = current_time('Y') - 2; $y <= current_time('Y') + 1; $y++): ?>
+                            <option value="<?= $y ?>" <?= $y == $filter_year ? 'selected' : '' ?>><?= $y ?></option>
+                            <?php endfor; ?>
+                        </select>
                     </div>
                 </div>
 
-                <div class="transfer-loading" id="transferLoading">
+                <button class="btn-transfer-submit" id="btnClaimItSubmit" onclick="reviewClaimItPayment()" style="width:100%;margin-top:8px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                    Review &amp; Confirm
+                </button>
+
+                <div class="transfer-loading" id="claimItLoading">
                     <div class="spinner"></div>
-                    <span>Processing transfer...</span>
+                    <span>Processing...</span>
                 </div>
             </div>
 
-            <!-- Transfer confirmation step -->
-            <div class="transfer-confirm" id="transferConfirm">
-                <div class="cf-header">Confirm Payment Transfer</div>
-                <div class="cf-icon">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <!-- ===== Confirmation Step ===== -->
+            <div class="modal-form" id="claimItConfirm" style="display:none;">
+                <p style="font-size:14px;font-weight:600;margin:0 0 16px;color:var(--text-primary);">Please review the details before final submission:</p>
+
+                <div class="transfer-info" style="margin-bottom:16px;">
+                    <div><span class="ti-label">Payment ID</span><div class="ti-value" id="ciConfirmPaymentId">-</div></div>
+                    <div><span class="ti-label">Transaction ID</span><div class="ti-value" id="ciConfirmTxnId">-</div></div>
+                    <div><span class="ti-label">Invoice</span><div class="ti-value" id="ciConfirmInvoice">-</div></div>
+                    <div><span class="ti-label">Amount</span><div class="ti-value" id="ciConfirmAmount">-</div></div>
+                    <div><span class="ti-label">Period</span><div class="ti-value" id="ciConfirmPeriod">-</div></div>
                 </div>
-                <p class="cf-desc">Please review the transfer details below before proceeding.</p>
-                <div class="cf-details">
-                    <div class="cf-row">
-                        <span class="cf-label">From Student</span>
-                        <span class="cf-value" id="cfFromStudent">-</span>
-                    </div>
-                    <div class="cf-row">
-                        <span class="cf-label">To Student</span>
-                        <span class="cf-value" id="cfToStudent">-</span>
-                    </div>
-                    <div class="cf-divider"></div>
-                    <div class="cf-row">
-                        <span class="cf-label">Payment ID</span>
-                        <span class="cf-value cf-mono" id="cfPaymentId">-</span>
-                    </div>
-                    <div class="cf-row">
-                        <span class="cf-label">Invoice</span>
-                        <span class="cf-value" id="cfInvoice">-</span>
-                    </div>
-                    <div class="cf-row">
-                        <span class="cf-label">Amount</span>
-                        <span class="cf-value cf-amount" id="cfAmount">-</span>
-                    </div>
-                    <div class="cf-row" id="cfNoteRow">
-                        <span class="cf-label">Note</span>
-                        <span class="cf-value" id="cfNote">-</span>
-                    </div>
+
+                <div id="claimItTxnIdWarning" style="display:none;font-size:13px;margin:0 0 12px;padding:12px;background:#fef2f2;border-radius:var(--radius-sm);border:1px solid #dc262633;color:#dc2626;">
+                    <strong>⚠️ Duplicate Transaction ID:</strong> This transaction ID already exists in the system. Please verify it is correct before proceeding.
                 </div>
-                <div class="cf-actions">
-                    <button class="btn-transfer-cancel" onclick="backToForm()">Back</button>
-                    <button class="btn-transfer-submit" onclick="confirmTransfer()">Confirm Transfer</button>
+
+                <p style="font-size:13px;color:var(--text-secondary);margin:0 0 16px;padding:12px;background:var(--warning-bg,#fef3c7);border-radius:var(--radius-sm);border:1px solid var(--warning-border,#f59e0b33);">
+                    <strong>⚠️ This action will:</strong> Mark the PayStation transaction as <strong>paid</strong>, set the transaction ID, and add the payment to the student\'s monthly collection records. This cannot be automatically undone.
+                </p>
+
+                <div style="display:flex;gap:8px;">
+                    <button class="btn-transfer-cancel" onclick="backToClaimItForm()" style="flex:1;justify-content:center;">← Edit Details</button>
+                    <button class="btn-transfer-submit" id="btnClaimItFinalSubmit" onclick="submitClaimItPayment()" style="flex:2;justify-content:center;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        Confirm &amp; Submit
+                    </button>
                 </div>
             </div>
         </div>
-        <div class="modal-footer" id="transferFooter">
-            <button class="btn-transfer-cancel" onclick="closeTransferModal()">Cancel</button>
-            <button class="btn-transfer-submit" id="btnTransferSubmit" onclick="submitTransfer()" disabled>
-                Transfer Payment
-            </button>
+        <div class="modal-footer">
+            <button class="btn-transfer-cancel" onclick="closeClaimItModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== Refund Modal ===== -->
+<div class="modal-overlay" id="refundModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3>Refund Payment</h3>
+            <button class="modal-close" onclick="closeRefundModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <!-- Info summary -->
+            <div class="transfer-info" id="refundInfo">
+                <div><span class="ti-label">Payment ID</span><div class="ti-value" id="rfPaymentId">-</div></div>
+                <div><span class="ti-label">Invoice</span><div class="ti-value" id="rfInvoice">-</div></div>
+                <div><span class="ti-label">Amount</span><div class="ti-value" id="rfAmount">-</div></div>
+                <div><span class="ti-label">Transaction ID</span><div class="ti-value" id="rfTxnId">-</div></div>
+                <div><span class="ti-label">Customer Phone</span><div class="ti-value" id="rfPhone">-</div></div>
+                <div><span class="ti-label">Student ID</span><div class="ti-value" id="rfStudentId">-</div></div>
+            </div>
+
+            <!-- Error / Success -->
+            <div class="transfer-error" id="refundError"></div>
+            <div class="transfer-success" id="refundSuccess">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                <span>Payment refunded successfully!</span>
+            </div>
+
+            <div class="modal-form" id="refundForm">
+                <p style="font-size:13px;color:var(--text-secondary);margin:0 0 16px;">
+                    This will mark the PayStation transaction as <strong>refunded</strong> and remove the associated collection records. This action cannot be automatically undone.
+                </p>
+
+                <div style="margin:16px 0;padding:16px;background:#f9fafb;border-radius:var(--radius-sm);border:1px solid #e5e7eb;">
+                    <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;font-size:14px;">
+                        <input type="checkbox" id="refundConfirmed" style="margin-top:2px;width:18px;height:18px;cursor:pointer;">
+                        <span><strong>I confirm that I have manually refunded this amount to the customer.</strong><br><span style="font-size:12px;color:var(--text-secondary);">By checking this box, you confirm that the refund has been processed outside the system.</span></span>
+                    </label>
+                </div>
+
+                <button class="btn-transfer-submit" id="btnRefundSubmit" onclick="submitRefundPayment()" style="width:100%;margin-top:8px;" disabled>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9"/><polyline points="12 3 21 3 21 12"/><path d="M12 7v5l3 3"/></svg>
+                    Submit Refund
+                </button>
+
+                <div class="transfer-loading" id="refundLoading">
+                    <div class="spinner"></div>
+                    <span>Processing...</span>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-transfer-cancel" onclick="closeRefundModal()">Cancel</button>
         </div>
     </div>
 </div>
@@ -2482,7 +2804,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <div class="modal-overlay" id="claimModal">
     <div class="modal-box">
         <div class="modal-header">
-            <h3>Claim Payment</h3>
+            <h3>Claim Wrong Student Payment</h3>
             <button class="modal-close" onclick="closeClaimModal()">&times;</button>
         </div>
         <div class="modal-body">
@@ -2614,247 +2936,6 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 
 <script>
-// ===== Transfer Modal State =====
-var transferState = {
-    paymentId: '',
-    invoiceNumber: '',
-    amount: 0,
-    status: '',
-    currentStudentName: '',
-    targetStudentId: null,
-    targetStudentName: '',
-    targetStudentRoll: '',
-};
-
-function openTransferModal(paymentId, invoiceNumber, amount, status, studentName) {
-    transferState.paymentId = paymentId;
-    transferState.invoiceNumber = invoiceNumber;
-    transferState.amount = amount;
-    transferState.status = status;
-    transferState.currentStudentName = studentName || '';
-    transferState.targetStudentId = null;
-    transferState.targetStudentName = '';
-
-    // Fill info summary
-    document.getElementById('tiPaymentId').textContent = paymentId;
-    document.getElementById('tiInvoice').textContent = invoiceNumber;
-    document.getElementById('tiAmount').textContent = parseFloat(amount).toFixed(2);
-    document.getElementById('tiStatus').innerHTML = '<span class="badge badge-' + status + '">' + status.charAt(0).toUpperCase() + status.slice(1) + '</span>';
-
-    // Reset form
-    document.getElementById('transferSuccess').classList.remove('active');
-    document.getElementById('transferError').classList.remove('active');
-    document.getElementById('transferError').style.display = 'none';
-    document.getElementById('transferForm').style.display = 'block';
-    document.getElementById('transferLoading').classList.remove('active');
-    document.getElementById('btnTransferSubmit').disabled = true;
-    document.getElementById('btnTransferSubmit').textContent = 'Transfer Payment';
-    // Reset confirmation
-    document.getElementById('transferConfirm').classList.remove('active');
-    document.getElementById('transferConfirm').style.display = '';
-    document.getElementById('transferFooter').style.display = '';
-
-    // Reset selection
-    var results = document.getElementById('studentResults');
-    results.innerHTML = '<div class="sr-empty">Select a class and year above to see students</div>';
-
-    // Show modal
-    document.getElementById('transferModal').classList.add('open');
-}
-
-function closeTransferModal() {
-    document.getElementById('transferModal').classList.remove('open');
-    // Reset to form view
-    document.getElementById('transferForm').style.display = '';
-    document.getElementById('transferConfirm').classList.remove('active');
-    document.getElementById('transferConfirm').style.display = '';
-    document.getElementById('transferFooter').style.display = '';
-    // Reset submit button
-    var btn = document.getElementById('btnTransferSubmit');
-    btn.textContent = 'Transfer Payment';
-    btn.disabled = true;
-    btn.onclick = function() { submitTransfer(); };
-    // Clear error/success
-    document.getElementById('transferError').style.display = 'none';
-    document.getElementById('transferError').classList.remove('active');
-    document.getElementById('transferSuccess').classList.remove('active');
-}
-
-// Close modal on overlay click
-document.getElementById('transferModal').addEventListener('click', function(e) {
-    if (e.target === this) closeTransferModal();
-});
-
-function loadTargetSections() {
-    var classId = document.getElementById('targetClass').value;
-    var secSelect = document.getElementById('targetSection');
-    secSelect.innerHTML = '<option value="">All Sections</option>';
-    if (!classId) return;
-
-    var url = '<?= esc_url_raw(rest_url('v1/sections/by-class')) ?>' +
-        '?class_id=' + encodeURIComponent(classId);
-
-    fetch(url)
-        .then(function(res) { return res.json(); })
-        .then(function(data) {
-            if (data.success && data.sections) {
-                for (var i = 0; i < data.sections.length; i++) {
-                    var opt = document.createElement('option');
-                    opt.value = data.sections[i].sectionid;
-                    opt.textContent = data.sections[i].sectionName;
-                    secSelect.appendChild(opt);
-                }
-            }
-        })
-        .catch(function(err) {
-            console.error('Failed to load sections:', err);
-        });
-}
-
-var searchTimeout = null;
-function loadTargetStudents() {
-    var classId = document.getElementById('targetClass').value;
-    var section = document.getElementById('targetSection').value;
-    var year = document.getElementById('targetYear').value;
-    var search = document.getElementById('targetSearch').value;
-
-    if (!classId || !year) {
-        document.getElementById('studentResults').innerHTML = '<div class="sr-empty">Select a class and year above to see students</div>';
-        return;
-    }
-
-    // Debounce search
-    if (searchTimeout) clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(function() {
-        var url = '<?= esc_url_raw(rest_url('v1/students/by-class')) ?>' +
-            '?class_id=' + encodeURIComponent(classId) +
-            '&year=' + encodeURIComponent(year) +
-            '&section=' + encodeURIComponent(section) +
-            '&search=' + encodeURIComponent(search);
-
-        fetch(url)
-            .then(function(res) { return res.json(); })
-            .then(function(data) {
-                var container = document.getElementById('studentResults');
-                if (data.success && data.students && data.students.length > 0) {
-                    var html = '';
-                    for (var i = 0; i < data.students.length; i++) {
-                        var s = data.students[i];
-                        html += '<div class="sr-item" data-id="' + s.student_id + '" data-name="' + escHtml(s.stdName) + '" data-roll="' + escHtml(s.infoRoll) + '" onclick="selectTargetStudent(this)">';
-                        html += '<span class="sr-roll">' + escHtml(s.infoRoll) + '</span>';
-                        html += '<span class="sr-name">' + escHtml(s.stdName) + '</span>';
-                        if (s.facilities) html += '<span class="sr-facilities">' + escHtml(s.facilities) + '</span>';
-                        html += '</div>';
-                    }
-                    container.innerHTML = html;
-                } else {
-                    container.innerHTML = '<div class="sr-empty">No students found matching your criteria</div>';
-                }
-            })
-            .catch(function(err) {
-                document.getElementById('studentResults').innerHTML = '<div class="sr-empty">Error loading students. Please try again.</div>';
-            });
-    }, search ? 300 : 0);
-}
-
-function selectTargetStudent(el) {
-    // Deselect all
-    var items = document.querySelectorAll('#studentResults .sr-item');
-    for (var i = 0; i < items.length; i++) {
-        items[i].classList.remove('selected');
-    }
-    el.classList.add('selected');
-    transferState.targetStudentId = parseInt(el.getAttribute('data-id'));
-    transferState.targetStudentName = el.getAttribute('data-name');
-    transferState.targetStudentRoll = el.getAttribute('data-roll') || '';
-    document.getElementById('btnTransferSubmit').disabled = false;
-}
-
-function submitTransfer() {
-    if (!transferState.targetStudentId) {
-        alert('Please select a target student.');
-        return;
-    }
-    if (!transferState.paymentId) {
-        alert('No payment selected for transfer.');
-        return;
-    }
-
-    // Hide form, show confirmation
-    document.getElementById('transferForm').style.display = 'none';
-    document.getElementById('transferFooter').style.display = 'none';
-    document.getElementById('transferConfirm').classList.add('active');
-
-    // Fill confirmation details
-    document.getElementById('cfFromStudent').textContent = transferState.currentStudentName || 'Current student';
-    document.getElementById('cfToStudent').textContent = transferState.targetStudentName + ' (Roll: ' + transferState.targetStudentRoll + ')';
-    document.getElementById('cfPaymentId').textContent = transferState.paymentId;
-    document.getElementById('cfInvoice').textContent = transferState.invoiceNumber;
-    document.getElementById('cfAmount').textContent = parseFloat(transferState.amount).toFixed(2);
-    var note = document.getElementById('transferNote').value.trim();
-    document.getElementById('cfNote').textContent = note || '(none)';
-    document.getElementById('cfNoteRow').style.display = note ? '' : 'none';
-}
-
-function confirmTransfer() {
-    var loading = document.getElementById('transferLoading');
-    var confirmBox = document.getElementById('transferConfirm');
-    var errorBox = document.getElementById('transferError');
-    var successBox = document.getElementById('transferSuccess');
-    var submitBtn = document.getElementById('btnTransferSubmit');
-
-    loading.classList.add('active');
-    confirmBox.style.display = 'none';
-    errorBox.classList.remove('active');
-    errorBox.style.display = 'none';
-    successBox.classList.remove('active');
-
-    fetch('<?= esc_url_raw(rest_url('v1/payment/transfer')) ?>', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            payment_id: transferState.paymentId,
-            target_student_id: transferState.targetStudentId,
-            note: document.getElementById('transferNote').value,
-        })
-    })
-    .then(function(res) { return res.json(); })
-    .then(function(data) {
-        loading.classList.remove('active');
-        if (data.success) {
-            document.getElementById('transferSuccessMsg').textContent = data.message;
-            successBox.classList.add('active');
-            submitBtn.textContent = 'Close';
-            submitBtn.disabled = false;
-            submitBtn.onclick = function() { location.reload(); };
-        } else {
-            var errMsg = data.message || 'Transfer failed. Please try again.';
-            if (data.data && data.data.message) errMsg = data.data.message;
-            errorBox.textContent = 'Transfer failed: ' + errMsg;
-            errorBox.style.display = 'block';
-            errorBox.classList.add('active');
-            // Show confirm box again so user can retry
-            confirmBox.style.display = 'block';
-            submitBtn.disabled = false;
-        }
-    })
-    .catch(function(err) {
-        loading.classList.remove('active');
-        errorBox.textContent = 'Network error: ' + err.message;
-        errorBox.style.display = 'block';
-        errorBox.classList.add('active');
-        confirmBox.style.display = 'block';
-        submitBtn.disabled = false;
-    });
-}
-
-function backToForm() {
-    document.getElementById('transferConfirm').classList.remove('active');
-    document.getElementById('transferConfirm').style.display = '';
-    document.getElementById('transferForm').style.display = '';
-    document.getElementById('transferFooter').style.display = '';
-}
-
 // ===== Claim Modal Functions =====
 var claimState = {
     transactionId: '',
@@ -3056,6 +3137,306 @@ function confirmClaimTransfer() {
 function escHtml(str) {
     if (!str) return '';
     return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// ===== Claim It Modal Functions =====
+var claimItState = {
+    paymentId: '',
+    invoiceNumber: '',
+    amount: 0,
+    currentTxnId: '',
+    studentId: 0,
+    txnIdExists: false,
+};
+
+function openClaimItModal(paymentId, invoiceNumber, amount, currentTxnId, studentId) {
+    claimItState.paymentId = paymentId;
+    claimItState.invoiceNumber = invoiceNumber;
+    claimItState.amount = parseFloat(amount) || 0;
+    claimItState.currentTxnId = currentTxnId || '';
+    claimItState.studentId = parseInt(studentId) || 0;
+
+    // Fill info summary
+    document.getElementById('ciPaymentId').textContent = paymentId;
+    document.getElementById('ciInvoice').textContent = invoiceNumber || 'N/A';
+    document.getElementById('ciAmount').textContent = claimItState.amount.toFixed(2);
+    document.getElementById('ciStudentId').textContent = studentId || 'N/A';
+
+    // Pre-fill transaction ID
+    document.getElementById('claimItTransactionId').value = currentTxnId || '';
+    document.getElementById('claimItTxnIdStatus').innerHTML = '';
+    claimItState.txnIdExists = false;
+
+    // Reset form
+    document.getElementById('claimItForm').style.display = '';
+    document.getElementById('claimItConfirm').style.display = 'none';
+    document.getElementById('claimItSuccess').classList.remove('active');
+    document.getElementById('claimItError').style.display = 'none';
+    document.getElementById('claimItError').classList.remove('active');
+    document.getElementById('claimItLoading').classList.remove('active');
+    document.getElementById('btnClaimItSubmit').disabled = false;
+    document.getElementById('btnClaimItSubmit').innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> Review &amp; Confirm';
+    document.getElementById('btnClaimItSubmit').title = '';
+    document.getElementById('btnClaimItFinalSubmit').disabled = false;
+    document.getElementById('btnClaimItFinalSubmit').title = '';
+
+    document.getElementById('claimItModal').classList.add('open');
+}
+
+function closeClaimItModal() {
+    document.getElementById('claimItModal').classList.remove('open');
+}
+
+// Close modal on overlay click
+document.getElementById('claimItModal').addEventListener('click', function(e) {
+    if (e.target === this) closeClaimItModal();
+});
+
+// ===== Transaction ID existence check =====
+var claimItTxnCheckTimeout = null;
+var claimItLastTxnCheck = '';
+
+document.getElementById('claimItTransactionId').addEventListener('input', function() {
+    var txnId = this.value.trim();
+    var statusEl = document.getElementById('claimItTxnIdStatus');
+
+    // Clear previous timeout
+    if (claimItTxnCheckTimeout) {
+        clearTimeout(claimItTxnCheckTimeout);
+        claimItTxnCheckTimeout = null;
+    }
+
+    // Clear status if empty
+    if (!txnId) {
+        statusEl.innerHTML = '';
+        claimItState.txnIdExists = false;
+        claimItLastTxnCheck = '';
+        document.getElementById('btnClaimItSubmit').disabled = false;
+        document.getElementById('btnClaimItSubmit').title = '';
+        return;
+    }
+
+    // Don't re-check the same value
+    if (txnId === claimItLastTxnCheck) return;
+    claimItLastTxnCheck = '';
+
+    // Show checking indicator
+    statusEl.innerHTML = '<span style="color:var(--text-secondary);">Checking...</span>';
+    statusEl.style.color = '';
+
+    claimItTxnCheckTimeout = setTimeout(function() {
+        claimItTxnCheckTimeout = null;
+
+        var url = '<?= esc_url_raw(rest_url('v1/payment/check-transaction-id')) ?>' +
+            '?transaction_id=' + encodeURIComponent(txnId) +
+            '&exclude_payment_id=' + encodeURIComponent(claimItState.paymentId);
+
+        fetch(url)
+            .then(function(resp) { return resp.json(); })
+            .then(function(data) {
+                if (data.success && data.exists) {
+                    statusEl.innerHTML = '<span style="color:#dc2626;">⚠️ This transaction ID already exists in the system.</span>';
+                    claimItState.txnIdExists = true;
+                    document.getElementById('btnClaimItSubmit').disabled = true;
+                    document.getElementById('btnClaimItSubmit').title = 'This transaction ID is already in use. Please enter a different ID.';
+                } else {
+                    statusEl.innerHTML = '<span style="color:#16a34a;">✓ Transaction ID is available.</span>';
+                    claimItState.txnIdExists = false;
+                    document.getElementById('btnClaimItSubmit').disabled = false;
+                    document.getElementById('btnClaimItSubmit').title = '';
+                }
+                claimItLastTxnCheck = txnId;
+            })
+            .catch(function() {
+                statusEl.innerHTML = '';
+                claimItState.txnIdExists = false;
+                claimItLastTxnCheck = '';
+                document.getElementById('btnClaimItSubmit').disabled = false;
+                document.getElementById('btnClaimItSubmit').title = '';
+            });
+    }, 500);
+});
+
+function reviewClaimItPayment() {
+    var month = document.getElementById('claimItMonth').value;
+    var year = document.getElementById('claimItYear').value;
+    var txnId = document.getElementById('claimItTransactionId').value.trim();
+
+    // Validate fields
+    if (!month) {
+        document.getElementById('claimItError').textContent = 'Please select a month.';
+        document.getElementById('claimItError').style.display = 'block';
+        document.getElementById('claimItError').classList.add('active');
+        return;
+    }
+    if (!year) {
+        document.getElementById('claimItError').textContent = 'Please select a year.';
+        document.getElementById('claimItError').style.display = 'block';
+        document.getElementById('claimItError').classList.add('active');
+        return;
+    }
+    if (!txnId) {
+        document.getElementById('claimItError').textContent = 'Transaction ID is required. Please enter the transaction reference number.';
+        document.getElementById('claimItError').style.display = 'block';
+        document.getElementById('claimItError').classList.add('active');
+        return;
+    }
+    if (claimItState.txnIdExists) {
+        document.getElementById('claimItError').textContent = 'This transaction ID already exists. Please enter a different transaction ID.';
+        document.getElementById('claimItError').style.display = 'block';
+        document.getElementById('claimItError').classList.add('active');
+        return;
+    }
+    if (!claimItState.paymentId) {
+        document.getElementById('claimItError').textContent = 'No payment selected. Please try again.';
+        document.getElementById('claimItError').style.display = 'block';
+        document.getElementById('claimItError').classList.add('active');
+        return;
+    }
+
+    // Fill confirmation summary
+    document.getElementById('ciConfirmPaymentId').textContent = claimItState.paymentId;
+    document.getElementById('ciConfirmTxnId').textContent = txnId;
+    document.getElementById('ciConfirmInvoice').textContent = claimItState.invoiceNumber || 'N/A';
+    document.getElementById('ciConfirmAmount').textContent = claimItState.amount.toFixed(2);
+    document.getElementById('ciConfirmPeriod').textContent = month + ' / ' + year;
+
+    // Hide form, show confirmation
+    document.getElementById('claimItForm').style.display = 'none';
+    document.getElementById('claimItError').style.display = 'none';
+    document.getElementById('claimItError').classList.remove('active');
+    document.getElementById('claimItConfirm').style.display = '';
+
+    // Disable final submit button if txn ID already exists
+    document.getElementById('btnClaimItFinalSubmit').disabled = claimItState.txnIdExists;
+    if (claimItState.txnIdExists) {
+        document.getElementById('btnClaimItFinalSubmit').title = 'This transaction ID is already in use. Go back and enter a different ID.';
+    } else {
+        document.getElementById('btnClaimItFinalSubmit').title = '';
+    }
+}
+
+function backToClaimItForm() {
+    document.getElementById('claimItConfirm').style.display = 'none';
+    document.getElementById('claimItForm').style.display = '';
+    document.getElementById('btnClaimItFinalSubmit').disabled = false;
+    document.getElementById('btnClaimItFinalSubmit').title = '';
+}
+
+function submitClaimItPayment() {
+    var month = document.getElementById('claimItMonth').value;
+    var year = document.getElementById('claimItYear').value;
+    var txnId = document.getElementById('claimItTransactionId').value.trim();
+
+    // Create a form and submit via POST to the same page (handled by PHP claim_it_payment)
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.style.display = 'none';
+
+    var fields = {
+        action: 'claim_it_payment',
+        payment_id: claimItState.paymentId,
+        transaction_id: txnId,
+        claim_month: month,
+        claim_year: year,
+    };
+
+    for (var key in fields) {
+        if (fields.hasOwnProperty(key)) {
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = fields[key];
+            form.appendChild(input);
+        }
+    }
+
+    document.body.appendChild(form);
+    form.submit();
+}
+
+// ===== Refund Modal Functions =====
+var refundState = {
+    paymentId: '',
+    invoiceNumber: '',
+    amount: 0,
+    transactionId: '',
+    studentId: 0,
+    phone: '',
+};
+
+function openRefundModal(paymentId, invoiceNumber, amount, transactionId, studentId, phone) {
+    refundState.paymentId = paymentId;
+    refundState.invoiceNumber = invoiceNumber;
+    refundState.amount = parseFloat(amount) || 0;
+    refundState.transactionId = transactionId || '';
+    refundState.studentId = parseInt(studentId) || 0;
+    refundState.phone = phone || '';
+
+    // Fill info summary
+    document.getElementById('rfPaymentId').textContent = paymentId;
+    document.getElementById('rfInvoice').textContent = invoiceNumber || 'N/A';
+    document.getElementById('rfAmount').textContent = refundState.amount.toFixed(2);
+    document.getElementById('rfTxnId').textContent = transactionId || '—';
+    document.getElementById('rfPhone').textContent = phone || '—';
+    document.getElementById('rfStudentId').textContent = studentId || '—';
+
+    // Reset form
+    document.getElementById('refundForm').style.display = '';
+    document.getElementById('refundError').style.display = 'none';
+    document.getElementById('refundError').classList.remove('active');
+    document.getElementById('refundSuccess').classList.remove('active');
+    document.getElementById('refundLoading').classList.remove('active');
+    document.getElementById('refundConfirmed').checked = false;
+    document.getElementById('btnRefundSubmit').disabled = true;
+    document.getElementById('btnRefundSubmit').innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9"/><polyline points="12 3 21 3 21 12"/><path d="M12 7v5l3 3"/></svg> Submit Refund';
+
+    document.getElementById('refundModal').classList.add('open');
+}
+
+function closeRefundModal() {
+    document.getElementById('refundModal').classList.remove('open');
+}
+
+// Close modal on overlay click
+document.getElementById('refundModal').addEventListener('click', function(e) {
+    if (e.target === this) closeRefundModal();
+});
+
+// Enable submit only when checkbox is checked
+document.getElementById('refundConfirmed').addEventListener('change', function() {
+    document.getElementById('btnRefundSubmit').disabled = !this.checked;
+});
+
+function submitRefundPayment() {
+    if (!refundState.paymentId) {
+        document.getElementById('refundError').textContent = 'No payment selected. Please try again.';
+        document.getElementById('refundError').style.display = 'block';
+        document.getElementById('refundError').classList.add('active');
+        return;
+    }
+
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.style.display = 'none';
+
+    var fields = {
+        action: 'refund_payment',
+        payment_id: refundState.paymentId,
+    };
+
+    for (var key in fields) {
+        if (fields.hasOwnProperty(key)) {
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = fields[key];
+            form.appendChild(input);
+        }
+    }
+
+    document.body.appendChild(form);
+    form.submit();
 }
 </script>
 
