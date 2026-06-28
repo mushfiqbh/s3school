@@ -96,8 +96,6 @@ add_action('wp_enqueue_scripts', 'maxSchoolMngs_scripts');
 require_once ('redux/ReduxCore/framework.php');
 require_once ('redux/sample/config.php');
 require_once ('inc/dashboard_widget.php');
-require_once ('inc/payment-api.php');
-require_once ('inc/export-apis.php');
 
 function load_custom_wp_admin_style(){
   wp_enqueue_style('maxSchoolMng', 'https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css');

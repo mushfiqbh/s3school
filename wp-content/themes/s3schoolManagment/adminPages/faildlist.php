@@ -343,7 +343,7 @@ $totalpassed = 0;
 	      $( "#resultSection" ).prop('disabled', false);
 	    });
 	  });
-	})( jQuery );
+	})( jQuery );	
 	
 	function print(divId) {
     var printContents = document.getElementById(divId).innerHTML;
